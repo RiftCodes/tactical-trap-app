@@ -89,7 +89,7 @@ to app.module.ts:
 
 
 == iOS returns BLE messages like ==
-`````````
+```
 starting ble scan:
 {
     "id": "3CBBF67B-FF60-421E-86AC-7608283714A8",
@@ -150,7 +150,7 @@ bluetooth connect succeeded: {
     ]
 }
 
-
+```
 Note: the UUID pattern 0000xxxx-0000-1000-8000-00805F9B34FB is a special form
     that reduces to the 16-bit UUID xxxx.  If iOS reveals the short form (e.g,
     in kCBAdvDataServiceUUIDs) then short UUIDs must be passed to the BLE plugin.
