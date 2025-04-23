@@ -1,0 +1,34 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "./dist/out-tsc",
+    "sourceMap": true,
+    "declaration": false,
+    "downlevelIteration": true,
+    "experimentalDecorators": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "ES2022", // Updated to ES2022 as recommended by Angular CLI
+    "module": "ESNext", // Updated to ESNext for modern module support
+    "useDefineForClassFields": false, // Retained as per CLI warning, but consider true for modern JS
+    "lib": ["ES2022", "dom"], // Updated to ES2022 to match target
+    "strict": true, // Enable all strict type-checking options
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "esModuleInterop": true, // Improve interoperability with CommonJS modules
+    "skipLibCheck": true // Skip type checking of declaration files for performance
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true,
+    "fullTemplateTypeCheck": true, // Enable full template type checking
+    "strictNullChecks": true // Align with compilerOptions
+  }
+}

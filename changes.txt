@@ -1,0 +1,103 @@
+Each release has a thousand things going on.  Changes to critical assumptions or the infrastructure
+are recorded here to help understand breaking changes.
+
+Cordova -> Capacitor migration notes:
+
+  cordova requirements: {
+    "plugins": {
+x      "cordova-plugin-statusbar": {},
+x      "cordova-plugin-device": {},
+x      "cordova-plugin-splashscreen": {},
+x      "cordova-plugin-ionic-keyboard": {},
+x      "cordova-plugin-app-version": {},
+?      "cordova-plugin-inappbrowser": {},
+?      "cordova-plugin-nativeclicksound": {},
+x      "cordova-plugin-nativestorage": {},
+      "cordova-plugin-ble-central": {
+        "BLUETOOTH_USAGE_DESCRIPTION": "Bluetooth access must be enabled to connect to Tactical Traps locks."
+      },
+x      "cordova-plugin-android-permissions": {},
+-      "cordova-plugin-ionic-webview": {}
+    }
+  }
+
+  for capacitor, use:
+
+      npm install @capacitor/status-bar
+      npx cap sync
+
+      > Note the info.plist requirements mentioned in https://capacitorjs.com/docs/apis/status-bar
+
+      npm install @capacitor/splash-screen
+      npx cap sync
+
+      > Consider calling this in home.page.ts ngAfterViewInit()
+
+      npm install @capacitor/keyboard
+
+      > Appears this again is a default plugin.  Never referenced in the app.
+
+      npm install @capacitor/app
+
+      > Also pre-installed?
+
+      npm install @capacitor/browser
+
+      > Need to investigate if the return button setup is still required
+
+      npm install @capacitor/preferences
+      npm install @capacitor/device
+
+      npm install cordova-plugin-nativeclicksound
+
+      > This plugin is rather old, might be superseded by Haptics plugin, and
+        needs to be tested to see if it does anything now
+
+      npm install @ionic-native/android-permissions
+      npm install cordova-plugin-android-permissions
+
+      > The ble-central plugin now contains Android permissions logic built into
+        it.  Pull request 771 gives an iOS permissions function that may have
+        some bearing on the current BLE iOS setup code.
+
+      npm install @ionic-native/ble
+      npm install cordova-plugin-ble-central
+
+      > Capacitor doesn't run the plugin hooks, so the following needs to be added
+        to the info.plist file under the appropriate keys:
+
+      --variable BLUETOOTH_USAGE_DESCRIPTION="Bluetooth access must be enabled to connect to Tactical Traps locks."
+
+
+      ==== V1.3.5 ===
+
+      - Rollup of changes needed to harden app against unplanned user inputs:
+        impatient button presses, double activations, and the like.  Fixed
+        initial connection sequence that took too long.  Finished switch from
+        reading statuses to getting status notifications, allowing the locks
+        to dictate the command timing.
+
+      ==== V1.4.0 ====
+
+      - Devices aren't showing up when scanning on Android 12.  Infrastructure was recently upgraded to V11, so
+        fewer things are impacted.
+        * In Android Studio, upgraded SDK platform tools to v33.0.2
+        * Added SDK 31
+        * Discovered Capacitor 4 has been released - they sure aren't making it obvious.
+          >  npm i -D @capacitor/cli@latest
+          >  npx cap migrate
+          Looks like migrate did most or all of the conversion steps in the upgrade list.
+          >  npm install @capacitor/preferences
+          >  npm remove @capacitor/Storage
+        * Capacitor targets SDK 32
+          - added SDK 32
+          - removed sources for SDK 29
+          - removed SDK 30.0.2
+        * Added @capacitor/device to get OS info
+        * Updated BLE permissions code to work on Android 12+
+
+      ==== V1.4.1 ====
+        - recover-from-crash-feature branch: looking for solution to locks
+          being left in limbo when user force stops the app
+        - added signal strength meter to options page
+

@@ -1,0 +1,144 @@
+<ion-content [fullscreen]="true">
+  <div class="content">
+    <img class="logo" src="../../assets/logo.png" (click)="clearTestOutput()" />
+    <div class="hr2"></div>
+    <h1>
+      <div class="title">BLUETOOTH LOCK APPLICATION</div>
+      <ion-icon
+        slot="end"
+        name="menu"
+        [ngClass]="{'dimmed' : optionsDisable}"
+        (click)="openOptionsModal()"
+      ></ion-icon>
+    </h1>
+    <div class="hr3"></div>
+    <img
+      class="lock-image"
+      [src]="'../../assets/' + (showLockOpen ? 'open' : 'closed') + '-lock.png'"
+      [attr.data-show-lock-open]="showLockOpen"
+    />
+    <!-- Connect Button -->
+    <img
+      class="connect click-sounds"
+      *ngIf="pairingState === inactive || pairingState === failed"
+      src="../../assets/connect-btn.png"
+      (click)="beginConnect()"
+      [attr.data-pairing-state]="pairingState"
+    />
+    <!-- Disconnect Button -->
+    <img
+      class="connect click-sounds"
+      *ngIf="pairingState === successful"
+      src="../../assets/disconnect-btn.png"
+      (click)="beginDisconnect()"
+      [attr.data-pairing-state]="pairingState"
+    />
+    <!-- Lock/Unlock Button -->
+    <img
+      class="unlock click-sounds"
+      *ngIf="pairingState === successful && !isLockOperationPending"
+      [src]="'../../assets/' + (showLockOpen ? 'lock' : 'unlock') + '-btn.png'"
+      (click)="unlock(lockStatus?.randData?.toString() || '')"
+      [attr.data-show-lock-open]="showLockOpen"
+      [attr.data-is-lock-pending]="isLockOperationPending"
+    />
+    <!-- Spinner -->
+    <ion-spinner
+      class="unlock-spinner"
+      color="secondary"
+      *ngIf="pairingState === successful && isLockOperationPending"
+      [ngClass]="{'unlock-spinner-reveal' : isLockOperationPending}"
+      [attr.data-is-lock-pending]="isLockOperationPending"
+    ></ion-spinner>
+    <!-- Device Pane -->
+    <ion-card
+      id="device-pane"
+      *ngIf="pairingState === scanning || pairingState === waiting || pairingState === connecting"
+      [attr.data-pairing-state]="pairingState"
+    >
+      <ion-card-header>
+        <ion-card-title>
+          <span [hidden]="pairingState >= waiting">AVAILABLE DEVICES</span>
+          <span [hidden]="pairingState !== waiting">SELECT A DEVICE</span>
+          <span [hidden]="pairingState !== connecting">CONNECTING TO:</span>
+        </ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <div class="device-list" [hidden]="pairingState >= connecting">
+          <div
+            class="item click-sounds"
+            *ngFor="let device of devices"
+            (click)="select(device)"
+          >
+            <ion-icon name="bluetooth-outline" class="device-icon"></ion-icon>
+            <span class="device-name"
+              >{{ device.name || 'Unknown Device' }}</span
+            >
+          </div>
+        </div>
+        <div class="scanning" [hidden]="pairingState !== scanning">
+          Scanning
+          <ion-spinner></ion-spinner>
+        </div>
+        <div class="connecting" [hidden]="pairingState !== connecting">
+          <div class="selectedDevice">{{ selectedDevice.name }}</div>
+          <ion-spinner></ion-spinner>
+        </div>
+        <ion-button
+          [hidden]="pairingState >= connecting"
+          class="click-sounds"
+          (click)="cancel()"
+          >CANCEL</ion-button
+        >
+      </ion-card-content>
+    </ion-card>
+    <!-- Keypad -->
+    <ble-lock-keypad
+      id="keypad-pane"
+      *ngIf="!hideKeypad"
+      [title]="'Enter 4-digit PIN'"
+      [digits]="4"
+      (pinValue)="pinEvent($event)"
+      [attr.data-hide-keypad]="hideKeypad"
+    ></ble-lock-keypad>
+    <div class="test" [style.z-index]="testPaneDepth">{{ testOutput }}</div>
+  </div>
+
+  <ion-fab *ngIf="debugMode.showFAB" vertical="bottom" horizontal="end">
+    <ion-fab-button>Tools</ion-fab-button>
+    <ion-fab-list side="start">
+      <ion-fab-button
+        class="click-sounds"
+        (click)="debugMode.active = !debugMode.active"
+        >{{ debugMode.active ? 'Hide' : 'Show' }}</ion-fab-button
+      >
+      <ion-fab-button
+        class="click-sounds"
+        (click)="showAlarmState()"
+        *ngIf="pairingState === successful"
+        >Alarm</ion-fab-button
+      >
+      <ion-fab-button
+        class="click-sounds"
+        (click)="unlock(lockStatus?.randData?.toString() || '')"
+        *ngIf="pairingState === successful"
+        >Unlock</ion-fab-button
+      >
+      <ion-fab-button
+        class="click-sounds"
+        (click)="beginDisconnect()"
+        *ngIf="pairingState === successful"
+        >Dsc</ion-fab-button
+      >
+      <ion-fab-button class="click-sounds" (click)="clearTestOutput()"
+        >Clear</ion-fab-button
+      >
+      <ion-fab-button
+        class="click-sounds"
+        (click)="bleService.initializeLock()"
+        *ngIf="pairingState === successful"
+        >Reset</ion-fab-button
+      >
+    </ion-fab-list>
+  </ion-fab>
+</ion-content>

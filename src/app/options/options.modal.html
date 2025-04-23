@@ -1,0 +1,38 @@
+<ion-card>
+    <div>
+        <ion-item *ngIf="!connected">
+            Software version &nbsp;<span (click)="debugCheck()">{{version}}</span>.<span class="debugText" [hidden]="!newDebugOn"> :: debugging ::</span>
+        </ion-item>
+        <ion-item class="faq-link" (click)="openFaq()">
+            <div>
+                For more information about your Tactical Traps lock, visit the website at <span>{{faq_url}}</span>.
+            </div>
+        </ion-item>
+        <span *ngIf="connected">
+            <ion-item><ion-label>Alarm sounds</ion-label>
+                <ion-button color="light" size="large" slot="end" (click)="changeAlarm()" [disabled]="disableChangeAlarm">
+                    <ion-icon [hidden]="!alarmOn" name="volume-high"></ion-icon>
+                    <ion-icon [hidden]="alarmOn" name="volume-off"></ion-icon>
+                </ion-button>
+            </ion-item>
+            <ion-item>Lock Voltage: {{lockVoltage | number:'1.1-1'}}V
+                <ion-thumbnail color="light" class="appear-as-button" slot="end">
+                    <div class="charge"><div class="remaining" [style.width]="remaining"></div></div>
+                </ion-thumbnail>
+            </ion-item>
+            <ion-item>Signal Level: {{signalLevel}} dBm
+                <ion-thumbnail color="light" class="appear-as-button" slot="end">
+                    <div class="signal"><div class="signal-level" [style.width]="signalLevelBar"></div></div>
+                </ion-thumbnail>
+            </ion-item>
+        </span>
+        <ion-item>Clear all stored PIN codes
+            <ion-button color="light" size="large" slot="end" (click)="clearCodes()">
+                <ion-icon name="remove-circle-outline"></ion-icon>
+            </ion-button>
+        </ion-item>
+        <p>&nbsp;</p>
+        <ion-button class="done" (click)="finished()" [disabled]="disableChangeAlarm">Done</ion-button>
+    </div>
+</ion-card>
+<ble-lock-keypad id="debug-keypad-pane" [hidden]="hideDebugKeypad" [title]="'Enter 4-digit Code'" [digits]="4" (pinValue)="codeEvent($event)"></ble-lock-keypad>

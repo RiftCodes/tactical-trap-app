@@ -1,0 +1,24 @@
+<div class="keypad" [hidden]="hidden">
+    <div class="title">{{title}}<ion-button fill="outline" size="small" (click)="handleInput('cancel')"><ion-icon name="close"></ion-icon></ion-button></div>
+    <div class="pin"><div>&nbsp;{{pin}}&nbsp;</div></div>
+    <div class="row">
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('1')">1</ion-button>
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('2')">2</ion-button>
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('3')">3</ion-button>
+    </div>
+    <div class="row">
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('4')">4</ion-button>
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('5')">5</ion-button>
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('6')">6</ion-button>
+    </div>
+    <div class="row">
+            <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('7')">7</ion-button>
+            <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('8')">8</ion-button>
+            <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('9')">9</ion-button>
+    </div>
+    <div class="row">
+        <ion-button class="rect" shape="round" size="large" fill="outline" (click)="handleInput('del')"><ion-icon name="backspace"></ion-icon></ion-button>
+        <ion-button class="equal" shape="round" size="large" fill="outline" (click)="handleInput('0')">0</ion-button>
+        <ion-button class="rect" shape="round" size="large" fill="outline" (click)="handleInput('OK')">OK</ion-button>
+    </div>
+</div>
