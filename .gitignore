@@ -77,9 +77,7 @@ node_modules/
 **/www/
 
 # Cordova/Capacitor platform folders
-android/
-ios/
-plugins/
+
 
 # Environment files
 .env

@@ -1,0 +1,16 @@
+ext {
+    minSdkVersion = 22 // Minimum SDK for broad compatibility (Android 5.1 Lollipop)
+    compileSdkVersion = 34 // Target Android 14 (latest stable as of 2025)
+    targetSdkVersion = 34 // Target Android 14 for compliance with latest features
+    androidxActivityVersion = '1.9.0' // Latest stable version
+    androidxAppCompatVersion = '1.6.1' // Latest stable version
+    androidxCoordinatorLayoutVersion = '1.2.0' // Still current; no major updates
+    androidxCoreVersion = '1.13.1' // Latest stable version
+    androidxFragmentVersion = '1.7.1' // Latest stable version
+    coreSplashScreenVersion = '1.0.1' // Latest stable version
+    androidxWebkitVersion = '1.9.0' // Latest stable version
+    junitVersion = '4.13.2' // Still current
+    androidxJunitVersion = '1.1.5' // Latest stable version
+    androidxEspressoCoreVersion = '3.5.1' // Latest stable version
+    cordovaAndroidVersion = '11.0.0' // Latest stable version for Cordova Android
+}

@@ -1,0 +1,12 @@
+{
+	"appId": "com.tacticaltraps.bluetooth.lock",
+	"appName": "Tactical Traps BLE Lock",
+	"webDir": "www",
+	"bundledWebRuntime": false,
+	"plugins": {
+		"SplashScreen": {
+			"androidSplashResourceName": "screen",
+			"launchAutoHide": false
+		}
+	}
+}
