@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   // appId: 'com.tacticaltraps.bluetooth.lock',
-  appId: 'com.tacticaltraps.bluetooth.lock_1',
+  appId: 'com.tacticaltraps.bluetooth.lock_2',
   appName: 'Tactical Traps BLE Lock',
   webDir: 'www',
   bundledWebRuntime: false,

@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace 'com.tacticaltraps.bluetooth.lock_1' // Add this line
+    namespace 'com.tacticaltraps.bluetooth.lock_2' // Add this line
     compileSdkVersion rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.tacticaltraps.bluetooth.lock_1"
+        applicationId "com.tacticaltraps.bluetooth.lock_2"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10500
+        versionCode 1
         versionName "1.5.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,13 +16,18 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            storeFile file("ble_lock.keystore")
+            storePassword 'bluetooth'   // same as keystore password
+            keyAlias 'ble_1'
+            keyPassword 'bluetooth'     // same as storePassword
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
-            storeFile file('new-release-key.keystore')
-            storePassword 'bluetooth'   // same as keystore password
-            keyAlias 'upload'
-            keyPassword 'bluetooth'     // same as storePassword
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

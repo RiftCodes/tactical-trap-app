@@ -20,7 +20,7 @@
   underscores).
 
       Apple:    com.tacticaltraps.bluetooth.lock
-      Android:  com.tacticaltraps.bluetooth.lock_1
+      Android:  com.tacticaltraps.bluetooth.lock_2
       Appflow:  com.tacticaltraps.experimental
 
 * Capacitor's emphasis on native projects complicates the choice of App ID.
