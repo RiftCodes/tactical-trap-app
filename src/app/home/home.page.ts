@@ -5,36 +5,33 @@
  */
 
 import {
-  Component,
-  OnInit,
   AfterViewInit,
-  NgZone,
   ChangeDetectorRef,
+  Component,
+  NgZone,
+  OnInit,
 } from '@angular/core';
+import { App } from '@capacitor/app';
 import { AlertController, ModalController, Platform } from '@ionic/angular';
 import { OverlayEventDetail } from '@ionic/core';
-import { App } from '@capacitor/app';
-import { environment } from '../../environments/environment';
 import { Subject, Subscription } from 'rxjs';
+import { environment } from '../../environments/environment';
 
+import { OptionsModal } from '../options/options.modal';
 import {
-  BleService,
-  LockStatus,
-  ResponseMap,
   ASK_correct,
-} from '../services/ble.service';
-import {
+  BleService,
   IsLocked,
   IsUnhooked,
-  InactiveDisconnectTime,
+  LockStatus,
+  ResponseMap
 } from '../services/ble.service';
 import {
-  DevicesService,
-  Device,
   BleDeviceList,
+  Device,
+  DevicesService,
 } from '../services/devices.service';
-import { LockDataService, LockDataErrors } from '../services/lock-data.service';
-import { OptionsModal } from '../options/options.modal';
+import { LockDataErrors, LockDataService } from '../services/lock-data.service';
 
 const ShowAtStart = true;
 const EnableDebug = false;
@@ -75,8 +72,8 @@ export class HomePage implements OnInit, AfterViewInit {
 
   // interval timing
   oneSecond = 1000;
-  scanTime = 3 * this.oneSecond;
-  scanAttempts = 3;
+  scanTime = 5 * this.oneSecond;
+  scanAttempts = 5;
   timeIncrement = 500;
   timeDivider = 4;
   sleepDelay = 60 * this.oneSecond;
@@ -141,6 +138,8 @@ export class HomePage implements OnInit, AfterViewInit {
       `ngOnInit: pairingState=${this.pairingState}, showLockOpen=${this.showLockOpen}, hideKeypad=${this.hideKeypad}, isLockOperationPending=${this.isLockOperationPending}`
     );
     this.cdr.detectChanges();
+    // Attempt auto-reconnect to last connected device
+    this.bleService.autoReconnectOnStart();
   }
 
   ngAfterViewInit() {
@@ -188,10 +187,10 @@ export class HomePage implements OnInit, AfterViewInit {
 
   beginConnect() {
     this.messageHandler('beginConnect');
-    if (this.pairingState !== this.inactive) {
-      this.messageHandler('connection requested already');
-      return;
-    }
+    this.ngZone.run(() => {
+      this.pairingState = this.scanning;
+      this.cdr.detectChanges();
+    });
     this.bleService
       .isAvailable()
       .then((available) => {
@@ -219,13 +218,14 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   scanForDevices() {
-    let attempts = 3;
+    let attempts = this.scanAttempts;
     this.messageHandler('starting ble scan');
     const target = scanOnlyForLocks ? [this.bleService.LongServiceUuid] : [];
     this.optionsDisable = true;
     this.devList.reset();
     this.devices = [];
     this.scanController = new Subject<any>();
+    let scanTimeout: any = null;
     const controller$ = this.scanController.subscribe((event) => {
       let stopAction: Promise<any> = Promise.resolve();
 
@@ -248,12 +248,27 @@ export class HomePage implements OnInit, AfterViewInit {
         this.scanInterval = null;
       }
 
+      if (scanTimeout) {
+        clearTimeout(scanTimeout);
+        scanTimeout = null;
+      }
+
       switch (event.action) {
         case 'begin':
           this.messageHandler('begin scan');
           this.pairingState = this.scanning;
           attempts = this.scanAttempts;
           this.scanResult = this.initiateCycle(target);
+          // Add scan timeout (20 seconds)
+          scanTimeout = setTimeout(() => {
+            this.ngZone.run(() => {
+              if (this.devices.length === 0) {
+                this.pairingState = this.failed;
+                this.messageHandler('No devices found after timeout');
+                this.cdr.detectChanges();
+              }
+            });
+          }, 20000);
           this.ngZone.run(() => {
             this.messageHandler(
               `scanForDevices: pairingState=${this.pairingState}`
@@ -290,20 +305,6 @@ export class HomePage implements OnInit, AfterViewInit {
                   );
                   this.cdr.detectChanges();
                 });
-              });
-            } else if (
-              this.devices.length === 1 &&
-              this.devices[0].hasProperName
-            ) {
-              this.ngZone.run(() => {
-                this.messageHandler('scan stopped, one device found');
-                this.pairingState = this.waiting;
-                this.selectedDevice = this.devices[0];
-                this.checkForPinCode(this.devices[0]);
-                this.messageHandler(
-                  `scanForDevices: one device, pairingState=${this.pairingState}`
-                );
-                this.cdr.detectChanges();
               });
             } else {
               this.ngZone.run(() => {
@@ -352,7 +353,12 @@ export class HomePage implements OnInit, AfterViewInit {
       }
     });
 
-    this.scanController.next({ action: 'begin' });
+    // Add a short delay before starting scan for BLE stack readiness
+    setTimeout(() => {
+      if (this.scanController) {
+        this.scanController.next({ action: 'begin' });
+      }
+    }, 300);
   }
 
   select(device: Device) {
@@ -435,7 +441,8 @@ export class HomePage implements OnInit, AfterViewInit {
       this.hideKeypad = true;
       this.testPaneDepth = 0;
       if (result === null) {
-        this.pairingState = this.inactive;
+        this.pairingState = this.waiting;
+        this.messageHandler('PIN entry cancelled, returning to device scan list');
       } else {
         this.pairToDevice(result);
       }
@@ -775,12 +782,13 @@ export class HomePage implements OnInit, AfterViewInit {
         `checkForDroppedConnection: value=${JSON.stringify(value)}`
       );
 
-      if (!value || !value.touchedAt) {
-        this.messageHandler('Invalid or missing connection data.');
+
+      if (!value || typeof value !== 'object') {
+        this.messageHandler('Invalid or missing connection data (not an object).');
         return null;
       }
 
-      if (!value.id) {
+      if (!('id' in value) || !value.id) {
         this.messageHandler('Invalid connection data: missing device ID.');
         await this.showInfoAlert(
           'Invalid Data',
@@ -805,33 +813,53 @@ export class HomePage implements OnInit, AfterViewInit {
         connected = false;
       }
 
-      const interval = (Date.now() - value.touchedAt) / 1000;
-      if (interval < InactiveDisconnectTime) {
-        device = value;
-        this.messageHandler(
-          `Connection within ${InactiveDisconnectTime} seconds, setting device: ${device.id}`
-        );
-      } else {
-        this.messageHandler(
-          `Connection inactive for ${interval} seconds, exceeding ${InactiveDisconnectTime} seconds.`
-        );
-        await this.showInfoAlert(
-          'Connection Expired',
-          `The last connection was ${Math.floor(
-            interval
-          )} seconds ago, exceeding the ${InactiveDisconnectTime}-second limit. Please reconnect to a lock.`
-        );
-      }
+      device = value;
+      this.messageHandler(
+        `Auto-reconnect: setting device: ${device && device.id ? device.id : ''}`
+      );
 
-      this.touchConnection({ reset: !connected });
-      if (!connected && device) {
+      this.touchConnection({ reset: !connected, device: value });
+      if (!connected && device && device.id) {
+        // Get custom name, serial, or ID for display
+        const customName = this.devList.getCustomName(device.id);
+        let displayName = device.id;
+        if (customName && customName.trim()) {
+          displayName = customName;
+        } else if (device && device.name && device.name.startsWith('SN:')) {
+          displayName = device.name;
+        }
+        displayName += displayName !== device.id ? ` (ID ${device.id})` : '';
         await this.showWarningAlert(
           'Dropped Connection',
-          `The lock with ID ${device.id} appears to have been disconnected. Would you like to force disconnect?`,
+          `The lock ${displayName} appears to have been disconnected. Would you like to force disconnect?`,
           [
             {
               text: 'Yes',
-              handler: () => this.bleService.forceDisconnect(device!),
+              handler: async () => {
+                await this.bleService.forceDisconnect(device!);
+                this.ngZone.run(() => {
+                  this.pairingState = this.connecting;
+                  this.hideKeypad = true;
+                  this.isLockOperationPending = false;
+                  this.selectedDevice = device!;
+                  this.cdr.detectChanges();
+                });
+                // Attempt to reconnect to the device
+                this.bleService.connectTo(device!).subscribe({
+                  next: () => {
+                    this.ngZone.run(() => {
+                      this.pairingState = this.successful;
+                      this.cdr.detectChanges();
+                    });
+                  },
+                  error: () => {
+                    this.ngZone.run(() => {
+                      this.pairingState = this.failed;
+                      this.cdr.detectChanges();
+                    });
+                  }
+                });
+              },
             },
             { text: 'No', handler: () => {} },
           ]
@@ -1113,5 +1141,68 @@ export class HomePage implements OnInit, AfterViewInit {
 
   clearTestOutput() {
     this.testOutput = '';
+  }
+
+  async editCustomName(device: Device, event: Event) {
+    event.stopPropagation(); // Prevent triggering select(device)
+    const alert = await this.alertController.create({
+      header: 'Edit Lock Name',
+      inputs: [
+        {
+          name: 'customName',
+          type: 'text',
+          placeholder: 'Enter custom name',
+          value: device.customName || '',
+        },
+      ],
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel',
+        },
+        {
+          text: 'Save',
+          handler: (data) => {
+            this.devList.setCustomName(device.id, data.customName);
+            device.customName = data.customName;
+            this.cdr.detectChanges();
+          },
+        },
+      ],
+    });
+    await alert.present();
+  }
+
+  async openDeviceDetailsModal(device: Device) {
+    const alert = await this.alertController.create({
+      header: 'Device Details',
+      inputs: [
+        {
+          name: 'customName',
+          type: 'text',
+          placeholder: 'Enter custom name',
+          value: device.customName || '',
+          label: 'Device Name',
+        },
+      ],
+      message: `Serial Number:\n${DevicesService.extractSerialNumber(device) || 'N/A'}\n\nDevice ID:\n${device.id || 'N/A'}`,
+      mode: 'ios',
+      buttons: [
+        {
+          text: 'Cancel',
+          role: 'cancel',
+        },
+        {
+          text: 'Save',
+          handler: (data) => {
+            this.devList.setCustomName(device.id, data.customName);
+            device.customName = data.customName;
+            this.cdr.detectChanges();
+          },
+        },
+      ],
+      cssClass: 'device-details-modal',
+    });
+    await alert.present();
   }
 }

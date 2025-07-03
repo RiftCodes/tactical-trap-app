@@ -14,6 +14,7 @@ export interface Device {
   hasProperName?: boolean;
   hasLongUuids?: boolean;
   isNotAGhost?: boolean;
+  customName?: string;
 }
 
 export const UnknownDeviceName = 'Unknown Device';
@@ -112,6 +113,11 @@ export class DevicesService {
       //            adverts.forEach(function(s) { console.log(s); });
       //            console.log('.. RSSI = ' + device.rssi);
     }
+    // Attach custom name if it exists
+    const customName = this.getCustomName(device.id);
+    if (customName) {
+      device.customName = customName;
+    }
     if (
       this.devices.find(
         (item) => item.id === device.id && item.name === device.name
@@ -138,5 +144,41 @@ export class DevicesService {
   reset() {
     console.log('DeviceFactory reset');
     this.devices = [];
+  }
+
+  getCustomName(deviceId: string): string | null {
+    return localStorage.getItem('customName_' + deviceId);
+  }
+
+  setCustomName(deviceId: string, name: string): void {
+    localStorage.setItem('customName_' + deviceId, name);
+    // Update in-memory device if present
+    const device = this.devices.find(d => d.id === deviceId);
+    if (device) {
+      device.customName = name;
+    }
+  }
+
+  // Utility to extract serial number from device name
+  static extractSerialNumber(device: Device): string | null {
+    if (device.name && device.name.startsWith('SN:')) {
+      return device.name;
+    }
+    return null;
+  }
+
+  // Get the best display name for a device
+  static getDisplayName(device: Device): string {
+    if (device.customName && device.customName.trim()) {
+      return device.customName;
+    }
+    if (device.name && device.name !== 'Unknown Device') {
+      return device.name;
+    }
+    const serial = DevicesService.extractSerialNumber(device);
+    if (serial) {
+      return serial;
+    }
+    return 'Unknown Device';
   }
 }

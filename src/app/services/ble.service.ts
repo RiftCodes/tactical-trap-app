@@ -1,15 +1,15 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { AndroidPermissions } from '@ionic-native/android-permissions/ngx';
 import {
-  Device as System,
   DeviceInfo,
   OperatingSystem,
+  Device as System,
 } from '@capacitor/device';
+import { AndroidPermissions } from '@ionic-native/android-permissions/ngx';
 import { BLE } from '@ionic-native/ble/ngx';
 import { Observable, Subject, Subscription } from 'rxjs';
-import { LockParameters } from './lock-data.service';
 import { DynamicQueue } from '../util/dynamic-queue';
 import { Device } from './devices.service';
+import { LockParameters } from './lock-data.service';
 
 export interface LockStatus {
   response: number;
@@ -91,6 +91,11 @@ export class BleService implements OnDestroy {
   CommandUuid: any;
   LongConfigUuid = '0000fff3-0000-1000-8000-00805f9b34fb';
   ConfigUuid: any;
+
+  keepAliveInterval: any = null;
+  lastConnectedDevice: Device | null = null;
+  reconnectAttempts: number = 0;
+  maxReconnectAttempts: number = 5;
 
   constructor(
     private androidPermissions: AndroidPermissions,
@@ -349,6 +354,7 @@ export class BleService implements OnDestroy {
           error: (error) => that.notificationError(error),
         });
         that.connectSubscriber!.add(notificationSubscriber);
+        that.startKeepAlive(scanData);
       },
       async (result) => {
         result.connectFailed = that.deviceId === null;
@@ -364,6 +370,8 @@ export class BleService implements OnDestroy {
           that.purgeConnection(that.deviceId!);
         }
         that.deviceId = null;
+        that.stopKeepAlive();
+        that.tryReconnect();
       }
     );
     return this.connectRepeater;
@@ -715,4 +723,53 @@ export class BleService implements OnDestroy {
   }
 
   ngOnDestroy() {}
+
+  startKeepAlive(device: Device) {
+    this.stopKeepAlive();
+    this.lastConnectedDevice = device;
+    localStorage.setItem('lastConnectedDevice', JSON.stringify(device));
+    this.keepAliveInterval = setInterval(() => {
+      this.readLockStatus().catch(() => {}); // harmless ping
+    }, 15000); // 15 seconds
+  }
+
+  stopKeepAlive() {
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+  }
+
+  async tryReconnect() {
+    if (!this.lastConnectedDevice || this.reconnectAttempts >= this.maxReconnectAttempts) return;
+    this.reconnectAttempts++;
+    setTimeout(() => {
+      this.connectTo(this.lastConnectedDevice!).subscribe({
+        next: () => {
+          this.reconnectAttempts = 0;
+        },
+        error: () => {
+          this.tryReconnect();
+        }
+      });
+    }, 2000 * this.reconnectAttempts); // Exponential backoff
+  }
+
+  async autoReconnectOnStart() {
+    const last = localStorage.getItem('lastConnectedDevice');
+    if (last) {
+      try {
+        const device = JSON.parse(last);
+        // Optionally, check if device is in range first
+        this.connectTo(device).subscribe({
+          next: () => {
+            this.reconnectAttempts = 0;
+          },
+          error: () => {
+            this.tryReconnect();
+          }
+        });
+      } catch {}
+    }
+  }
 }

@@ -3,111 +3,10 @@ ion-content {
   height: 100%;
   --notch-inset: 0;
   --color: black;
-  --background: white url("../../assets/app-background.jpg") left top / 100vw
-    100vh;
+  --background: none;
   --overflow: hidden;
-}
-
-.content {
-  position: absolute;
-  top: var(--notch-inset);
-  left: 0;
-  width: 100%;
-  height: calc(100% - var(--notch-inset));
-
-  .logo {
-    width: auto;
-    height: 12%;
-    margin: 3.45% auto 4% auto;
-    display: block;
-  }
-
-  .hr2 {
-    height: 0.4%;
-    background-color: black;
-    margin-bottom: 4%;
-  }
-
-  h1 {
-    position: relative;
-    margin-top: 17px;
-    margin-bottom: 16px;
-  }
-
-  .title {
-    font-size: 0.8rem;
-    width: 87%;
-    text-align: center;
-    font-weight: bold;
-    margin-bottom: 4%;
-    position: relative;
-  }
-
-  h1 ion-icon {
-    font-size: 1.1em;
-    position: absolute;
-    right: 0.3em;
-    top: -0.27em;
-  }
-
-  ion-icon.dimmed {
-    color: #a8a8a8;
-  }
-
-  .hr3 {
-    height: 0.4%;
-    background-color: black;
-    margin-bottom: 3%;
-  }
-
-  .lock-image {
-    width: auto;
-    height: 48%;
-    margin: 0 auto 1% auto;
-    display: block;
-  }
-
-  ion-button {
-    margin: auto;
-    --color: white;
-  }
-
-  .connect,
-  .unlock {
-    height: 10%;
-    margin: auto;
-    display: block;
-  }
-
-  .unlock-spinner {
-    display: block;
-    margin: 5rem auto;
-    transform: scale(4.5);
-    opacity: 1; /* Ensure spinner is fully visible */
-  }
-
-  .unlock-spinner-reveal {
-    animation: fadeIn 5s;
-    -webkit-animation: fadeIn 5s;
-  }
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0.1;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @-webkit-keyframes fadeIn {
-    0% {
-      opacity: 0.1;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
+  --padding-bottom: 24px;
+  overflow-y: auto !important;
 }
 
 #device-pane {
@@ -311,5 +210,151 @@ ion-card-title {
 @media only screen and (min-height: 640px) {
   ion-content {
     --notch-inset: 30px;
+  }
+}
+
+// Main grid and content
+.main-grid {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 8px;
+}
+.center-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+// Connected device card
+.connected-device-card {
+  margin-bottom: 20px;
+  padding: 0 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-radius: 14px;
+  background: #fff;
+}
+.connected-device-card ion-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+.connected-device-card ion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.connected-device-card .device-name-main {
+  font-weight: bold;
+  color: #c00;
+  margin-right: 16px;
+}
+.connected-device-card .connected-label {
+  color: #000;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+// Device pane and device cards
+.device-pane-card {
+  margin-bottom: 18px;
+  padding: 0 8px;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  background: #f8f8f8;
+}
+.device-pane-card ion-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+}
+.device-pane-card ion-card-title {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.device-card {
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 0;
+  background: #fff;
+  transition: box-shadow 0.2s;
+}
+.device-card:active, .device-card:focus {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+.device-name {
+  font-weight: 600;
+  color: #222;
+}
+.device-serial {
+  font-size: 0.92em;
+  color: #888;
+}
+ion-button[fill="outline"] {
+  --border-radius: 8px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+}
+
+// Main action buttons
+ion-button[expand="block"] {
+  border-radius: 12px !important;
+  margin-bottom: 18px;
+  font-size: 1.1em;
+  font-weight: 600;
+  max-width: 320px;
+  height: 48px;
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+// Spinner
+.unlock-spinner {
+  display: block;
+  margin: 5rem auto;
+  transform: scale(4.5);
+  opacity: 1;
+}
+
+.unlock-spinner-reveal {
+  animation: fadeIn 5s;
+  -webkit-animation: fadeIn 5s;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@-webkit-keyframes fadeIn {
+  0% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+// Responsive tweaks
+@media (max-width: 400px) {
+  .connected-device-card, .device-pane-card {
+    border-radius: 8px;
   }
 }

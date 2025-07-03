@@ -1,98 +1,117 @@
-<ion-content [fullscreen]="true">
-  <div class="content">
-    <img class="logo" src="../../assets/logo.png" (click)="clearTestOutput()" />
-    <div class="hr2"></div>
-    <h1>
-      <div class="title">BLUETOOTH LOCK APPLICATION</div>
-      <ion-icon
-        slot="end"
-        name="menu"
-        [ngClass]="{'dimmed' : optionsDisable}"
-        (click)="openOptionsModal()"
-      ></ion-icon>
-    </h1>
-    <div class="hr3"></div>
-    <img
-      class="lock-image"
-      [src]="'../../assets/' + (showLockOpen ? 'open' : 'closed') + '-lock.png'"
-      [attr.data-show-lock-open]="showLockOpen"
-    />
+<ion-content [fullscreen]="true" class="bg-cover bg-center" style="background-image: url('../../assets/app-background.jpg');">
+  <div class="flex flex-col min-h-screen items-center justify-start">
+    <!-- Header -->
+    <div class="w-full flex flex-col items-center pt-6 pb-2 relative">
+      <img src="../../assets/logo.png" alt="Tactical Traps Logo" class="h-16 mx-auto mb-2 select-none" draggable="false" />
+      <div class="w-full border-t border-b border-black my-1"></div>
+      <div class="w-full flex items-center justify-center relative">
+        <span class="text-center w-full font-bold text-sm tracking-wide py-2">BLUETOOTH LOCK APPLICATION</span>
+        <ion-icon name="menu" class="absolute right-4 top-1/2 -translate-y-1/2 text-2xl cursor-pointer" (click)="openOptionsModal()"></ion-icon>
+      </div>
+      <div class="w-full border-t border-black"></div>
+    </div>
+
+    <!-- Connected Device Info (move above lock) -->
+    <ion-card *ngIf="pairingState === successful && selectedDevice" class="connected-device-card cursor-pointer mb-5 px-2 w-11/12 max-w-xs" (click)="openDeviceDetailsModal(selectedDevice)">
+      <ion-card-header class="flex items-center gap-2 py-3">
+        <ion-card-title class="flex items-center gap-4 flex-nowrap whitespace-nowrap overflow-hidden text-ellipsis w-full">
+          <span class="font-medium mr-1 text-black">Connected to:</span>
+          <span class="device-name-main font-bold text-red-700 mr-4">{{ selectedDevice.customName || devList.constructor.extractSerialNumber(selectedDevice) || 'Device' }}</span>
+          <ion-icon name="eye-outline" class="text-lg text-gray-500 ml-1"></ion-icon>
+          <ion-icon name="pencil-outline" class="text-lg text-gray-500 ml-2"></ion-icon>
+        </ion-card-title>
+      </ion-card-header>
+    </ion-card>
+
+    <!-- Lock Icon (make bigger) -->
+    <img class="my-4 h-[280px] w-auto select-none" [src]="'../../assets/' + (showLockOpen ? 'open' : 'closed') + '-lock.png'" [attr.data-show-lock-open]="showLockOpen" alt="Lock Icon" draggable="false" />
+
     <!-- Connect Button -->
-    <img
-      class="connect click-sounds"
-      *ngIf="pairingState === inactive || pairingState === failed"
-      src="../../assets/connect-btn.png"
-      (click)="beginConnect()"
-      [attr.data-pairing-state]="pairingState"
-    />
+    <button *ngIf="pairingState === inactive || pairingState === failed" (click)="beginConnect()"
+      class="w-11/12 max-w-xs mx-auto mb-4 h-12 bg-blue-800 text-white font-bold text-base rounded shadow-md uppercase tracking-wide">
+      Bluetooth Connect
+    </button>
+
     <!-- Disconnect Button -->
-    <img
-      class="connect click-sounds"
-      *ngIf="pairingState === successful"
-      src="../../assets/disconnect-btn.png"
-      (click)="beginDisconnect()"
-      [attr.data-pairing-state]="pairingState"
-    />
-    <!-- Lock/Unlock Button -->
-    <img
-      class="unlock click-sounds"
-      *ngIf="pairingState === successful && !isLockOperationPending"
-      [src]="'../../assets/' + (showLockOpen ? 'lock' : 'unlock') + '-btn.png'"
-      (click)="unlock(lockStatus?.randData?.toString() || '')"
-      [attr.data-show-lock-open]="showLockOpen"
-      [attr.data-is-lock-pending]="isLockOperationPending"
-    />
+    <button *ngIf="pairingState === successful" (click)="beginDisconnect()"
+      class="w-11/12 max-w-xs mx-auto mb-3 h-12 bg-blue-800 text-white font-bold text-base rounded shadow-md uppercase tracking-wide">
+      Disconnect
+    </button>
+
+    <!-- Unlock/Lock Button -->
+    <button *ngIf="pairingState === successful && !isLockOperationPending" (click)="unlock(lockStatus?.randData?.toString() || '')"
+      class="w-11/12 max-w-xs mx-auto mb-6 h-12 bg-red-700 text-white font-bold text-base rounded shadow-md uppercase tracking-wide">
+      {{ showLockOpen ? 'Lock' : 'Unlock' }}
+    </button>
+
     <!-- Spinner -->
-    <ion-spinner
-      class="unlock-spinner"
-      color="secondary"
-      *ngIf="pairingState === successful && isLockOperationPending"
-      [ngClass]="{'unlock-spinner-reveal' : isLockOperationPending}"
-      [attr.data-is-lock-pending]="isLockOperationPending"
-    ></ion-spinner>
-    <!-- Device Pane -->
+    <ion-spinner *ngIf="pairingState === successful && isLockOperationPending" class="my-4" color="secondary"></ion-spinner>
+
+    <!-- Device Pane: improved alignment and spacing -->
     <ion-card
       id="device-pane"
       *ngIf="pairingState === scanning || pairingState === waiting || pairingState === connecting"
       [attr.data-pairing-state]="pairingState"
+      class="device-pane-card mb-5 px-2"
     >
-      <ion-card-header>
-        <ion-card-title>
-          <span [hidden]="pairingState >= waiting">AVAILABLE DEVICES</span>
-          <span [hidden]="pairingState !== waiting">SELECT A DEVICE</span>
-          <span [hidden]="pairingState !== connecting">CONNECTING TO:</span>
-        </ion-card-title>
+      <ion-card-header class="flex items-center gap-2 py-3">
+        <ion-icon name="search-outline" slot="start" class="text-2xl text-blue-700"></ion-icon>
+        <ion-card-title class="text-base font-semibold">Device Search</ion-card-title>
       </ion-card-header>
       <ion-card-content>
-        <div class="device-list" [hidden]="pairingState >= connecting">
-          <div
-            class="item click-sounds"
-            *ngFor="let device of devices"
-            (click)="select(device)"
-          >
-            <ion-icon name="bluetooth-outline" class="device-icon"></ion-icon>
-            <span class="device-name"
-              >{{ device.name || 'Unknown Device' }}</span
-            >
-          </div>
+        <div class="scanning flex flex-col items-center justify-center text-center mb-3" *ngIf="pairingState === scanning">
+          <ion-icon name="bluetooth" class="text-4xl text-blue-700 mb-2"></ion-icon>
+          <div class="text-base mb-2">Scanning for devices...</div>
+          <ion-spinner class="block mx-auto"></ion-spinner>
         </div>
-        <div class="scanning" [hidden]="pairingState !== scanning">
-          Scanning
-          <ion-spinner></ion-spinner>
+        <div class="device-list" *ngIf="devices.length > 0">
+          <ion-card *ngFor="let device of devices" class="device-card mb-2 rounded-lg" (click)="select(device)">
+            <ion-card-content class="flex items-center justify-between py-2">
+              <div class="flex items-center gap-2">
+                <ion-icon name="bluetooth" class="text-xl text-blue-700"></ion-icon>
+                <div class="flex flex-col text-left">
+                  <span class="device-name font-bold text-base">{{ devList.constructor.getDisplayName(device) }}</span>
+                  <span class="device-serial text-sm text-gray-500" *ngIf="devList.constructor.extractSerialNumber(device)">{{ devList.constructor.extractSerialNumber(device) }}</span>
+                </div>
+              </div>
+              <ion-icon name="chevron-forward-outline" class="text-lg text-gray-500"></ion-icon>
+            </ion-card-content>
+          </ion-card>
         </div>
-        <div class="connecting" [hidden]="pairingState !== connecting">
-          <div class="selectedDevice">{{ selectedDevice.name }}</div>
-          <ion-spinner></ion-spinner>
+        <div class="connecting text-center" *ngIf="pairingState === connecting">
+          <div class="selectedDevice text-base mb-2">Connecting to: {{ selectedDevice.customName || devList.constructor.extractSerialNumber(selectedDevice) || 'Device' }}</div>
+          <ion-spinner class="block mx-auto"></ion-spinner>
         </div>
         <ion-button
           [hidden]="pairingState >= connecting"
-          class="click-sounds"
+          class="click-sounds rounded-xl mt-2 max-w-xs mx-auto h-12 text-base font-semibold"
           (click)="cancel()"
-          >CANCEL</ion-button
-        >
+          expand="block"
+          color="medium"
+        >CANCEL</ion-button>
       </ion-card-content>
     </ion-card>
-    <!-- Keypad -->
+
+    <!-- No Devices Found message: friendlier -->
+    <ion-card *ngIf="pairingState === failed" class="device-pane-card mb-5 px-2">
+      <ion-card-header class="flex items-center gap-2 py-3">
+        <ion-icon name="alert-circle-outline" slot="start" class="text-xl text-red-700"></ion-icon>
+        <ion-card-title>No Devices Found</ion-card-title>
+      </ion-card-header>
+      <ion-card-content class="text-center">
+        <div class="mb-4">No Bluetooth devices were detected.<br/>Make sure your lock is powered on and nearby.</div>
+        <ion-button expand="block" color="primary" (click)="beginConnect()" class="rounded-xl mb-2 max-w-xs mx-auto h-12 text-base font-semibold">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          RETRY
+        </ion-button>
+        <ion-button expand="block" color="medium" (click)="cancel()" class="rounded-xl max-w-xs mx-auto h-12 text-base font-semibold">
+          <ion-icon name="close-outline" slot="start"></ion-icon>
+          CANCEL
+        </ion-button>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Keypad and test output remain unchanged -->
     <ble-lock-keypad
       id="keypad-pane"
       *ngIf="!hideKeypad"

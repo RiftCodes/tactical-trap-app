@@ -1,7 +1,7 @@
 ext {
     minSdkVersion = 22 // Minimum SDK for broad compatibility (Android 5.1 Lollipop)
-    compileSdkVersion = 34 // Target Android 14 (latest stable as of 2025)
-    targetSdkVersion = 34 // Target Android 14 for compliance with latest features
+    compileSdkVersion = 35 // Target Android 14 (API 35)
+    targetSdkVersion = 35 // Target Android 14 (API 35)
     androidxActivityVersion = '1.9.0' // Latest stable version
     androidxAppCompatVersion = '1.6.1' // Latest stable version
     androidxCoordinatorLayoutVersion = '1.2.0' // Still current; no major updates
