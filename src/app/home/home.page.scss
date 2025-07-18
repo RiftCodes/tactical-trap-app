@@ -73,7 +73,7 @@ ion-card-title {
     display: inline-block;
     position: relative;
     top: 10px;
-    left: 15px;
+    left: 0;
     --color: #bacad4e0;
   }
 }
@@ -90,7 +90,7 @@ ion-card-title {
   ion-spinner {
     display: block;
     margin: 10px auto 0 auto;
-    left: -5px;
+    left:0px;
     top: 0px;
   }
 }
