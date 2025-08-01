@@ -177,4 +177,10 @@ export class LockDataService {
   setJsonValue(name: string, object: any): Promise<number> {
     return this.setValue(name, JSON.stringify(object));
   }
+
+  /** Remove a device's authorization (PIN) from storage. */
+  removeAuthorization(name: string): Promise<void> {
+    this._statusMessageHandler(`removeAuthorization for "${name}"`);
+    return Preferences.remove({ key: name });
+  }
 }

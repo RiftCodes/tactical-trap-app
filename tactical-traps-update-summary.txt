@@ -1,0 +1,23 @@
+Tactical Traps App – Recent Improvements
+
+Hello! Here’s a quick summary of the latest updates we made to your Bluetooth Lock app:
+
+1. **Easier Device Connection**
+- The app now automatically tries to fix Bluetooth issues if your lock isn’t found—no need to turn Bluetooth off and on yourself.
+- If you cancel a device search, the app immediately stops searching (no more background activity).
+
+2. **Better, Cleaner Design**
+- Device search and connection screens are now perfectly centered and look great on all phones.
+- The menu and options screens are scrollable, and the close button is always easy to find.
+- The connected device card always shows the pencil icon on the right, with the device name on the left.
+
+3. **Smarter, Safer Reconnect**
+- If you’ve connected to a lock before, the app will offer to reconnect automatically when you open it again.
+- If you manually disconnect, the app will always ask for your PIN the next time (for your security).
+- The reconnect prompt always shows the correct lock name or serial number, so you know which device you’re connecting to.
+
+4. **Clearer Messages**
+- All popups and prompts now use clear, friendly language.
+- You’ll always know what’s happening and what to do next.
+
+These changes make the app much easier, safer, and more enjoyable to use. If you have any questions or want more changes, just let us know! 

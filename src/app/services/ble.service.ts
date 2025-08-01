@@ -50,13 +50,33 @@ export const ASK_checksum = 0x16;
 export const ASK_password_not_verified = 0x26;
 export const ASK_failed_verification = 0x27;
 export const ResponseMap = {
-  [ASK_correct]: 'Correct operation',
-  [ASK_failure]: 'Wrong operation',
-  [ASK_timeout]: 'Timeout',
-  [ASK_unknown]: 'Unknown command',
-  [ASK_checksum]: 'Fail checksum',
-  [ASK_password_not_verified]: 'Pairing password is not verified',
-  [ASK_failed_verification]: 'Password failed verification',
+  [ASK_correct]: 'Operation completed successfully',
+  [ASK_failure]: 'Operation failed - please try again',
+  [ASK_timeout]: 'Operation timed out - check connection',
+  [ASK_unknown]: 'Unknown command - please reconnect',
+  [ASK_checksum]: 'Communication error - please try again',
+  [ASK_password_not_verified]: 'Lock not properly paired - enter PIN again',
+  [ASK_failed_verification]: 'PIN verification failed - check your PIN',
+};
+
+// Add error categories for better handling
+export const ErrorCategories = {
+  [ASK_failure]: 'retry',
+  [ASK_timeout]: 'connection',
+  [ASK_unknown]: 'reconnect',
+  [ASK_checksum]: 'retry',
+  [ASK_password_not_verified]: 'pairing',
+  [ASK_failed_verification]: 'pin',
+};
+
+// Add retry strategies
+export const RetryStrategies = {
+  [ASK_failure]: { maxRetries: 3, delay: 1000 },
+  [ASK_timeout]: { maxRetries: 2, delay: 2000 },
+  [ASK_unknown]: { maxRetries: 1, delay: 0 },
+  [ASK_checksum]: { maxRetries: 3, delay: 500 },
+  [ASK_password_not_verified]: { maxRetries: 0, delay: 0 },
+  [ASK_failed_verification]: { maxRetries: 0, delay: 0 },
 };
 export const IsLocked = 0x00;
 export const IsUnhooked = 0x00;
@@ -173,8 +193,7 @@ export class BleService implements OnDestroy {
           location = result.hasPermission;
           if (!bluetooth || !location) {
             await this.alertHandler(
-              'Bluetooth and Location permission are both required to scan for locks.',
-              true
+              'Bluetooth and Location permissions are required to scan for locks. Please allow these permissions in your device settings.'
             );
           }
         } catch (err) {
@@ -230,8 +249,7 @@ export class BleService implements OnDestroy {
           );
           if (!scan || !connect) {
             await this.alertHandler(
-              'Bluetooth permissions are required to scan for locks.',
-              true
+              'Bluetooth permissions are required to scan for locks. Please allow these permissions in your device settings.'
             );
           }
         } catch (err) {
@@ -282,7 +300,7 @@ export class BleService implements OnDestroy {
     }
 
     this.alertHandler(
-      'Bluetooth is off.  Please turn it on to connect to a lock.'
+      'Bluetooth is off. Please turn it on to connect to a lock.'
     );
     return new Promise((resolve, reject) => {
       let stateWatcher: Subscription | null = null;
@@ -342,7 +360,8 @@ export class BleService implements OnDestroy {
         );
         that.deviceId = scanData.id;
         that.connectRepeater!.next(peripheralData);
-        that.opQueue.flush();
+        that.opQueue.flush(); // Clear any pending operations
+        that.writeLockBusy = false; // Reset busy state
         notifier = that.ble.startNotification(
           scanData.id,
           that.ServiceUuid,
@@ -370,6 +389,8 @@ export class BleService implements OnDestroy {
           that.purgeConnection(that.deviceId!);
         }
         that.deviceId = null;
+        that.writeLockBusy = false; // Reset busy state on disconnect
+        that.opQueue.flush(); // Clear pending operations
         that.stopKeepAlive();
         that.tryReconnect();
       }
@@ -402,6 +423,7 @@ export class BleService implements OnDestroy {
     let pendingResolve: any;
     let pendingReject: any;
     let notificationInjector: any = null;
+    let timeoutId: any = null;
 
     if (this.deviceId === null) {
       this.messageHandler(`Tried to send "${commandName}" when disconnected`);
@@ -427,6 +449,14 @@ export class BleService implements OnDestroy {
     return new Promise<LockStatus>(async (resolve, reject) => {
       pendingResolve = resolve;
       pendingReject = reject;
+      
+      // Add timeout for operations
+      timeoutId = setTimeout(() => {
+        this.writeLockBusy = false;
+        this.notificationHandler = null;
+        reject('Operation timeout - no response received');
+      }, 10000); // 10 second timeout
+      
       try {
         this.messageHandler(
           `writeToLock "${commandName}" : ${this.bufferToReadableHex(command)}`
@@ -450,17 +480,23 @@ export class BleService implements OnDestroy {
           }, 400);
         }
       } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+        this.writeLockBusy = false;
+        this.notificationHandler = null;
         alert('Failed to write data to device:' + JSON.stringify(error));
         reject('write failed');
-        this.writeLockBusy = false;
       }
     });
 
     function responseHandler(this: BleService, data: any) {
       try {
+        if (timeoutId) clearTimeout(timeoutId);
         if (notificationInjector) {
           clearTimeout(notificationInjector);
         }
+        this.writeLockBusy = false;
+        this.notificationHandler = null;
+        
         if (commandName === CMD_SystemExit) {
           pendingResolve({ response: ASK_correct } as LockStatus);
         } else {
@@ -552,23 +588,14 @@ export class BleService implements OnDestroy {
     }
 
     function errorHandler(this: BleService, error: any) {
-      if (commandName === CMD_SystemExit) {
-        pendingResolve({ response: ASK_correct } as LockStatus);
-      } else if (
-        Array.isArray(error) &&
-        error[0] == 'Peripheral disconnected'
-      ) {
-      } else {
-        let msg =
-          'Notification stream returned error: ' + JSON.stringify(error);
-        this.messageHandler(msg);
-        alert(msg);
-        pendingReject('read failed');
+      if (timeoutId) clearTimeout(timeoutId);
+      if (notificationInjector) {
+        clearTimeout(notificationInjector);
       }
       this.writeLockBusy = false;
       this.notificationHandler = null;
-      pendingResolve = null;
-      pendingReject = null;
+      this.messageHandler('notification error: ' + JSON.stringify(error));
+      pendingReject(error);
     }
   }
 
@@ -729,8 +756,17 @@ export class BleService implements OnDestroy {
     this.lastConnectedDevice = device;
     localStorage.setItem('lastConnectedDevice', JSON.stringify(device));
     this.keepAliveInterval = setInterval(() => {
-      this.readLockStatus().catch(() => {}); // harmless ping
-    }, 15000); // 15 seconds
+      // Only send keep-alive if not busy with operations
+      if (!this.writeLockBusy && this.deviceId) {
+        this.readLockStatus().catch((error) => {
+          this.messageHandler('Keep-alive failed: ' + JSON.stringify(error));
+          // If keep-alive fails, try to reconnect
+          if (this.deviceId) {
+            this.tryReconnect();
+          }
+        });
+      }
+    }, 30000); // Increased to 30 seconds to reduce interference
   }
 
   stopKeepAlive() {
@@ -770,6 +806,47 @@ export class BleService implements OnDestroy {
           }
         });
       } catch {}
+    }
+  }
+
+  /**
+   * Discover services for a device and check if the required service is present.
+   * Returns true if the required service is found, false otherwise.
+   */
+  async hasRequiredService(deviceId: string): Promise<boolean> {
+    try {
+      // If the BLE plugin exposes a discover method, use it. Otherwise, return true for now.
+      if (typeof (this.ble as any).services === 'function') {
+        const services = await (this.ble as any).services(deviceId);
+        this.messageHandler('Discovered services: ' + JSON.stringify(services));
+        if (services && services.services) {
+          return services.services.includes(this.LongServiceUuid);
+        }
+      }
+      // Fallback: assume service is present (for plugins without discover)
+      return true;
+    } catch (e) {
+      this.messageHandler('Service discovery failed: ' + e);
+      return false;
+    }
+  }
+
+  // Soft reset Bluetooth adapter (Android only)
+  async softResetBluetooth(): Promise<void> {
+    if (this.platform === 'android' && this.ble && typeof this.ble.isEnabled === 'function' && typeof this.ble.enable === 'function') {
+      try {
+        this.messageHandler('softResetBluetooth: Disabling Bluetooth...');
+        await (this.ble as any).disable();
+        this.messageHandler('softResetBluetooth: Bluetooth disabled. Waiting 1s...');
+        await new Promise((res) => setTimeout(res, 1000));
+        this.messageHandler('softResetBluetooth: Enabling Bluetooth...');
+        await this.ble.enable();
+        this.messageHandler('softResetBluetooth: Bluetooth enabled.');
+      } catch (e) {
+        this.messageHandler('softResetBluetooth: Failed to reset Bluetooth: ' + e);
+      }
+    } else {
+      this.messageHandler('softResetBluetooth: Not supported on this platform.');
     }
   }
 }

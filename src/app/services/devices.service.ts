@@ -15,6 +15,7 @@ export interface Device {
   hasLongUuids?: boolean;
   isNotAGhost?: boolean;
   customName?: string;
+  isExpanded?: boolean; // Add for device expansion functionality
 }
 
 export const UnknownDeviceName = 'Unknown Device';
@@ -167,18 +168,60 @@ export class DevicesService {
     return null;
   }
 
-  // Get the best display name for a device
+  // Get the best display name for a device with character limit
   static getDisplayName(device: Device): string {
+    let displayName = '';
+    
     if (device.customName && device.customName.trim()) {
-      return device.customName;
+      displayName = device.customName;
+    } else if (device.name && device.name !== 'Unknown Device') {
+      displayName = device.name;
+    } else {
+      const serial = DevicesService.extractSerialNumber(device);
+      if (serial) {
+        displayName = serial;
+      } else {
+        displayName = 'Unknown Device';
+      }
     }
-    if (device.name && device.name !== 'Unknown Device') {
-      return device.name;
+    
+    // Limit to 15 characters
+    if (displayName.length > 15) {
+      return displayName.substring(0, 15);
     }
+    
+    return displayName;
+  }
+
+  // Get text size class based on name length
+  static getTextSizeClass(device: Device): string {
+    let displayName = '';
+    
+    if (device.customName && device.customName.trim()) {
+      displayName = device.customName;
+    } else if (device.name && device.name !== 'Unknown Device') {
+      displayName = device.name;
+    } else {
     const serial = DevicesService.extractSerialNumber(device);
     if (serial) {
-      return serial;
+        displayName = serial;
+      } else {
+        displayName = 'Unknown Device';
+      }
     }
-    return 'Unknown Device';
+    
+    // Apply character limit
+    if (displayName.length > 15) {
+      displayName = displayName.substring(0, 15);
+    }
+    
+    // Return appropriate text size class
+    if (displayName.length <= 8) {
+      return 'text-base'; // Normal size
+    } else if (displayName.length <= 12) {
+      return 'text-sm'; // Small
+    } else {
+      return 'text-xs'; // Extra small
+    }
   }
 }
