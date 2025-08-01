@@ -353,21 +353,23 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   checkForPinCode(device: Device) {
-    this.messageHandler('checkForPinCode, device ' + device.name);
+    this.messageHandler('INSTANT PIN CHECK: Checking PIN for device ' + device.name);
     this.deviceToAuthorize = device;
     this.lockData
       .getAuthorization(device.name)
       .then((pin) => {
+        this.messageHandler('INSTANT PIN CHECK: PIN found in cache, pairing immediately...');
         this.authorizationNotCached = false;
         this.pairToDevice(pin);
       })
       .catch((reason: any) => {
+        this.messageHandler('INSTANT PIN CHECK: No cached PIN, showing keypad immediately...');
         this.authorizationNotCached = true;
         this.ngZone.run(() => {
           this.hideKeypad = false;
           this.testPaneDepth = -1;
           this.messageHandler(
-            `checkForPinCode: no PIN, hideKeypad=${this.hideKeypad}, testPaneDepth=${this.testPaneDepth}`
+            `INSTANT PIN CHECK: keypad shown, hideKeypad=${this.hideKeypad}, testPaneDepth=${this.testPaneDepth}`
           );
           this.cdr.detectChanges();
         });
@@ -393,32 +395,34 @@ export class HomePage implements OnInit, AfterViewInit {
 
   async pairToDevice(pin: string) {
     const that = this;
-    this.messageHandler(`pairToDevice "${pin}"`);
+    this.messageHandler(`INSTANT PAIR: Pairing with "${pin}" immediately...`);
     this.ngZone.run(() => {
       this.pairingState = this.connecting;
       this.hideKeypad = true;
       this.messageHandler(
-        `pairToDevice: pairingState=${this.pairingState}, hideKeypad=${this.hideKeypad}`
+        `INSTANT PAIR: pairingState=${this.pairingState}, hideKeypad=${this.hideKeypad}`
       );
       this.cdr.detectChanges();
     });
     const device = this.deviceToAuthorize!;
     const lockInfo = this.lockData.makeLock(device.name, pin);
 
-    // Add timeout to prevent getting stuck
+    // Reduced timeout for faster failure detection
     const connectionTimeout = setTimeout(() => {
-      this.messageHandler('pairToDevice: Connection timeout, forcing reset');
+      this.messageHandler('INSTANT PAIR: Connection timeout, forcing reset');
       this.forceFullReset();
       this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please try again.');
-    }, 15000); // 15 second timeout
+    }, 10000); // Reduced from 15s to 10s
 
     this.connectSubscription = this.bleService.connectTo(device).subscribe(
       async (peripheralData) => {
         try {
           clearTimeout(connectionTimeout);
-          // Add delay after connecting
-          await that.bleService.waitForMilliseconds(750);
-          // Check for required BLE service
+          
+          // Remove the 750ms delay - proceed immediately
+          this.messageHandler('INSTANT PAIR: Connected, checking service immediately...');
+          
+          // Check for required BLE service immediately
           const hasService = await that.bleService.hasRequiredService(device.id);
           if (!hasService) {
             const msg = 'Lock service not found. Please reset the lock and try again.';
@@ -427,9 +431,11 @@ export class HomePage implements OnInit, AfterViewInit {
             await that.bleService.forceDisconnect(device);
             return;
           }
+          
+          this.messageHandler('INSTANT PAIR: Service found, verifying PIN immediately...');
           const result = await that.bleService.handleVerification(lockInfo);
           if (result.verified) {
-            that.messageHandler('PIN code verified');
+            that.messageHandler('INSTANT PAIR: PIN code verified successfully');
             if (that.authorizationNotCached) {
               try {
                 const rc = await that.lockData.addAuthorization(lockInfo);
@@ -451,49 +457,34 @@ export class HomePage implements OnInit, AfterViewInit {
               that.hideKeypad = true;
               that.isLockOperationPending = false;
               that.messageHandler(
-                `pairToDevice: success, pairingState=${that.pairingState}, showLockOpen=${that.showLockOpen}, hideKeypad=${that.hideKeypad}, isLockOperationPending=${that.isLockOperationPending}`
+                `INSTANT PAIR: success, pairingState=${that.pairingState}, showLockOpen=${that.showLockOpen}, hideKeypad=${that.hideKeypad}, isLockOperationPending=${that.isLockOperationPending}`
               );
               that.cdr.detectChanges();
             });
-            that.mustReadStatus = true;
-            await that.timeTickHandler();
-            that.alarmOn = await this.bleService.getAlarmState();
-            that.ngZone.run(() => {
-              that.optionsDisable = false;
-              that.messageHandler(`pairToDevice: options enabled`);
-              that.cdr.detectChanges();
-            });
-            that.pollInterval = window.setInterval(
-              that.timeTickHandler.bind(that),
-              that.timeIncrement
-            );
-            that.messageHandler('polling started');
           } else {
-            clearTimeout(connectionTimeout);
-            const msg = 'verify was unsuccessful: ' + result.msg;
-            that.messageHandler(msg);
-            if (!result.isError) {
-              that.verifyFailed(
-                'The PIN does not match the lock. You may try again in 30 seconds.'
+            that.messageHandler('INSTANT PAIR: PIN verification failed');
+            that.ngZone.run(() => {
+              that.pairingState = that.failed;
+              that.hideKeypad = true;
+              that.messageHandler(
+                `INSTANT PAIR: failed, pairingState=${that.pairingState}, hideKeypad=${that.hideKeypad}`
               );
-            } else {
-              that.verifyFailed(
-                `PIN verification was not successful, result: ${result.msg}. Waiting for disconnect.`
-              );
-            }
+              that.cdr.detectChanges();
+            });
+            await that.verifyFailed('Access Denied');
           }
         } catch (error) {
           clearTimeout(connectionTimeout);
-          that.messageHandler(`pairToDevice: Error during verification - ${error}`);
+          that.messageHandler('INSTANT PAIR: Error during pairing: ' + error);
           that.forceFullReset();
-          that.showErrorAlert('Verification Error', 'Failed to verify PIN. Please try again.');
+          that.showErrorAlert('Pairing Error', 'Could not pair with the lock. Please check your PIN and try again.');
         }
       },
-      async (error) => {
+      (error) => {
         clearTimeout(connectionTimeout);
-        that.messageHandler(`pairToDevice: Connection failed - ${error}`);
+        that.messageHandler('INSTANT PAIR: Connection error: ' + error);
         that.forceFullReset();
-        that.showErrorAlert('Connection Failed', 'Failed to connect to the lock. Please try again.');
+        that.showErrorAlert('Connection Error', 'Could not connect to the lock. Please make sure your lock is powered on and nearby, then try again.');
       }
     );
   }
@@ -1338,74 +1329,113 @@ export class HomePage implements OnInit, AfterViewInit {
     await this.scanForDevices();
   }
 
+  // Streaming scan - show devices immediately as found, no delays
   async scanForDevices() {
-    let scanAttempt = 0;
-    const maxAttempts = 2; // First scan, then one retry after BLE reset
-    const doScan = async () => {
-      scanAttempt++;
-      this.messageHandler('SCAN: Starting device scan... (attempt ' + scanAttempt + ')');
-      this.devices = [];
-      this.cdr.detectChanges();
-      return new Promise<void>((resolve) => {
-        this.ngZone.run(() => {
-          const scanSubscription = this.bleService.startScan([this.bleService.LongServiceUuid])
-            .subscribe({
-              next: (device) => {
-                this.messageHandler('SCAN: Device found: ' + JSON.stringify(device));
-                this.devList.addDevice(device);
-                this.devices = this.devList.getDevices();
-                this.cdr.detectChanges();
-              },
-              error: (error) => {
-                this.messageHandler('SCAN: Scan error: ' + error);
-                this.forceFullReset();
-                this.showErrorAlert('Scan Error', 'Could not scan for devices. Please make sure your lock is powered on and nearby, then try again.');
-                this.setState('error');
-                resolve();
-              },
-              complete: () => {
-                this.messageHandler('SCAN: Scan subscription complete');
-              }
-            });
-          this.messageHandler('SCAN: Scan subscription started');
-          setTimeout(async () => {
-            this.messageHandler('SCAN: Scan timeout reached, unsubscribing');
-            scanSubscription.unsubscribe();
-            if (this.devices.length === 0) {
-              if (scanAttempt < maxAttempts) {
-                this.messageHandler('SCAN: No devices found. Attempting BLE soft reset and retry...');
-                await this.bleService.softResetBluetooth();
-                setTimeout(doScan, 1200); // Wait a bit for BLE to come back
-                resolve();
-                return;
-              } else {
-                this.messageHandler('SCAN: No devices found after retry.');
-                this.forceFullReset();
-                this.showErrorAlert('No Devices Found', 'No Bluetooth devices were detected.\n\nTroubleshooting tips:\n- Make sure your lock is powered on and nearby.\n- Try toggling Bluetooth off and on.\n- Restart your phone if the problem persists.');
-                this.setState('error');
-                resolve();
-                return;
-              }
-            } else {
-              this.messageHandler('SCAN: Devices found: ' + JSON.stringify(this.devices));
+    this.messageHandler('STREAMING SCAN: Starting real-time device scan...');
+    this.devices = [];
+    this.cdr.detectChanges();
+    
+    return new Promise<void>((resolve) => {
+      this.ngZone.run(() => {
+        // Start streaming scan - devices will appear immediately as found
+        const scanSubscription = this.bleService.startScan([this.bleService.LongServiceUuid])
+          .subscribe({
+            next: (device) => {
+              this.messageHandler('STREAM: Device found immediately: ' + device.name);
+              this.devList.addDevice(device);
+              this.devices = this.devList.getDevices();
+              this.cdr.detectChanges();
+            },
+            error: (error) => {
+              this.messageHandler('STREAM: Scan error: ' + error);
+              this.forceFullReset();
+              this.showErrorAlert('Scan Error', 'Could not scan for devices. Please make sure your lock is powered on and nearby, then try again.');
+              this.setState('error');
               resolve();
+            },
+            complete: () => {
+              this.messageHandler('STREAM: Scan subscription complete');
             }
-          }, this.scanTime);
-        });
+          });
+        
+        this.messageHandler('STREAM: Real-time scan started - devices will appear immediately');
+        
+        // Keep scanning for 10 seconds but show devices instantly
+        setTimeout(() => {
+          this.messageHandler('STREAM: Scan period complete, stopping scan');
+          scanSubscription.unsubscribe();
+          
+          if (this.devices.length === 0) {
+            this.messageHandler('STREAM: No devices found during scan period');
+            this.forceFullReset();
+            this.showErrorAlert('No Devices Found', 'No Bluetooth devices were detected.\n\nTroubleshooting tips:\n- Make sure your lock is powered on and nearby.\n- Try toggling Bluetooth off and on.\n- Restart your phone if the problem persists.');
+            this.setState('error');
+          } else {
+            this.messageHandler('STREAM: Found ' + this.devices.length + ' devices during scan');
+          }
+          resolve();
+        }, 10000); // 10 second scan period but devices show immediately
       });
-    };
-    await doScan();
+    });
   }
 
+  // Instant device selection and connection
   async select(device: Device) {
     if (this.currentState !== 'scanning') {
       this.messageHandler('Cannot select device from current state');
       return;
     }
     
+    this.messageHandler('INSTANT CONNECT: Connecting to ' + device.name + ' immediately...');
     this.selectedDevice = device;
     this.setState('connecting');
+    
+    // Stop scanning immediately when device is selected
+    this.bleService.stopScan();
+    
+    // Connect instantly
     await this.connectToDevice(device);
+  }
+
+  // Instant connection with immediate PIN check
+  private async connectToDevice(device: Device): Promise<void> {
+    return new Promise((resolve, reject) => {
+      let timedOut = false;
+      const connectionTimeout = setTimeout(() => {
+        timedOut = true;
+        this.messageHandler('Connection timed out.');
+        this.forceFullReset();
+        this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please make sure your lock is powered on and nearby, then try again.');
+        reject(new Error('Connection timeout'));
+      }, 8000); // Reduced from 12s to 8s
+      
+      this.bleService.connectTo(device).subscribe({
+        next: async () => {
+          if (timedOut) return;
+          clearTimeout(connectionTimeout);
+          
+          this.messageHandler('INSTANT CONNECT: Connected successfully, checking PIN immediately...');
+          
+          // Set state and check PIN immediately
+          this.setState('connected');
+          
+          // Check for PIN immediately without any delay
+          this.checkForPinCode(device);
+          
+          // Mark this device as last connected for auto-reconnect
+          await this.markDeviceConnected(device);
+          resolve();
+        },
+        error: (error) => {
+          if (timedOut) return;
+          clearTimeout(connectionTimeout);
+          this.messageHandler(`Connection failed: ${error}`);
+          this.forceFullReset();
+          this.showErrorAlert('Connection Failed', 'Could not connect to the lock. Please make sure your lock is powered on and nearby, then try again.');
+          reject(error);
+        }
+      });
+    });
   }
 
   // Enhanced forceFullReset with BLE service cleanup
@@ -1499,41 +1529,7 @@ export class HomePage implements OnInit, AfterViewInit {
     this.cdr.detectChanges();
   }
 
-  // Add timeouts to connect and unlock operations
-  private async connectToDevice(device: Device): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let timedOut = false;
-      const connectionTimeout = setTimeout(() => {
-        timedOut = true;
-        this.messageHandler('Connection timed out.');
-        this.forceFullReset();
-        this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please make sure your lock is powered on and nearby, then try again.');
-        reject(new Error('Connection timeout'));
-      }, 12000);
-      this.bleService.connectTo(device).subscribe({
-        next: async () => {
-          if (timedOut) return;
-          clearTimeout(connectionTimeout);
-          // After connecting, set state to 'connected' and check for PIN
-          this.setState('connected');
-          this.checkForPinCode(device);
-          // Mark this device as last connected for auto-reconnect
-          await this.markDeviceConnected(device);
-          resolve();
-        },
-        error: (error) => {
-          if (timedOut) return;
-          clearTimeout(connectionTimeout);
-          this.messageHandler(`Connection failed: ${error}`);
-          this.forceFullReset();
-          this.showErrorAlert('Connection Failed', 'Could not connect to the lock. Please make sure your lock is powered on and nearby, then try again.');
-          reject(error);
-        }
-      });
-    });
-  }
-
-  // Enhanced unlock method with better error handling
+  // Enhanced unlock method with faster response
   async unlock(securityByte: string) {
     // Prevent multiple simultaneous unlock attempts
     if (this.isLockOperationPending) {
@@ -1569,32 +1565,33 @@ export class HomePage implements OnInit, AfterViewInit {
       return;
     }
     
+    this.messageHandler('FAST UNLOCK: Starting unlock operation immediately...');
     this.setState('operating');
     this.ngZone.run(() => {
       this.isLockOperationPending = true;
       this.optionsDisable = true;
       this.messageHandler(
-        `unlock: isLockOperationPending=${this.isLockOperationPending}, activeLockState=${this.activeLockState}`
+        `FAST UNLOCK: isLockOperationPending=${this.isLockOperationPending}, activeLockState=${this.activeLockState}`
       );
       this.cdr.detectChanges();
     });
     
-    // Set operation timeout
+    // Reduced operation timeout for faster failure detection
     let timedOut = false;
     const operationTimeout = setTimeout(() => {
       timedOut = true;
-      this.messageHandler('Unlock operation timed out');
+      this.messageHandler('FAST UNLOCK: Operation timed out');
       this.handleUnlockTimeout();
       this.forceFullReset();
       this.showErrorAlert('Unlock Timeout', 'Unlocking the lock took too long. Please make sure your lock is powered on and nearby, then try again.');
-    }, 15000); // 15 second timeout
+    }, 10000); // Reduced from 15s to 10s
     
     let action;
     if (this.activeLockState === this.s_closed) {
-      this.messageHandler('attempting 5-second relock');
+      this.messageHandler('FAST UNLOCK: attempting 5-second relock');
       action = 'auto-relock';
     } else {
-      this.messageHandler('attempting to close open lock');
+      this.messageHandler('FAST UNLOCK: attempting to close open lock');
       action = 'toggle';
     }
     
@@ -1603,12 +1600,13 @@ export class HomePage implements OnInit, AfterViewInit {
       .then((status) => {
         if (timedOut) return;
         clearTimeout(operationTimeout);
+        this.messageHandler('FAST UNLOCK: Operation completed successfully');
         this.handleUnlockSuccess(status);
       })
       .catch((reason) => {
         if (timedOut) return;
         clearTimeout(operationTimeout);
-        this.messageHandler('Unlock operation failed: ' + reason);
+        this.messageHandler('FAST UNLOCK: Operation failed: ' + reason);
         this.handleUnlockError(reason);
         // Always force full reset after unlock error
         this.forceFullReset();
@@ -1981,10 +1979,10 @@ export class HomePage implements OnInit, AfterViewInit {
       const alert = this.alertController.create({
         header: 'Reconnect to Lock',
         message: `Would you like to reconnect to "${displayName}"?`,
-        buttons: [
-          {
+      buttons: [
+        {
             text: 'No',
-            role: 'cancel',
+          role: 'cancel',
             handler: () => resolve(false)
           },
           {
