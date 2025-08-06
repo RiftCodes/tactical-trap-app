@@ -1,0 +1,78 @@
+.keypad {
+    margin: 0 auto;
+    width: 326px;
+    border: 2px solid gray;
+    border-radius: 20px;
+    padding: 5px 0 15px 0;
+    background-color: white !important;
+}
+
+.title {
+    position: relative;
+    padding: 10px 10px 6px 0;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.title ion-button {
+    position: absolute;
+    right: 1em;
+    margin-top: -1px;
+}
+
+.pin {
+    position : relative;
+    padding: 11px 0 15px 0;
+}
+
+.pin div {
+    text-align: center;
+    display: inline-block;
+    background: #F8F8F8;
+    border: 1px solid #B8B8B8;;
+    margin: 0 0 0 calc(50% - 4em);
+    width: 8em;
+    height: 2em;
+    font-size: larger;
+    padding: 3px 0;
+}
+
+.pin ion-button {
+    position: absolute;
+    right: 1em;
+}
+
+.equal {
+     margin: 14px 8px;
+}
+
+.rect {
+    margin: 14px 0 0 0;
+}
+
+@media only screen and (min-width: 380px) {
+    .title {
+        font-size: 1.3rem;
+    }
+}
+@media only screen and (min-width: 480px) {
+    .keypad {
+        margin-top: 5vh;
+    }
+
+    .equal {
+        margin: 21px 15px
+    }
+
+    .rect {
+        margin: 21px 7px
+    }
+}
+
+.row {
+    width: 300px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-around;
+}
+

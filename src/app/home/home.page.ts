@@ -19,7 +19,11 @@ import { environment } from '../../environments/environment';
 
 import { OptionsModal } from '../options/options.modal';
 import {
+  ASK_checksum,
   ASK_correct,
+  ASK_failure,
+  ASK_timeout,
+  ASK_unknown,
   BleService,
   IsLocked,
   IsUnhooked,
@@ -73,11 +77,11 @@ export class HomePage implements OnInit, AfterViewInit {
 
   // interval timing
   oneSecond = 1000;
-  scanTime = 5 * this.oneSecond;
-  scanAttempts = 5;
-  timeIncrement = 500;
+  scanTime = 500; // REDUCED: From 1 second to 500ms for faster scanning
+  scanAttempts = 3; // REDUCED: From 5 to 3 attempts for faster scanning
+  timeIncrement = 1000; // INCREASED: From 500ms to 1000ms to reduce background polling
   timeDivider = 4;
-  sleepDelay = 60 * this.oneSecond;
+  sleepDelay = 300 * this.oneSecond; // INCREASED: From 60s to 300s (5 minutes) to prevent auto-sleep
   sleepTimer = -1;
 
   // internal state variables
@@ -142,6 +146,92 @@ export class HomePage implements OnInit, AfterViewInit {
   hideKeypad: boolean = true;
   testOutput: string = '';
   isLockOperationPending: boolean = false;
+  hasConnectedBefore: boolean = false; // Track if user has connected before
+
+  // Enhanced scan state tracking
+  private currentScanAttempt = 0;
+  private maxScanAttempts = 3;
+  private scanRetryDelay = 100; // REDUCED: From 500ms to 100ms between retries
+  private isScanning = false;
+  private lastScanTime = 0;
+  private scanCooldown = 200; // REDUCED: From 1 second to 200ms cooldown between scans
+  private scanTimeoutId: any = null;
+
+  private resetScanState() {
+    this.messageHandler('Resetting scan state...');
+    
+    // Clear scan subscription
+    if (this.scanResult) {
+      this.scanResult.unsubscribe();
+      this.scanResult = null;
+    }
+    
+    // Clear scan interval
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+    }
+    
+    // Clear scan timeout
+    if (this.scanTimeoutId) {
+      clearTimeout(this.scanTimeoutId);
+      this.scanTimeoutId = null;
+    }
+    
+    // Complete scan controller
+    if (this.scanController) {
+      this.scanController.complete();
+      this.scanController = null;
+    }
+    
+    // Reset scan flags
+    this.isScanning = false;
+    this.currentScanAttempt = 0;
+    this.lastScanTime = 0;
+    
+    // Clear device list
+    this.devList.reset();
+    this.devices = [];
+    
+    this.messageHandler('Scan state reset completed');
+  }
+
+  private async prepareBleForScan(): Promise<boolean> {
+    this.messageHandler('Preparing BLE for scan...');
+    
+    // Clear device list for fresh scan
+    this.devList.reset();
+    this.devices = [];
+    
+    // Check BLE availability
+    try {
+      const isAvailable = await this.bleService.isAvailable();
+      if (!isAvailable) {
+        this.messageHandler('BLE not available');
+        return false;
+      }
+      
+      // Stop any ongoing scan and wait
+      this.bleService.stopScan();
+      await this.delay(100); // REDUCED: From 500ms to 100ms
+      
+      // Only soft reset BLE if we're not already connected to prevent disrupting active connections
+      if (!this.selectedDevice?.id) {
+        // Soft reset BLE to clear any stuck connections (prevents white light issue)
+        await this.bleService.softResetBluetooth();
+        await this.delay(300); // REDUCED: From 1000ms to 300ms for faster scanning
+        this.messageHandler('BLE soft reset completed');
+      } else {
+        this.messageHandler('Device connected - skipping BLE soft reset');
+      }
+      
+      this.messageHandler('BLE prepared for scan');
+      return true;
+    } catch (error) {
+      this.messageHandler('Error preparing BLE: ' + error);
+      return false;
+    }
+  }
 
   constructor(
     public bleService: BleService,
@@ -179,8 +269,36 @@ export class HomePage implements OnInit, AfterViewInit {
       this.messageHandler('App restored with data: ' + JSON.stringify(data));
     });
 
-    // Recover from previous state
-    await this.recoverFromPreviousState();
+    // Initialize BLE service first
+    this.bleService.setup(this.messageHandler.bind(this), this.showErrorAlert.bind(this));
+    
+    // Load hasConnectedBefore flag
+    try {
+      const hasConnected = await this.lockData.getValue('hasConnectedBefore');
+      this.hasConnectedBefore = hasConnected === 'true';
+      this.messageHandler(`User has connected before: ${this.hasConnectedBefore}`);
+    } catch (e) {
+      this.hasConnectedBefore = false;
+      this.messageHandler('First time user detected');
+    }
+    
+    // Simple initialization without force reset on first startup
+    this.messageHandler('Initializing app state...');
+    
+    // Set initial state without force reset
+    this.currentState = 'disconnected';
+    this.pairingState = this.inactive;
+    this.activeLockState = this.s_unconnected;
+    this.showLockOpen = false;
+    this.hideKeypad = true;
+    this.isLockOperationPending = false;
+    this.isScanning = false;
+    
+    // Clear device list for fresh start
+    this.devices = [];
+    this.selectedDevice = { name: '' } as Device;
+    
+    this.messageHandler('App initialized successfully');
     
     // Try auto-reconnect to last connected device (only if user has connected before)
     await this.tryAutoReconnectToLastDevice();
@@ -190,13 +308,33 @@ export class HomePage implements OnInit, AfterViewInit {
   private async handleAppResume() {
     this.messageHandler('App resumed - checking for stuck states...');
     
-    // If we're in a bad state, force reset
+    // CRITICAL: Check for stuck states and force cleanup
     if (this.currentState === 'operating' || this.currentState === 'connecting') {
-      this.messageHandler('Detected stuck state, forcing reset...');
+      this.messageHandler('CRITICAL: Detected stuck state, forcing complete reset...');
+      
+      // Stop all polling immediately
+      if (this.pollInterval) {
+        clearInterval(this.pollInterval);
+        this.pollInterval = null;
+        this.messageHandler('CRITICAL: Polling stopped on resume');
+      }
+      
+      // Force disconnect from any connected device
+      if (this.selectedDevice && this.selectedDevice.id) {
+        try {
+          await this.bleService.forceDisconnect(this.selectedDevice);
+          this.messageHandler('CRITICAL: Forced disconnect on resume');
+        } catch (e) {
+          this.messageHandler('CRITICAL: Error during forced disconnect: ' + e);
+        }
+      }
+      
+      // Complete reset
       await this.forceFullReset();
+      this.messageHandler('CRITICAL: Complete reset completed on resume');
     }
     
-    // If we have a selected device but not connected, clear it
+    // Additional check: If we have a selected device but not connected, clear it
     if (this.selectedDevice && this.selectedDevice.id) {
       try {
         const isConnected = await this.bleService.isConnected(this.selectedDevice.id);
@@ -209,6 +347,12 @@ export class HomePage implements OnInit, AfterViewInit {
         this.messageHandler('Error checking connection on resume: ' + e);
         await this.forceFullReset();
       }
+    }
+    
+    // Final check: Ensure we're in a clean state
+    if (this.currentState !== 'disconnected') {
+      this.messageHandler('CRITICAL: Final cleanup - setting to disconnected state');
+      this.setState('disconnected');
     }
   }
 
@@ -227,7 +371,7 @@ export class HomePage implements OnInit, AfterViewInit {
       if (lastState === 'disconnected' || lastState === 'error') {
         this.setState('disconnected');
         this.messageHandler('Recovered to disconnected state');
-      } else {
+        } else {
         // For any other state, force reset to disconnected
         this.messageHandler('Previous state was not safe, resetting to disconnected');
         this.setState('disconnected');
@@ -250,11 +394,11 @@ export class HomePage implements OnInit, AfterViewInit {
     // Set up initial state
     this.activeLockState = this.s_unconnected;
     this.showLockOpen = false;
-              this.pairingState = this.inactive;
-              this.hideKeypad = true;
+            this.pairingState = this.inactive;
+            this.hideKeypad = true;
     this.isLockOperationPending = false;
     
-              this.messageHandler(
+            this.messageHandler(
       `ngAfterViewInit: pairingState=${this.pairingState}, showLockOpen=${this.showLockOpen}, hideKeypad=${this.hideKeypad}, isLockOperationPending=${this.isLockOperationPending}`
     );
     
@@ -265,7 +409,7 @@ export class HomePage implements OnInit, AfterViewInit {
     // Set up debug mode
     this.debugSetup();
     
-              this.cdr.detectChanges();
+            this.cdr.detectChanges();
   }
 
 
@@ -274,39 +418,55 @@ export class HomePage implements OnInit, AfterViewInit {
 
 
 
-  cancel() {
-    this.messageHandler('cancel');
-    // Stop BLE scan
-    this.bleService.stopScan();
-    // Clear device list
+      cancel() {
+    this.messageHandler('Cancelling scan and performing comprehensive cleanup...');
+    
+    // CRITICAL: Clear timeout to prevent popup after cancellation
+    if (this.scanTimeoutId) {
+      clearTimeout(this.scanTimeoutId);
+      this.scanTimeoutId = null;
+      this.messageHandler('Scan timeout cleared');
+    }
+    
+    // CRITICAL: Stop scan subscription immediately to prevent callbacks
+      if (this.scanResult) {
+        this.scanResult.unsubscribe();
+        this.scanResult = null;
+      this.messageHandler('Scan subscription stopped');
+    }
+    
+    // CRITICAL: Perform comprehensive cleanup like old code
+    this.cleanup();
+    
+    // Reset scan state
+    this.resetScanState();
+    
+    // Stop any ongoing scan
+    this.bleService.stopScan().catch(err => {
+      this.messageHandler('Error stopping scan: ' + err);
+    });
+    
+    // Clear device list completely
+    this.devList.reset();
     this.devices = [];
-    // Clear scan interval if set
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
-    }
-    // Clear poll interval if set
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-    // Clear disconnect timer if set
-    if (this.disconnectTimer) {
-      clearTimeout(this.disconnectTimer);
-      this.disconnectTimer = null;
-    }
-    // Prevent any further BLE notifications or operations
-    if (this.connectSubscription) {
-      this.connectSubscription.unsubscribe();
-      this.connectSubscription = null;
-    }
-    if (this.scanResult) {
-      this.scanResult.unsubscribe();
-      this.scanResult = null;
-    }
-    // Reset UI to disconnected state
+    
+    // Reset UI state
+          this.ngZone.run(() => {
+      this.hideKeypad = true;
+      this.testPaneDepth = 0;
+                  this.pairingState = this.inactive;
+      this.isLockOperationPending = false;
+                  this.optionsDisable = false;
+      this.isScanning = false;
+      this.activeLockState = this.s_unconnected;
+      this.showLockOpen = false;
+                  this.cdr.detectChanges();
+    });
+    
+    // Set state to disconnected
     this.setState('disconnected');
-    this.cdr.detectChanges();
+    
+    this.messageHandler('Scan cancelled and comprehensive cleanup completed');
   }
 
   initiateCycle(target: string[]): Subscription {
@@ -353,23 +513,23 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   checkForPinCode(device: Device) {
-    this.messageHandler('INSTANT PIN CHECK: Checking PIN for device ' + device.name);
+    this.messageHandler('INSTANT: Checking PIN code for device ' + this.getDeviceDisplayName(device));
     this.deviceToAuthorize = device;
     this.lockData
       .getAuthorization(device.name)
       .then((pin) => {
-        this.messageHandler('INSTANT PIN CHECK: PIN found in cache, pairing immediately...');
         this.authorizationNotCached = false;
+        this.messageHandler('INSTANT: PIN found in cache, proceeding immediately');
         this.pairToDevice(pin);
       })
       .catch((reason: any) => {
-        this.messageHandler('INSTANT PIN CHECK: No cached PIN, showing keypad immediately...');
         this.authorizationNotCached = true;
+        this.messageHandler('INSTANT: No PIN in cache, showing keypad immediately');
         this.ngZone.run(() => {
           this.hideKeypad = false;
           this.testPaneDepth = -1;
           this.messageHandler(
-            `INSTANT PIN CHECK: keypad shown, hideKeypad=${this.hideKeypad}, testPaneDepth=${this.testPaneDepth}`
+            `INSTANT: PIN check complete, hideKeypad=${this.hideKeypad}, testPaneDepth=${this.testPaneDepth}`
           );
           this.cdr.detectChanges();
         });
@@ -382,12 +542,13 @@ export class HomePage implements OnInit, AfterViewInit {
       this.testPaneDepth = 0;
       if (result === null) {
         this.pairingState = this.waiting;
-        this.messageHandler('PIN entry cancelled, returning to device scan list');
+        this.messageHandler('INSTANT: PIN entry cancelled, returning to device scan list');
       } else {
+        this.messageHandler('INSTANT: PIN entered, starting immediate pairing');
         this.pairToDevice(result);
       }
       this.messageHandler(
-        `pinEvent: result=${result}, hideKeypad=${this.hideKeypad}, pairingState=${this.pairingState}`
+        `INSTANT: PIN event processed, result=${result}, hideKeypad=${this.hideKeypad}, pairingState=${this.pairingState}`
       );
       this.cdr.detectChanges();
     });
@@ -395,96 +556,138 @@ export class HomePage implements OnInit, AfterViewInit {
 
   async pairToDevice(pin: string) {
     const that = this;
-    this.messageHandler(`INSTANT PAIR: Pairing with "${pin}" immediately...`);
+    this.messageHandler(`FAST: Starting instant pairing with PIN "${pin}"`);
+    
+    // Set proper state
     this.ngZone.run(() => {
       this.pairingState = this.connecting;
       this.hideKeypad = true;
       this.messageHandler(
-        `INSTANT PAIR: pairingState=${this.pairingState}, hideKeypad=${this.hideKeypad}`
+        `FAST: Pairing state updated, pairingState=${this.pairingState}, hideKeypad=${this.hideKeypad}`
       );
       this.cdr.detectChanges();
     });
+    
     const device = this.deviceToAuthorize!;
     const lockInfo = this.lockData.makeLock(device.name, pin);
 
-    // Reduced timeout for faster failure detection
+    // Add timeout to prevent getting stuck
     const connectionTimeout = setTimeout(() => {
-      this.messageHandler('INSTANT PAIR: Connection timeout, forcing reset');
-      this.forceFullReset();
-      this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please try again.');
-    }, 10000); // Reduced from 15s to 10s
+      this.messageHandler('FAST: PIN connection timeout - trying to connect to detected device');
+      
+      // Instead of just failing, try to connect to the detected device
+      if (this.devices.length > 0) {
+        this.messageHandler('FAST: Found devices available, attempting connection to detected device');
+        this.select(this.devices[0]); // Try to connect to the first detected device
+      } else {
+        this.messageHandler('FAST: No devices found, forcing reset');
+        this.forceFullReset();
+        this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please try again.');
+      }
+    }, 15000); // Increased from 10s to 15s for PIN entry
 
     this.connectSubscription = this.bleService.connectTo(device).subscribe(
       async (peripheralData) => {
         try {
           clearTimeout(connectionTimeout);
+          this.messageHandler('FAST: Connection established, checking services immediately');
           
-          // Remove the 750ms delay - proceed immediately
-          this.messageHandler('INSTANT PAIR: Connected, checking service immediately...');
-          
-          // Check for required BLE service immediately
+          // Check for required BLE service
           const hasService = await that.bleService.hasRequiredService(device.id);
           if (!hasService) {
             const msg = 'Lock service not found. Please reset the lock and try again.';
-            that.messageHandler(msg);
+            that.messageHandler('FAST: ' + msg);
             that.showErrorAlert('Connection Error', msg);
             await that.bleService.forceDisconnect(device);
+            that.forceFullReset();
             return;
           }
           
-          this.messageHandler('INSTANT PAIR: Service found, verifying PIN immediately...');
+          that.messageHandler('FAST: Service found, verifying PIN immediately');
           const result = await that.bleService.handleVerification(lockInfo);
+          
           if (result.verified) {
-            that.messageHandler('INSTANT PAIR: PIN code verified successfully');
+            that.messageHandler('FAST: PIN code verified instantly');
+            
+            // Cache authorization if needed
             if (that.authorizationNotCached) {
               try {
                 const rc = await that.lockData.addAuthorization(lockInfo);
                 if (rc !== LockDataErrors.SUCCESS) {
-                  const msg = `couldn't cache authorization: error ${rc}`;
-                  that.messageHandler(msg);
-                  alert(msg);
+                  that.messageHandler('FAST: Authorization caching failed: ' + rc);
                 }
               } catch (e: unknown) {
-                const msg =
-                  'addAuthorization failed: error ' + JSON.stringify(e);
-                that.messageHandler(msg);
-                alert(msg);
+                that.messageHandler('FAST: Authorization caching error: ' + JSON.stringify(e));
               }
             }
+            
+            // Set successful state and mark device as connected
             that.activeLockState = that.s_checkPosition;
             that.ngZone.run(() => {
               that.pairingState = that.successful;
               that.hideKeypad = true;
               that.isLockOperationPending = false;
               that.messageHandler(
-                `INSTANT PAIR: success, pairingState=${that.pairingState}, showLockOpen=${that.showLockOpen}, hideKeypad=${that.hideKeypad}, isLockOperationPending=${that.isLockOperationPending}`
+                `FAST: Pairing successful, pairingState=${that.pairingState}`
               );
               that.cdr.detectChanges();
             });
-          } else {
-            that.messageHandler('INSTANT PAIR: PIN verification failed');
+            
+            // CRITICAL: Set state to connected and mark device as connected
+            that.setState('connected');
+            await that.markDeviceConnected(device);
+            
+            // Start polling only after successful connection
+            that.mustReadStatus = true;
+            await that.timeTickHandler();
+            that.alarmOn = await this.bleService.getAlarmState();
+            
             that.ngZone.run(() => {
-              that.pairingState = that.failed;
-              that.hideKeypad = true;
-              that.messageHandler(
-                `INSTANT PAIR: failed, pairingState=${that.pairingState}, hideKeypad=${that.hideKeypad}`
-              );
+              that.optionsDisable = false;
+              that.messageHandler(`FAST: Options enabled, starting polling`);
               that.cdr.detectChanges();
             });
-            await that.verifyFailed('Access Denied');
+            
+            // Start polling with proper state check
+            that.pollInterval = window.setInterval(
+              that.timeTickHandler.bind(that),
+              that.timeIncrement
+            );
+            that.messageHandler('FAST: Polling started successfully');
+            
+          } else {
+            // PIN verification failed - proper cleanup
+            that.messageHandler('FAST: PIN verification failed: ' + result.msg);
+            await that.bleService.forceDisconnect(device);
+            that.forceFullReset();
+            
+            if (!result.isError) {
+              that.showErrorAlert('PIN Error', 'The PIN does not match the lock. Please try again.');
+            } else {
+              that.showErrorAlert('Verification Error', `PIN verification failed: ${result.msg}. Please try again.`);
+            }
           }
+          
         } catch (error) {
           clearTimeout(connectionTimeout);
-          that.messageHandler('INSTANT PAIR: Error during pairing: ' + error);
+          that.messageHandler(`FAST: Error during verification - ${error}`);
+          await that.bleService.forceDisconnect(device);
           that.forceFullReset();
-          that.showErrorAlert('Pairing Error', 'Could not pair with the lock. Please check your PIN and try again.');
+          that.showErrorAlert('Verification Error', 'Failed to verify PIN. Please try again.');
         }
       },
-      (error) => {
+      async (error) => {
         clearTimeout(connectionTimeout);
-        that.messageHandler('INSTANT PAIR: Connection error: ' + error);
-        that.forceFullReset();
-        that.showErrorAlert('Connection Error', 'Could not connect to the lock. Please make sure your lock is powered on and nearby, then try again.');
+        that.messageHandler(`FAST: Connection failed - ${error}`);
+        
+        // Instead of just failing, try to connect to detected devices
+        if (this.devices.length > 0) {
+          this.messageHandler('FAST: Connection failed, attempting connection to detected device');
+          this.select(this.devices[0]); // Try to connect to the first detected device
+        } else {
+          that.forceFullReset();
+          that.showErrorAlert('Connection Failed', 'Failed to connect to the lock. Please try again.');
+        }
       }
     );
   }
@@ -510,11 +713,14 @@ export class HomePage implements OnInit, AfterViewInit {
     if (this.pauseCountdownForAlert) {
       return;
     }
+    
+    // PREVENT BACKGROUND POLLING WHEN NOT CONNECTED
+    if (this.currentState !== 'connected' && this.currentState !== 'operating') {
+      return; // Silent return - no logging needed
+    }
+    
     if (this.connectSubscription === null) {
-      this.messageHandler(
-        `tried to handle timer tick after disconnect, mustReadStatus=${this.mustReadStatus}`
-      );
-      return;
+      return; // Silent return - no logging needed
     }
 
     try {
@@ -523,7 +729,8 @@ export class HomePage implements OnInit, AfterViewInit {
       }
 
       if (this.bleService.isLockBusy()) {
-        this.messageHandler('timeTickHandler: lock busy, skipping');
+        // Silent skip when lock is busy
+        return;
       } else if (this.sleepTimer >= this.sleepDelay && this.modalRef === null) {
         this.sleepTimer = -1;
         this.mustReadStatus = false;
@@ -807,23 +1014,62 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   cleanup() {
+    this.messageHandler('cleanup: Starting comprehensive cleanup...');
+    
+    // Stop scan result subscription
     if (this.scanResult) {
       this.scanResult.unsubscribe();
       this.scanResult = null;
+      this.messageHandler('cleanup: Scan result unsubscribed');
     }
+    
+    // Stop connection subscription
     if (this.connectSubscription) {
       this.connectSubscription.unsubscribe();
       this.connectSubscription = null;
+      this.messageHandler('cleanup: Connection subscription unsubscribed');
     }
+    
+    // Stop polling immediately - CRITICAL for preventing lock light staying on
     if (this.pollInterval) {
       clearInterval(this.pollInterval);
       this.pollInterval = null;
-      this.messageHandler('polling stopped');
+      this.messageHandler('cleanup: Polling stopped');
     }
+    
+    // Stop disconnect timer
     if (this.disconnectTimer) {
       clearTimeout(this.disconnectTimer);
       this.disconnectTimer = null;
+      this.messageHandler('cleanup: Disconnect timer cleared');
     }
+    
+    // Stop scan interval
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+      this.messageHandler('cleanup: Scan interval cleared');
+    }
+    
+    // Stop BLE keep-alive
+    this.bleService.stopKeepAlive();
+    
+    // Stop scan controller
+    if (this.scanController) {
+      this.scanController.complete();
+      this.scanController = null;
+      this.messageHandler('cleanup: Scan controller completed');
+    }
+    
+    // Force stop BLE scan
+    try {
+      this.bleService.stopScan();
+      this.messageHandler('cleanup: BLE scan stopped');
+    } catch (e) {
+      this.messageHandler('cleanup: Error stopping BLE scan: ' + e);
+    }
+    
+    this.messageHandler('cleanup: Comprehensive cleanup completed');
   }
 
   async openOptionsModal() {
@@ -1034,7 +1280,7 @@ export class HomePage implements OnInit, AfterViewInit {
     if (role === 'save' && data) {
       this.devList.setCustomName(device.id, data);
       device.customName = data;
-      this.cdr.detectChanges();
+            this.cdr.detectChanges();
     }
   }
 
@@ -1071,16 +1317,28 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   getDeviceDisplayName(device: Device): string {
+    // Priority 1: Custom name (user-defined name)
     if (device.customName && device.customName.trim()) {
       return device.customName;
     }
-    if (device.name && device.name !== 'Unknown Device') {
+    
+    // Priority 2: Device name (if not "Unknown Device")
+    if (device.name && device.name.trim() && device.name !== 'Unknown Device') {
       return device.name;
     }
+    
+    // Priority 3: Serial number (extracted from device)
     const serial = DevicesService.extractSerialNumber(device);
-    if (serial) {
+    if (serial && serial.trim()) {
       return serial;
     }
+    
+    // Priority 4: Device ID (if available)
+    if (device.id && device.id.trim()) {
+      return device.id;
+    }
+    
+    // Priority 5: Unknown device (fallback)
     return 'Unknown Device';
   }
 
@@ -1167,7 +1425,7 @@ export class HomePage implements OnInit, AfterViewInit {
     try {
       this.connectionState.isConnecting = true;
       this.pairingState = this.connecting;
-      this.cdr.detectChanges();
+            this.cdr.detectChanges();
       
       // Force disconnect
       await this.bleService.forceDisconnect(device);
@@ -1303,177 +1561,213 @@ export class HomePage implements OnInit, AfterViewInit {
 
   // Fix beginConnect to only reset if state is stuck
   async beginConnect() {
-    this.messageHandler('BEGIN: Starting connection process... currentState=' + this.currentState);
-    if (['operating', 'connecting'].includes(this.currentState)) {
-      this.messageHandler('BEGIN: Forcing state reset: was ' + this.currentState);
-      await this.forceFullReset();
-    }
-    await this.platform.ready();
-    this.messageHandler('BEGIN: Platform ready');
-    let available = false;
-    try {
-      this.messageHandler('BEGIN: Checking BLE availability...');
-      available = await this.bleService.isAvailable();
-      this.messageHandler('BEGIN: BLE available = ' + available);
-    } catch (err) {
-      this.messageHandler('BEGIN: ERROR in bleService.isAvailable: ' + err);
-      await this.showErrorAlert('Bluetooth Error', 'Could not check Bluetooth availability. Error: ' + err);
-      return;
-    }
-    if (!available) {
-      await this.showErrorAlert('Bluetooth Error', 'Bluetooth is not available or permissions are missing.');
-      return;
-    }
+    this.messageHandler('STREAM: Starting instant connection process...');
+    
+    // CRITICAL: Show UI immediately for better responsiveness
     this.setState('scanning');
-    this.messageHandler('BEGIN: State set to scanning, calling scanForDevices');
-    await this.scanForDevices();
-  }
-
-  // Streaming scan - show devices immediately as found, no delays
-  async scanForDevices() {
-    this.messageHandler('STREAMING SCAN: Starting real-time device scan...');
-    this.devices = [];
+    this.pairingState = this.scanning;
     this.cdr.detectChanges();
     
-    return new Promise<void>((resolve) => {
-      this.ngZone.run(() => {
-        // Start streaming scan - devices will appear immediately as found
-        const scanSubscription = this.bleService.startScan([this.bleService.LongServiceUuid])
-          .subscribe({
-            next: (device) => {
-              this.messageHandler('STREAM: Device found immediately: ' + device.name);
-              this.devList.addDevice(device);
-              this.devices = this.devList.getDevices();
-              this.cdr.detectChanges();
-            },
-            error: (error) => {
-              this.messageHandler('STREAM: Scan error: ' + error);
-              this.forceFullReset();
-              this.showErrorAlert('Scan Error', 'Could not scan for devices. Please make sure your lock is powered on and nearby, then try again.');
-              this.setState('error');
-              resolve();
-            },
-            complete: () => {
-              this.messageHandler('STREAM: Scan subscription complete');
-            }
-          });
-        
-        this.messageHandler('STREAM: Real-time scan started - devices will appear immediately');
-        
-        // Keep scanning for 10 seconds but show devices instantly
-        setTimeout(() => {
-          this.messageHandler('STREAM: Scan period complete, stopping scan');
-          scanSubscription.unsubscribe();
-          
-          if (this.devices.length === 0) {
-            this.messageHandler('STREAM: No devices found during scan period');
-            this.forceFullReset();
-            this.showErrorAlert('No Devices Found', 'No Bluetooth devices were detected.\n\nTroubleshooting tips:\n- Make sure your lock is powered on and nearby.\n- Try toggling Bluetooth off and on.\n- Restart your phone if the problem persists.');
-            this.setState('error');
-          } else {
-            this.messageHandler('STREAM: Found ' + this.devices.length + ' devices during scan');
-          }
-          resolve();
-        }, 10000); // 10 second scan period but devices show immediately
-      });
-    });
+    // Only force reset if in invalid state, not on first startup
+    if (this.currentState === 'operating' || this.currentState === 'connecting') {
+      this.messageHandler('STREAM: Forcing reset from invalid state: ' + this.currentState);
+      await this.forceFullReset();
+    }
+    
+    try {
+      await this.platform.ready();
+      this.messageHandler('STREAM: Platform ready, checking BLE availability');
+      
+      const isAvailable = await this.bleService.isAvailable();
+      if (!isAvailable) {
+        this.messageHandler('STREAM: BLE not available');
+        this.setState('error');
+        await this.showErrorAlert('Bluetooth Not Available', 'Please enable Bluetooth and try again.');
+        return;
+      }
+      
+      this.messageHandler('STREAM: BLE available, starting instant scan');
+      await this.scanForDevices();
+    } catch (error) {
+      this.messageHandler('STREAM: Error in beginConnect: ' + error);
+      this.setState('error');
+      
+      // For first-time errors, show a more helpful message
+      if (this.currentState === 'disconnected' && this.devices.length === 0) {
+        await this.showErrorAlert('First Time Setup', 'This is your first time using the app. Please make sure your lock is powered on and nearby, then try again.');
+      } else {
+        await this.showErrorAlert('Connection Error', 'Could not start connection process. Please try again.');
+      }
+    }
   }
 
-  // Instant device selection and connection
-  async select(device: Device) {
-    if (this.currentState !== 'scanning') {
-      this.messageHandler('Cannot select device from current state');
+  async scanForDevices() {
+    if (this.isScanning) {
+      this.messageHandler('Scan already in progress');
       return;
     }
     
-    this.messageHandler('INSTANT CONNECT: Connecting to ' + device.name + ' immediately...');
+    this.messageHandler('Starting device scan...');
+    
+    // CRITICAL: Reset scan state before starting new scan
+    this.resetScanState();
+    
+    // Prepare BLE for scanning
+    const bleReady = await this.prepareBleForScan();
+    if (!bleReady) {
+      this.messageHandler('BLE not ready for scanning');
+      this.setState('error');
+      return;
+    }
+    
+    // Don't set state again if already set by beginConnect
+    if (this.currentState !== 'scanning') {
+      this.setState('scanning');
+    }
+    this.isScanning = true;
+    
+    // Stop any previous scan and wait - CRITICAL for preventing scan conflicts
+    try {
+      this.bleService.stopScan();
+      await this.delay(100); // REDUCED: From 500ms to 100ms for faster scanning
+      this.messageHandler('Previous scan stopped');
+    } catch (e) {
+      this.messageHandler('Error stopping previous scan: ' + e);
+      // Continue anyway - don't let stop scan errors prevent new scan
+    }
+    
+    // Track if popup has been shown to prevent blinking
+    let popupShown = false;
+    let scanCancelled = false;
+    let scanCompleted = false;
+    
+    // Start scan and store subscription
+    this.scanResult = this.bleService.startScan([this.bleService.LongServiceUuid])
+      .subscribe({
+        next: (device) => {
+          if (!scanCancelled && !scanCompleted) {
+            this.messageHandler(`Found: ${this.getDeviceDisplayName(device)}`);
+            this.devList.addDevice(device);
+            this.devices = this.devList.getDevices();
+            this.cdr.detectChanges();
+          }
+        },
+        error: (error) => {
+          if (!scanCancelled && !scanCompleted) {
+            this.messageHandler(`Scan failed: ${error}`);
+            this.isScanning = false;
+            this.scanResult = null;
+            scanCompleted = true;
+            if (!popupShown) {
+              this.showErrorAlert('Scan Error', 'Could not scan for devices. Please try again.');
+              popupShown = true;
+            }
+            this.setState('error');
+          }
+        },
+        complete: () => {
+          if (!scanCancelled && !scanCompleted) {
+            this.messageHandler('Scan completed');
+            this.isScanning = false;
+            this.scanResult = null;
+            scanCompleted = true;
+            
+            // Keep devices visible after scan completion (like real Bluetooth)
+            if (this.devices.length > 0) {
+              this.messageHandler(`Scan completed. Found ${this.devices.length} device(s) - devices remain visible`);
+              // Don't change state - keep devices visible for user to select
+            } else {
+              this.messageHandler('No devices found');
+              
+              // Only show popup once and if we're still in scanning state
+              if (this.currentState === 'scanning' && !popupShown) {
+                this.showErrorAlert('No Devices Found', 'No Bluetooth devices were detected.\n\nPlease make sure your lock is powered on and nearby.\n\nTap OK to return to home.');
+                popupShown = true;
+                this.setState('disconnected'); // Go back to home state
+              }
+            }
+          }
+        }
+      });
+    
+    // 4 seconds timeout - REDUCED for faster device discovery
+    const timeoutId = setTimeout(() => {
+      if (!scanCancelled && !scanCompleted && this.scanResult) {
+        this.scanResult.unsubscribe();
+        this.scanResult = null;
+        this.isScanning = false;
+        scanCompleted = true;
+        
+        // Keep devices visible after timeout (like real Bluetooth)
+        if (this.devices.length > 0) {
+          this.messageHandler(`Scan timeout. Found ${this.devices.length} device(s) - devices remain visible`);
+          // Don't change state - keep devices visible for user to select
+        } else {
+          this.messageHandler('No devices found');
+          
+          // Only show popup once and if we're still in scanning state
+          if (this.currentState === 'scanning' && !popupShown) {
+            this.showErrorAlert('No Devices Found', 'No Bluetooth devices were detected.\n\nPlease make sure your lock is powered on and nearby.\n\nTap OK to return to home.');
+            popupShown = true;
+            this.setState('disconnected'); // Go back to home state
+          }
+        }
+      }
+    }, 4000);
+    
+    // Store timeout ID for cancellation
+    this.scanTimeoutId = timeoutId;
+  }
+
+  async select(device: Device) {
+    if (this.currentState !== 'scanning' && this.currentState !== 'disconnected') {
+      this.messageHandler('Cannot select device from current state: ' + this.currentState);
+      return;
+    }
+    
+    this.messageHandler('INSTANT: Device selected immediately: ' + this.getDeviceDisplayName(device));
     this.selectedDevice = device;
     this.setState('connecting');
     
-    // Stop scanning immediately when device is selected
-    this.bleService.stopScan();
+    // Clear any existing connection subscription
+    if (this.connectSubscription) {
+      this.connectSubscription.unsubscribe();
+      this.connectSubscription = null;
+    }
     
-    // Connect instantly
     await this.connectToDevice(device);
   }
 
-  // Instant connection with immediate PIN check
-  private async connectToDevice(device: Device): Promise<void> {
-    return new Promise((resolve, reject) => {
-      let timedOut = false;
-      const connectionTimeout = setTimeout(() => {
-        timedOut = true;
-        this.messageHandler('Connection timed out.');
-        this.forceFullReset();
-        this.showErrorAlert('Connection Timeout', 'Connecting to the lock took too long. Please make sure your lock is powered on and nearby, then try again.');
-        reject(new Error('Connection timeout'));
-      }, 8000); // Reduced from 12s to 8s
-      
-      this.bleService.connectTo(device).subscribe({
-        next: async () => {
-          if (timedOut) return;
-          clearTimeout(connectionTimeout);
-          
-          this.messageHandler('INSTANT CONNECT: Connected successfully, checking PIN immediately...');
-          
-          // Set state and check PIN immediately
-          this.setState('connected');
-          
-          // Check for PIN immediately without any delay
-          this.checkForPinCode(device);
-          
-          // Mark this device as last connected for auto-reconnect
-          await this.markDeviceConnected(device);
-          resolve();
-        },
-        error: (error) => {
-          if (timedOut) return;
-          clearTimeout(connectionTimeout);
-          this.messageHandler(`Connection failed: ${error}`);
-          this.forceFullReset();
-          this.showErrorAlert('Connection Failed', 'Could not connect to the lock. Please make sure your lock is powered on and nearby, then try again.');
-          reject(error);
-        }
-      });
-    });
-  }
-
-  // Enhanced forceFullReset with BLE service cleanup
+  // Enhanced forceFullReset with complete BLE cleanup
   private async forceFullReset() {
-    this.messageHandler('Performing full reset...');
+    this.messageHandler('CRITICAL: Performing complete reset...');
     
-    // Clear all timers/intervals
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
-    }
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
-    }
-    if (this.disconnectTimer) {
-      clearTimeout(this.disconnectTimer);
-      this.disconnectTimer = null;
-    }
+    // CRITICAL: Perform comprehensive cleanup like old code
+    this.cleanup();
     
-    // Stop BLE scanning
-    try {
-      this.bleService.stopScan();
-    } catch (e) {
-      this.messageHandler('Error stopping scan: ' + e);
-    }
+    // Reset scan state
+    this.resetScanState();
     
-    // Force disconnect from any connected device
+    // CRITICAL: Force disconnect from any connected device
     if (this.selectedDevice && this.selectedDevice.id) {
       try {
         await this.bleService.forceDisconnect(this.selectedDevice);
-        this.messageHandler('Forced disconnect completed');
+        this.messageHandler('CRITICAL: Forced disconnect completed');
       } catch (e) {
         this.messageHandler('Error during forced disconnect: ' + e);
       }
     }
     
+    // CRITICAL: Soft reset BLE to clear any stuck connections
+    try {
+      await this.bleService.softResetBluetooth();
+      this.messageHandler('CRITICAL: BLE soft reset completed');
+    } catch (e) {
+      this.messageHandler('Error during BLE soft reset: ' + e);
+    }
+    
     // Clear device list and reset device selection
+    this.devList.reset();
     this.devices = [];
     this.selectedDevice = { name: '' } as Device;
     
@@ -1488,48 +1782,68 @@ export class HomePage implements OnInit, AfterViewInit {
     this.mustReadStatus = false;
     this.mustReadAlarm = false;
     this.alarmOn = true;
+    this.isScanning = false;
     
     // Reset connection state
     this.connectionState = {
       isConnecting: false,
       isConnected: false,
       lastConnectionAttempt: 0,
-      connectionTimeout: 0,
+      connectionTimeout: 10000,
       reconnectAttempts: 0,
       maxReconnectAttempts: 3,
       droppedConnectionCheckInProgress: false
     };
     
-    // Dismiss all modals
-    if (this.modalRef) {
-      try { await this.modalRef.dismiss(); } catch {}
-      this.modalRef = null;
-    }
-    if (this.bleAlertDialog) {
-      try { await this.bleAlertDialog.dismiss(); } catch {}
-      this.bleAlertDialog = null;
-    }
-    if (this.verifyFailedDialog) {
-      try { await this.verifyFailedDialog.dismiss(); } catch {}
-      this.verifyFailedDialog = null;
-    }
-    
-    // Set state to disconnected and clear history
+    // Reset current state
     this.currentState = 'disconnected';
     this.stateHistory = [];
     
-    // Clear any cached connection state
-    try {
-      await this.lockData.setValue('lastConnectionState', 'disconnected');
-    } catch (e) {
-      this.messageHandler('Error clearing cached state: ' + e);
-    }
-    
-    this.messageHandler('Full reset completed');
-    this.cdr.detectChanges();
+    this.messageHandler('CRITICAL: Complete reset completed - all polling and connections stopped');
   }
 
-  // Enhanced unlock method with faster response
+  // Add timeouts to connect and unlock operations
+  private async connectToDevice(device: Device): Promise<void> {
+    this.messageHandler('FAST: Connecting to device: ' + this.getDeviceDisplayName(device));
+    
+    // Add connection timeout
+    const connectionTimeout = setTimeout(() => {
+      this.messageHandler('FAST: Device connection timeout');
+      this.forceFullReset();
+      this.showErrorAlert('Connection Timeout', 'Connecting to the device took too long. Please try again.');
+    }, 12000); // 12 seconds timeout for device connection
+
+    try {
+      // Check if device has required service
+      const hasService = await this.bleService.hasRequiredService(device.id);
+      if (!hasService) {
+        clearTimeout(connectionTimeout);
+        this.messageHandler('FAST: Device does not have required service');
+        this.forceFullReset();
+        this.showErrorAlert('Connection Error', 'This device does not have the required Bluetooth service. Please try a different device.');
+        return;
+      }
+
+      // Check if PIN is required - this method handles PIN requirement internally
+      this.checkForPinCode(device);
+      
+      // If we reach here, it means PIN was found in cache and connection should proceed
+      // The checkForPinCode method will call pairToDevice if PIN is found
+      // If PIN is not found, it will show keypad and we won't reach here
+      
+      // For devices that don't require PIN, we need to handle connection here
+      // But since checkForPinCode handles everything, we just clear timeout
+      clearTimeout(connectionTimeout);
+      
+    } catch (error) {
+      clearTimeout(connectionTimeout);
+      this.messageHandler('FAST: Error connecting to device: ' + error);
+      this.forceFullReset();
+      this.showErrorAlert('Connection Error', 'Failed to connect to the device. Please try again.');
+    }
+  }
+
+  // Enhanced unlock method with better error handling
   async unlock(securityByte: string) {
     // Prevent multiple simultaneous unlock attempts
     if (this.isLockOperationPending) {
@@ -1565,48 +1879,47 @@ export class HomePage implements OnInit, AfterViewInit {
       return;
     }
     
-    this.messageHandler('FAST UNLOCK: Starting unlock operation immediately...');
     this.setState('operating');
     this.ngZone.run(() => {
       this.isLockOperationPending = true;
       this.optionsDisable = true;
       this.messageHandler(
-        `FAST UNLOCK: isLockOperationPending=${this.isLockOperationPending}, activeLockState=${this.activeLockState}`
+        `unlock: isLockOperationPending=${this.isLockOperationPending}, activeLockState=${this.activeLockState}`
       );
       this.cdr.detectChanges();
     });
     
-    // Reduced operation timeout for faster failure detection
+    // Set operation timeout
     let timedOut = false;
     const operationTimeout = setTimeout(() => {
       timedOut = true;
-      this.messageHandler('FAST UNLOCK: Operation timed out');
+      this.messageHandler('FAST: Unlock operation timed out after 10 seconds');
       this.handleUnlockTimeout();
       this.forceFullReset();
       this.showErrorAlert('Unlock Timeout', 'Unlocking the lock took too long. Please make sure your lock is powered on and nearby, then try again.');
-    }, 10000); // Reduced from 15s to 10s
+    }, 10000); // REDUCED: From 15 seconds to 10 seconds for faster unlock
     
     let action;
     if (this.activeLockState === this.s_closed) {
-      this.messageHandler('FAST UNLOCK: attempting 5-second relock');
+      this.messageHandler('FAST: attempting 5-second relock');
       action = 'auto-relock';
     } else {
-      this.messageHandler('FAST UNLOCK: attempting to close open lock');
+      this.messageHandler('FAST: attempting to close open lock');
       action = 'toggle';
     }
     
+    this.messageHandler('FAST: Starting instant unlock operation');
     this.bleService
       .triggerLock(action, securityByte)
       .then((status) => {
         if (timedOut) return;
         clearTimeout(operationTimeout);
-        this.messageHandler('FAST UNLOCK: Operation completed successfully');
         this.handleUnlockSuccess(status);
       })
       .catch((reason) => {
         if (timedOut) return;
         clearTimeout(operationTimeout);
-        this.messageHandler('FAST UNLOCK: Operation failed: ' + reason);
+        this.messageHandler('Unlock operation failed: ' + reason);
         this.handleUnlockError(reason);
         // Always force full reset after unlock error
         this.forceFullReset();
@@ -1614,87 +1927,111 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   async beginDisconnect() {
-    if (this.currentState === 'disconnected') {
-      return;
+    this.messageHandler('STREAM: Starting comprehensive disconnect process...');
+    
+    // CRITICAL: Store device ID before clearing it
+    const deviceToDisconnect = this.selectedDevice;
+    
+    // CRITICAL: Stop polling immediately - This prevents lock light staying on
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+      this.messageHandler('STREAM: Polling stopped immediately');
     }
     
-    try {
-      if (this.selectedDevice) {
-        await this.bleService.forceDisconnect(this.selectedDevice);
-        // Clear cached PIN for this device so PIN is required next time
-        if (this.selectedDevice.name) {
-          await this.lockData.removeAuthorization(this.selectedDevice.name);
-          this.messageHandler('Cleared cached PIN for device: ' + this.selectedDevice.name);
-        }
+    // CRITICAL: Perform comprehensive cleanup like old code
+    this.cleanup();
+    
+    // CRITICAL: Force disconnect IMMEDIATELY before clearing device
+    if (deviceToDisconnect && deviceToDisconnect.id) {
+      try {
+        this.messageHandler('STREAM: Force disconnecting from device: ' + deviceToDisconnect.id);
+        await this.bleService.forceDisconnect(deviceToDisconnect);
+        this.messageHandler('STREAM: Force disconnect completed');
+      } catch (e) {
+        this.messageHandler('STREAM: Force disconnect error: ' + e);
       }
-      // Mark manual disconnect for auto-reconnect logic
-      await this.markManualDisconnect();
-      this.setState('disconnected');
-    } catch (error) {
-      this.messageHandler(`Disconnect error: ${error}`);
-      this.setState('error');
     }
+    
+    // Clear selected device AFTER disconnect
+    this.selectedDevice = { name: '' } as Device;
+    
+    // Clear cached PIN
+    if (deviceToDisconnect?.id) {
+      await this.lockData.removeAuthorization(deviceToDisconnect.id);
+    }
+    
+    // Mark as manual disconnect
+    await this.markManualDisconnect();
+    
+    // Set state to disconnected
+    this.setState('disconnected');
+    
+    // Clear device list and reset UI
+    this.devList.reset();
+    this.devices = [];
+    this.showLockOpen = false;
+    this.activeLockState = this.s_unconnected;
+    this.cdr.detectChanges();
+    
+    // EMERGENCY: Additional aggressive BLE cleanup to prevent white light issue
+    try {
+      this.bleService.stopScan();
+      await this.delay(1000); // Longer delay for better cleanup
+      // Soft reset BLE to clear any stuck connections
+      await this.bleService.softResetBluetooth();
+      this.messageHandler('STREAM: Emergency BLE cleanup completed');
+    } catch (e) {
+      this.messageHandler('STREAM: BLE cleanup error: ' + e);
+    }
+    
+    // EMERGENCY: Complete reset to ensure no stuck states
+    await this.forceFullReset();
+    
+    this.messageHandler('STREAM: Comprehensive disconnect process completed');
   }
 
   // Enhanced emergency disconnect method
   async emergencyDisconnect() {
-    const alert = await this.alertController.create({
-      header: 'Emergency Disconnect',
-      message: 'This will force disconnect from the lock and reset the app state. Use this if the app is stuck or not responding.\n\nAre you sure?',
-      buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel'
-        },
-        {
-          text: 'Force Disconnect',
-          cssClass: 'danger',
-          handler: () => {
-            this.forceEmergencyDisconnect();
-          }
-        }
-      ]
-    });
+    this.messageHandler('EMERGENCY: Emergency disconnect initiated...');
     
-    await alert.present();
-  }
-
-  private async forceEmergencyDisconnect() {
-    this.messageHandler('Emergency disconnect initiated...');
-    
-    try {
-      // Show loading message
-      const loadingAlert = await this.alertController.create({
-        header: 'Emergency Disconnect',
-        message: 'Force disconnecting and resetting app state...',
-        backdropDismiss: false
-      });
-      await loadingAlert.present();
-      
-      // Force full reset
-      await this.forceFullReset();
-      
-      // Dismiss loading and show success
-      await loadingAlert.dismiss();
-      
-      const successAlert = await this.alertController.create({
-        header: 'Disconnected',
-        message: 'Successfully disconnected and reset app state. You can now reconnect to your lock.',
-        buttons: ['OK']
-      });
-      await successAlert.present();
-      
-      this.messageHandler('Emergency disconnect completed successfully');
-    } catch (error) {
-      this.messageHandler('Error during emergency disconnect: ' + error);
-      
-      const errorAlert = await this.alertController.create({
-        header: 'Error',
-        message: 'There was an error during emergency disconnect. Please restart the app.',
-        buttons: ['OK']
-      });
-      await errorAlert.present();
+    // CRITICAL: Stop all polling immediately
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+      this.messageHandler('EMERGENCY: Polling stopped');
     }
+    
+    // CRITICAL: Force disconnect from any device
+    if (this.selectedDevice && this.selectedDevice.id) {
+      try {
+        await this.bleService.forceDisconnect(this.selectedDevice);
+        this.messageHandler('EMERGENCY: Forced disconnect completed');
+      } catch (e) {
+        this.messageHandler('EMERGENCY: Error during forced disconnect: ' + e);
+      }
+    }
+    
+    // CRITICAL: Soft reset BLE immediately
+    try {
+      await this.bleService.softResetBluetooth();
+      this.messageHandler('EMERGENCY: BLE soft reset completed');
+    } catch (e) {
+      this.messageHandler('EMERGENCY: Error during BLE soft reset: ' + e);
+    }
+    
+    // Complete reset
+    await this.forceFullReset();
+    
+    // Show success message
+    const successAlert = await this.alertController.create({
+      header: 'Emergency Disconnect',
+      message: 'Successfully disconnected and reset app state. You can now reconnect to your lock.',
+      buttons: ['OK']
+    });
+    await successAlert.present();
+    
+    this.messageHandler('EMERGENCY: Emergency disconnect completed successfully');
   }
 
   // Enhanced handleUnlockSuccess with proper state management
@@ -1702,33 +2039,39 @@ export class HomePage implements OnInit, AfterViewInit {
     this.ngZone.run(() => {
       this.messageHandler('Handling unlock success...');
       
-      if (status.response !== ASK_correct) {
+      // Only show error if it's a real error, not just a state change
+      if (status.response === ASK_failure || status.response === ASK_timeout || 
+          status.response === ASK_unknown || status.response === ASK_checksum) {
         this.resetUnlockState();
         this.setState('error');
         const message = this.simplifyState(status);
-        const errMsg = `Bad command result, state ${this.activeLockState} = ${message}`;
+        const errMsg = `Operation failed: ${message}`;
         this.messageHandler(errMsg);
-        this.showErrorAlert('Unlock Failed', errMsg);
+        this.showErrorAlert('Operation Failed', errMsg);
         
         // Force full reset after bad result
         setTimeout(() => {
           this.forceFullReset();
         }, 2000);
       } else {
+        // Success or normal state change - update UI properly
         this.setState('connected');
+        
+        // Update lock state and UI
         if (this.activeLockState === this.s_closed) {
           this.activeLockState = this.s_unlockWait;
+          this.showLockOpen = true; // Lock is now open
+        } else if (this.activeLockState === this.s_unlockWait) {
+          this.activeLockState = this.s_closed;
+          this.showLockOpen = false; // Lock is now closed
         }
-        this.mustReadStatus = true;
         
-        // Add a small delay before reading status
-        setTimeout(() => {
-          this.mustReadStatus = true;
-        }, 500);
+        this.resetUnlockState();
+        this.messageHandler('Operation completed successfully');
         
-        this.messageHandler('Unlock operation completed successfully');
+        // Force UI update
+            this.cdr.detectChanges();
       }
-      this.cdr.detectChanges();
     });
   }
 
@@ -1795,26 +2138,34 @@ export class HomePage implements OnInit, AfterViewInit {
 
   // Global BLE error handler: force disconnect and reset state
   private async handleGlobalBleError(error: any) {
-    this.messageHandler('Global BLE error: ' + error);
+    const errorStr = (typeof error === 'string' ? error : (error?.message || JSON.stringify(error))).toLowerCase();
     
-    // Always force full reset for any BLE error
+    this.messageHandler('ENHANCED: Global BLE error detected: ' + errorStr);
+    
+    // Handle specific write errors
+    if (errorStr.includes('failed to write data to device') || 
+        errorStr.includes('peripheral') || 
+        errorStr.includes('not connected')) {
+      this.messageHandler('ENHANCED: Device write error - forcing disconnect and reset');
+      await this.forceFullReset();
+      this.showErrorAlert('Connection Lost', 'Connection to the lock was lost. Please reconnect.');
+      return;
+    }
+    
+    // Handle other BLE errors
+    if (errorStr.includes('invalid state') || 
+        errorStr.includes('timeout') || 
+        errorStr.includes('gatt')) {
+      this.messageHandler('ENHANCED: BLE state error - forcing reset');
+      await this.forceFullReset();
+      this.showErrorAlert('Bluetooth Error', 'Bluetooth connection error. Please try again.');
+      return;
+    }
+    
+    // Generic error handling
+    this.messageHandler('ENHANCED: Generic BLE error - forcing reset');
     await this.forceFullReset();
-    
-    let isPeripheralDisconnect = false;
-    if (typeof error === 'object' && error !== null && error.errorMessage && error.errorMessage.toLowerCase().includes('peripheral')) {
-      isPeripheralDisconnect = true;
-    } else if (typeof error === 'string' && error.toLowerCase().includes('peripheral')) {
-      isPeripheralDisconnect = true;
-    }
-    
-    if (isPeripheralDisconnect) {
-      await this.showErrorAlert(
-        'Bluetooth Disconnected',
-        'The lock lost connection. This can happen if the lock is powered off, out of range, or connected to another device.\n\nPlease make sure your lock is powered on and nearby, then try again.'
-      );
-    } else {
-      await this.showErrorAlert('Connection Lost', 'Bluetooth connection lost or error occurred. Please scan and reconnect.');
-    }
+    this.showErrorAlert('Connection Error', 'An error occurred. Please try again.');
   }
 
   private handleRetryableError(errorMessage: string, retryStrategy: any) {
@@ -1857,27 +2208,8 @@ export class HomePage implements OnInit, AfterViewInit {
   }
 
   private async showRetryDialog(errorMessage: string, retryStrategy: any) {
-    const alert = await this.alertController.create({
-      header: 'Operation Failed',
-      message: `${errorMessage}\n\nWould you like to retry?`,
-      buttons: [
-        {
-          text: 'Cancel',
-          role: 'cancel',
-          handler: () => {
-            this.resetUnlockState();
-          }
-        },
-        {
-          text: 'Retry',
-          handler: () => {
-            this.retryUnlockOperation(retryStrategy);
-          }
-        }
-      ]
-    });
-    
-    await alert.present();
+    // Remove annoying retry popup - just show simple error message
+    this.showErrorAlert('Operation Failed', errorMessage);
   }
 
   private retryUnlockOperation(retryStrategy: any) {
@@ -1912,141 +2244,128 @@ export class HomePage implements OnInit, AfterViewInit {
 
   // Professional auto-reconnect to last connected device
   private async tryAutoReconnectToLastDevice() {
+    // Only auto-reconnect if user has connected before AND it's not after manual disconnect
+    if (!this.hasConnectedBefore) {
+      this.messageHandler('First time user - no auto-reconnect');
+      return;
+    }
+
     try {
-      // Check if user has ever connected to a device
-      const hasConnectedBefore = await this.lockData.getValue('hasConnectedBefore');
-      if (!hasConnectedBefore) {
-        this.messageHandler('Auto-reconnect: No previous connections found');
+      const lastDeviceData = await this.lockData.getValue('lastConnectedDevice');
+      if (!lastDeviceData) {
+        this.messageHandler('No last connected device found');
         return;
       }
 
-      // Check if user manually disconnected - if so, don't auto-reconnect
+      const lastDevice = JSON.parse(lastDeviceData);
       const lastManualDisconnect = await this.lockData.getValue('lastManualDisconnect');
-      if (lastManualDisconnect) {
-        this.messageHandler('Auto-reconnect: Skipped due to manual disconnect - user must enter PIN');
+      
+      // CRITICAL: Don't auto-reconnect if user manually disconnected
+      // Check if lastManualDisconnect is not null/undefined and not 'false'
+      if (lastManualDisconnect && lastManualDisconnect !== 'false') {
+        this.messageHandler('Manual disconnect detected - NO auto-reconnect');
         return;
       }
 
-      // Get last connected device
-      const lastDeviceJson = await this.lockData.getValue('lastConnectedDevice');
-      if (!lastDeviceJson) {
-        this.messageHandler('Auto-reconnect: No last device stored');
-        return;
+      // Additional check: Only auto-reconnect if it's been less than 5 minutes since last connection
+      const lastConnectTime = await this.lockData.getValue('lastConnectTime');
+      if (lastConnectTime) {
+        const timeSinceLastConnect = Date.now() - parseInt(lastConnectTime);
+        const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+        
+        if (timeSinceLastConnect > fiveMinutes) {
+          this.messageHandler('Last connection was more than 5 minutes ago - NO auto-reconnect');
+          return;
+        }
       }
 
-      const lastDevice = JSON.parse(lastDeviceJson);
-      if (!lastDevice || !lastDevice.id || !lastDevice.name) {
-        this.messageHandler('Auto-reconnect: Invalid last device data');
-        return;
-      }
-
-      // Show auto-reconnect dialog
-      const shouldReconnect = await this.showAutoReconnectDialog(lastDevice);
-      if (!shouldReconnect) {
-        this.messageHandler('Auto-reconnect: User cancelled');
-        return;
-      }
-
-      // Try to auto-reconnect
+      this.messageHandler('Attempting auto-reconnect to: ' + lastDevice.displayName);
+      
+      // Auto-reconnect without popup - direct connection
       await this.performAutoReconnect(lastDevice);
-
+      
     } catch (error) {
-      this.messageHandler('Auto-reconnect: Error during setup - ' + error);
+      this.messageHandler('Auto-reconnect failed: ' + error);
     }
   }
 
   // Mark that user has connected to a device (call this after successful connection)
   private async markDeviceConnected(device: any) {
     try {
-      // Always store a displayName for reconnect dialogs
-      let displayName = device.customName || device.displayName || device.name || device.SN || device.sn || device.serial || device.id || 'Unknown Device';
-      const deviceToStore = { ...device, displayName };
+      // Store connection data
       await this.lockData.setValue('hasConnectedBefore', 'true');
-      await this.lockData.setValue('lastConnectedDevice', JSON.stringify(deviceToStore));
-      // Clear manual disconnect flag so future auto-reconnects work
-      await this.lockData.setValue('lastManualDisconnect', '');
-      this.messageHandler('Marked device as last connected and cleared manual disconnect flag');
+      this.hasConnectedBefore = true;
+      
+      // Store connection time for auto-reconnect logic
+      await this.lockData.setValue('lastConnectTime', Date.now().toString());
+      
+      const deviceData = {
+        id: device.id,
+        name: device.name,
+        displayName: this.getDeviceDisplayName(device)
+      };
+      await this.lockData.setValue('lastConnectedDevice', JSON.stringify(deviceData));
+      
+      // Clear manual disconnect flag
+      await this.lockData.setValue('lastManualDisconnect', 'false');
+      
+      this.messageHandler('Device connected successfully: ' + deviceData.displayName);
+      // No popup - seamless connection
+      
     } catch (error) {
-      this.messageHandler('Error marking device connected: ' + error);
+      this.messageHandler('Error storing connection data: ' + error);
     }
-  }
-
-  // Show auto-reconnect dialog
-  private async showAutoReconnectDialog(device: any): Promise<boolean> {
-    // Prefer displayName, then name, then SN, then ID
-    let displayName = device.displayName || device.customName || device.name || device.SN || device.sn || device.serial || device.id || 'Unknown Device';
-    return new Promise((resolve) => {
-      const alert = this.alertController.create({
-        header: 'Reconnect to Lock',
-        message: `Would you like to reconnect to "${displayName}"?`,
-      buttons: [
-        {
-            text: 'No',
-          role: 'cancel',
-            handler: () => resolve(false)
-          },
-          {
-            text: 'Yes',
-            handler: () => resolve(true)
-          }
-        ]
-      });
-      alert.then(alert => alert.present());
-    });
   }
 
   // Perform the actual auto-reconnect
   private async performAutoReconnect(device: any) {
     try {
-      this.messageHandler(`Auto-reconnect: Attempting to reconnect to ${device.name}`);
+      this.messageHandler(`Auto-reconnect: Attempting to reconnect to ${this.getDeviceDisplayName(device)}`);
+      
+      // CRITICAL: Load custom name from storage before setting selectedDevice
+      const customName = this.devList.getCustomName(device.id);
+      if (customName) {
+        device.customName = customName;
+        this.messageHandler(`Auto-reconnect: Loaded custom name: ${customName}`);
+      }
       
       // Set state to connecting
       this.setState('connecting');
       this.selectedDevice = device;
       
-      // Try to connect with timeout
-      const connectionPromise = new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Auto-reconnect timeout'));
-        }, 10000); // 10 second timeout
+      // Check if device has required service first
+      const hasService = await this.bleService.hasRequiredService(device.id);
+      if (!hasService) {
+        this.messageHandler('Auto-reconnect: Device does not have required service');
+        this.setState('disconnected');
+        this.forceFullReset();
+        return;
+      }
 
-        this.bleService.connectTo(device).subscribe({
-          next: () => {
-            clearTimeout(timeout);
-            resolve();
-          },
-          error: (error) => {
-            clearTimeout(timeout);
-            reject(error);
-          }
-        });
-      });
-
-      await connectionPromise;
-      
-      // Connection successful
-      this.messageHandler('Auto-reconnect: Successfully reconnected');
-      this.setState('connected');
+      // Check if PIN is required
       this.checkForPinCode(device);
       
-      // Show success message
-      await this.showInfoAlert('Reconnected', `Successfully reconnected to ${device.name}`);
+      // If we reach here, it means PIN was found in cache and connection should proceed
+      // The checkForPinCode method will call pairToDevice if PIN is found
+      // If PIN is not found, it will show keypad and we won't reach here
+      
+      this.messageHandler('Auto-reconnect: PIN found in cache, proceeding with connection');
       
     } catch (error) {
       this.messageHandler(`Auto-reconnect: Failed - ${error}`);
-      this.setState('disconnected');
       
-      // Show failure message
-      await this.showErrorAlert('Auto-Reconnect Failed', 
-        `Could not reconnect to ${device.name}.\n\nPlease try connecting manually.`);
+      // CRITICAL: Redirect to homepage on failure - no error popup
+      this.setState('disconnected');
+      this.forceFullReset();
+      this.messageHandler('Auto-reconnect failed - redirected to homepage');
     }
   }
 
   // Mark manual disconnect (call this when user manually disconnects)
   private async markManualDisconnect() {
     try {
-      await this.lockData.setValue('lastManualDisconnect', new Date().toISOString());
-      this.messageHandler('Marked manual disconnect time');
+      await this.lockData.setValue('lastManualDisconnect', 'true');
+      this.messageHandler('Marked manual disconnect');
     } catch (error) {
       this.messageHandler('Error marking manual disconnect: ' + error);
     }

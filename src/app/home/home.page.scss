@@ -509,3 +509,85 @@ ion-button[expand="block"] {
   --background: var(--ion-color-light);
   --border-color: var(--ion-color-light);
 }
+
+// Retry dialog styling
+.retry-dialog {
+  --min-width: 300px;
+  --max-width: 90vw;
+  --height: auto;
+  --border-radius: 12px;
+  --backdrop-opacity: 0.6;
+  
+  .alert-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  
+  .alert-head {
+    text-align: center;
+    padding: 16px 16px 8px 16px;
+    
+    .alert-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--ion-color-dark);
+    }
+  }
+  
+  .alert-message {
+    text-align: center;
+    padding: 8px 16px 16px 16px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--ion-color-medium);
+  }
+  
+  .alert-button-group {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 16px 16px;
+    
+    .cancel-button {
+      flex: 1;
+      --background: var(--ion-color-light);
+      --color: var(--ion-color-medium);
+      --border-radius: 8px;
+      --padding-start: 16px;
+      --padding-end: 16px;
+      --padding-top: 12px;
+      --padding-bottom: 12px;
+      font-weight: 500;
+    }
+    
+    .retry-button {
+      flex: 1;
+      --background: var(--ion-color-primary);
+      --color: white;
+      --border-radius: 8px;
+      --padding-start: 16px;
+      --padding-end: 16px;
+      --padding-top: 12px;
+      --padding-bottom: 12px;
+      font-weight: 500;
+    }
+  }
+}
+
+// Emergency disconnect dialog styling
+.emergency-disconnect-dialog {
+  --min-width: 320px;
+  --max-width: 90vw;
+  --height: auto;
+  --border-radius: 12px;
+  
+  .alert-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+}

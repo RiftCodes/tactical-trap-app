@@ -59,18 +59,6 @@
     <!-- Spinner -->
     <ion-spinner *ngIf="pairingState === successful && isLockOperationPending" class="my-4" color="secondary"></ion-spinner>
 
-    <!-- Emergency Disconnect Button -->
-    <div *ngIf="isLockOperationPending" class="emergency-controls mt-4">
-      <ion-button 
-        expand="block" 
-        color="danger" 
-        (click)="emergencyDisconnect()"
-        class="max-w-xs mx-auto">
-        <ion-icon name="close-circle-outline" slot="start"></ion-icon>
-        Emergency Disconnect
-      </ion-button>
-    </div>
-
     <!-- Device Pane: improved alignment and spacing -->
     <ion-card
       id="device-pane"
@@ -150,7 +138,7 @@
     </ion-card>
 
     <!-- No Devices Found message: friendlier -->
-    <ion-card *ngIf="pairingState === failed" class="device-pane-card mb-5 px-2">
+    <ion-card *ngIf="pairingState === failed" class="device-pane-card mb-5 mr-5 px-2">
       <ion-card-header class="flex items-center gap-2 py-3">
         <ion-icon name="alert-circle-outline" slot="start" class="text-xl text-red-700"></ion-icon>
         <ion-card-title>No Devices Found</ion-card-title>

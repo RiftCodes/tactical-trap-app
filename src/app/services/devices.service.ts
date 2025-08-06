@@ -172,15 +172,26 @@ export class DevicesService {
   static getDisplayName(device: Device): string {
     let displayName = '';
     
+    // Priority 1: Custom name (user-defined name)
     if (device.customName && device.customName.trim()) {
       displayName = device.customName;
-    } else if (device.name && device.name !== 'Unknown Device') {
+    }
+    // Priority 2: Device name (if not "Unknown Device")
+    else if (device.name && device.name.trim() && device.name !== 'Unknown Device') {
       displayName = device.name;
-    } else {
+    }
+    // Priority 3: Serial number (extracted from device)
+    else {
       const serial = DevicesService.extractSerialNumber(device);
-      if (serial) {
+      if (serial && serial.trim()) {
         displayName = serial;
-      } else {
+      }
+      // Priority 4: Device ID (if available)
+      else if (device.id && device.id.trim()) {
+        displayName = device.id;
+      }
+      // Priority 5: Unknown device (fallback)
+      else {
         displayName = 'Unknown Device';
       }
     }
@@ -197,15 +208,26 @@ export class DevicesService {
   static getTextSizeClass(device: Device): string {
     let displayName = '';
     
+    // Priority 1: Custom name (user-defined name)
     if (device.customName && device.customName.trim()) {
       displayName = device.customName;
-    } else if (device.name && device.name !== 'Unknown Device') {
+    }
+    // Priority 2: Device name (if not "Unknown Device")
+    else if (device.name && device.name.trim() && device.name !== 'Unknown Device') {
       displayName = device.name;
-    } else {
-    const serial = DevicesService.extractSerialNumber(device);
-    if (serial) {
+    }
+    // Priority 3: Serial number (extracted from device)
+    else {
+      const serial = DevicesService.extractSerialNumber(device);
+      if (serial && serial.trim()) {
         displayName = serial;
-      } else {
+      }
+      // Priority 4: Device ID (if available)
+      else if (device.id && device.id.trim()) {
+        displayName = device.id;
+      }
+      // Priority 5: Unknown device (fallback)
+      else {
         displayName = 'Unknown Device';
       }
     }

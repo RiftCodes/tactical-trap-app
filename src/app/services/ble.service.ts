@@ -160,134 +160,108 @@ export class BleService implements OnDestroy {
   }
 
   async isAvailable(): Promise<boolean> {
-    let available = false;
-    this.messageHandler('checking availability');
     try {
+      // Get platform info
       const deviceInfo = await this.osDataRequest;
       this.platform = deviceInfo.operatingSystem;
       this.osVersion = deviceInfo.osVersion;
-      await this.ble.isEnabled();
-      this.messageHandler('ble: is enabled');
-      available = true;
-    } catch (e) {
+      
+      // Check if BLE is enabled
       try {
-        await this.ble.enable();
-        this.messageHandler('ble: successfully enabled');
-        available = true;
-      } catch (err) {
-        this.messageHandler('ble: Bluetooth enable not successful: ' + err);
-      }
-    }
-    if (this.platform == 'android' && this.osVersion <= Android11) {
-      let result, bluetooth, location;
-      if (available) {
-        this.messageHandler('ble: check permissions');
+        await this.ble.isEnabled();
+      } catch (bleError) {
+        // Bluetooth is disabled - try to enable it
+        this.messageHandler('Bluetooth is disabled, attempting to enable...');
         try {
-          result = await this.androidPermissions.checkPermission(
+          await this.ble.enable();
+          this.messageHandler('Bluetooth enabled successfully');
+        } catch (enableError) {
+          this.messageHandler('Failed to enable Bluetooth automatically');
+          this.alertHandler('Bluetooth Error', 'Unable to access Bluetooth. Please check your device settings.');
+          return false;
+        }
+      }
+      
+      // Check permissions based on Android version
+      if (this.platform === 'android') {
+        if (this.osVersion <= '11') {
+          // Android 11 and below - need BLUETOOTH and ACCESS_FINE_LOCATION
+          const bluetoothPermission = await this.androidPermissions.checkPermission(
             this.androidPermissions.PERMISSION.BLUETOOTH
           );
-          bluetooth = result.hasPermission;
-          result = await this.androidPermissions.checkPermission(
+          const locationPermission = await this.androidPermissions.checkPermission(
             this.androidPermissions.PERMISSION.ACCESS_FINE_LOCATION
           );
-          location = result.hasPermission;
-          if (!bluetooth || !location) {
-            await this.alertHandler(
-              'Bluetooth and Location permissions are required to scan for locks. Please allow these permissions in your device settings.'
-            );
+          
+          if (!bluetoothPermission.hasPermission || !locationPermission.hasPermission) {
+            this.messageHandler('Requesting Bluetooth and Location permissions...');
+            
+            if (!bluetoothPermission.hasPermission) {
+              const bluetoothResult = await this.androidPermissions.requestPermission(
+                this.androidPermissions.PERMISSION.BLUETOOTH
+              );
+              if (!bluetoothResult.hasPermission) {
+                this.messageHandler('Bluetooth permission denied');
+                this.alertHandler('Permission Required', 'Bluetooth permission is required to scan for locks.');
+                return false;
+              }
+            }
+            
+            if (!locationPermission.hasPermission) {
+              const locationResult = await this.androidPermissions.requestPermission(
+                this.androidPermissions.PERMISSION.ACCESS_FINE_LOCATION
+              );
+              if (!locationResult.hasPermission) {
+                this.messageHandler('Location permission denied');
+                this.alertHandler('Permission Required', 'Location permission is required to scan for Bluetooth devices.');
+                return false;
+              }
+            }
           }
-        } catch (err) {
-          alert('Cannot check Bluetooth permission: ' + JSON.stringify(err));
-          available = false;
-        }
-      }
-      if (available && !bluetooth) {
-        this.messageHandler('ble: request Bluetooth permission');
-        try {
-          result = await this.androidPermissions.requestPermission(
-            this.androidPermissions.PERMISSION.BLUETOOTH
-          );
-          this.messageHandler('ble: request permission done');
-          available = result.hasPermission;
-        } catch (err) {
-          alert(err);
-          available = false;
-        }
-      }
-      if (available && !location) {
-        this.messageHandler('ble: request location permission');
-        try {
-          result = await this.androidPermissions.requestPermission(
-            this.androidPermissions.PERMISSION.ACCESS_FINE_LOCATION
-          );
-          this.messageHandler('ble: request permission done');
-          available = result.hasPermission;
-        } catch (err) {
-          alert(err);
-          available = false;
-        }
-      }
-      this.messageHandler(
-        `ble: after requests, bluetooth allowed = ${bluetooth}, location allowed = ${location}`
-      );
-    }
-    if (this.platform == 'android' && this.osVersion > Android11) {
-      let result, scan, connect;
-      if (available) {
-        this.messageHandler('ble: check permissions');
-        try {
-          result = await this.androidPermissions.checkPermission(
+        } else {
+          // Android 12+ - need BLUETOOTH_SCAN and BLUETOOTH_CONNECT
+          const scanPermission = await this.androidPermissions.checkPermission(
             this.androidPermissions.PERMISSION.BLUETOOTH_SCAN
           );
-          scan = result.hasPermission;
-          result = await this.androidPermissions.checkPermission(
+          const connectPermission = await this.androidPermissions.checkPermission(
             this.androidPermissions.PERMISSION.BLUETOOTH_CONNECT
           );
-          connect = result.hasPermission;
-          this.messageHandler(
-            `ble: checking permission, scan allowed = ${scan}, connect allowed = ${connect}`
-          );
-          if (!scan || !connect) {
-            await this.alertHandler(
-              'Bluetooth permissions are required to scan for locks. Please allow these permissions in your device settings.'
-            );
+          
+          if (!scanPermission.hasPermission || !connectPermission.hasPermission) {
+            this.messageHandler('Requesting Bluetooth permissions...');
+            
+            if (!scanPermission.hasPermission) {
+              const scanResult = await this.androidPermissions.requestPermission(
+                this.androidPermissions.PERMISSION.BLUETOOTH_SCAN
+              );
+              if (!scanResult.hasPermission) {
+                this.messageHandler('Bluetooth scan permission denied');
+                this.alertHandler('Permission Required', 'Bluetooth scan permission is required to find locks.');
+                return false;
+              }
+            }
+            
+            if (!connectPermission.hasPermission) {
+              const connectResult = await this.androidPermissions.requestPermission(
+                this.androidPermissions.PERMISSION.BLUETOOTH_CONNECT
+              );
+              if (!connectResult.hasPermission) {
+                this.messageHandler('Bluetooth connect permission denied');
+                this.alertHandler('Permission Required', 'Bluetooth connect permission is required to connect to locks.');
+                return false;
+              }
+            }
           }
-        } catch (err) {
-          alert('Cannot check Bluetooth permission: ' + JSON.stringify(err));
-          available = false;
         }
       }
-      if (available && !scan) {
-        this.messageHandler('bluetooth: check scan permission');
-        try {
-          result = await this.androidPermissions.requestPermission(
-            this.androidPermissions.PERMISSION.BLUETOOTH_SCAN
-          );
-          scan = result.hasPermission;
-          available = result.hasPermission;
-        } catch (err) {
-          alert(err);
-          available = false;
-        }
-      }
-      if (available && !connect) {
-        this.messageHandler('bluetooth: check connect permission');
-        try {
-          result = await this.androidPermissions.requestPermission(
-            this.androidPermissions.PERMISSION.BLUETOOTH_CONNECT
-          );
-          connect = result.hasPermission;
-          available = result.hasPermission;
-        } catch (err) {
-          alert(err);
-          available = false;
-        }
-      }
-      this.messageHandler(
-        `ble: after requests, scan allowed = ${scan}, connect allowed = ${connect}`
-      );
+      
+      this.messageHandler('BLE permissions granted');
+      return true;
+    } catch (error) {
+      this.messageHandler(`BLE permission check failed: ${error}`);
+      this.alertHandler('Bluetooth Error', 'Unable to access Bluetooth. Please check your device settings.');
+      return false;
     }
-    return available;
   }
 
   iosEnable(): Promise<any> {
@@ -338,6 +312,8 @@ export class BleService implements OnDestroy {
   }
 
   startScan(services: string[]): Observable<any> {
+    // Simple approach - just like the original working code
+    this.messageHandler('startScan: Starting simple scan');
     return this.ble.startScan(services);
   }
 
@@ -441,21 +417,24 @@ export class BleService implements OnDestroy {
       );
       return Promise.reject('writeToLock - notification incomplete');
     }
+    
     this.writeLockBusy = true;
     command[SUM] = 0;
     command[SUM] = command.reduce(
       (previous, current) => (previous + current) & 0xff
     );
+    
     return new Promise<LockStatus>(async (resolve, reject) => {
       pendingResolve = resolve;
       pendingReject = reject;
       
-      // Add timeout for operations
+      // Add timeout for operations to prevent stuck states
       timeoutId = setTimeout(() => {
         this.writeLockBusy = false;
         this.notificationHandler = null;
+        this.messageHandler(`Operation timeout for "${commandName}" - no response received`);
         reject('Operation timeout - no response received');
-      }, 10000); // 10 second timeout
+      }, 8000); // Reduced from 10s to 8s for faster failure detection
       
       try {
         this.messageHandler(
@@ -463,12 +442,15 @@ export class BleService implements OnDestroy {
         );
         this.notificationHandler = responseHandler.bind(this);
         this.notificationError = errorHandler.bind(this);
+        
         await this.ble.write(
           this.deviceId!,
           this.ServiceUuid,
           this.CommandUuid,
           command.buffer as ArrayBuffer
         );
+        
+        // Special handling for setAlarmState
         if (commandName === 'setAlarmState') {
           notificationInjector = setTimeout(() => {
             notificationInjector = null;
@@ -483,7 +465,7 @@ export class BleService implements OnDestroy {
         if (timeoutId) clearTimeout(timeoutId);
         this.writeLockBusy = false;
         this.notificationHandler = null;
-        alert('Failed to write data to device:' + JSON.stringify(error));
+        this.messageHandler(`Write failed for "${commandName}": ${JSON.stringify(error)}`);
         reject('write failed');
       }
     });
@@ -578,7 +560,6 @@ export class BleService implements OnDestroy {
       } catch (error) {
         let msg = 'Failed to read lock status: ' + JSON.stringify(error);
         this.messageHandler(msg);
-        alert(msg);
         pendingReject('read failed');
       }
       this.writeLockBusy = false;
@@ -735,11 +716,75 @@ export class BleService implements OnDestroy {
   }
 
   async forceDisconnect(device: any) {
-    if (this.platform == 'android') {
-      this.messageHandler(`** Attempting Disconnect **`);
-      this.ble.disconnect(device.id).catch((err) => {
-        this.messageHandler('-- disconnected failed\n');
-      });
+    this.messageHandler(`** AGGRESSIVE Force Disconnect Started **`);
+    
+    try {
+      // CRITICAL: Stop keep-alive immediately
+      this.stopKeepAlive();
+      this.messageHandler('** Keep-alive stopped **');
+      
+      // CRITICAL: Clear device ID immediately
+      this.deviceId = null;
+      
+      // CRITICAL: Stop any ongoing operations
+      this.writeLockBusy = false;
+      
+      // CRITICAL: Clear subscriptions immediately
+      if (this.connectSubscriber) {
+        this.connectSubscriber.unsubscribe();
+        this.connectSubscriber = null;
+        this.messageHandler('** Connect subscriber cleared **');
+      }
+      
+      if (this.notificationSubscriber) {
+        this.notificationSubscriber.unsubscribe();
+        this.notificationSubscriber = null;
+        this.messageHandler('** Notification subscriber cleared **');
+      }
+      
+      // CRITICAL: Try to send sleep command first (like old code)
+      try {
+        await this.sendSleepCommandToLock(device);
+      } catch (e) {
+        this.messageHandler('** Sleep command failed, continuing with disconnect **');
+      }
+      
+      // CRITICAL: Force disconnect from BLE with timeout
+      const disconnectPromise = this.ble.disconnect(device.id);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Disconnect timeout')), 5000)
+      );
+      
+      await Promise.race([disconnectPromise, timeoutPromise]);
+      this.messageHandler('** Force disconnect completed **');
+      
+      // CRITICAL: Additional cleanup after disconnect
+      try {
+        // Try to stop scan if it's running
+        await this.ble.stopScan();
+        this.messageHandler('** Scan stopped after disconnect **');
+      } catch (e) {
+        // Ignore scan stop errors
+      }
+      
+      this.messageHandler('** AGGRESSIVE Force disconnect cleanup completed **');
+    } catch (err) {
+      this.messageHandler('** Force disconnect failed: ' + err + ' **');
+      // CRITICAL: Even if disconnect fails, clear ALL local state
+      this.deviceId = null;
+      this.writeLockBusy = false;
+      
+      // Clear subscriptions even on failure
+      if (this.connectSubscriber) {
+        this.connectSubscriber.unsubscribe();
+        this.connectSubscriber = null;
+      }
+      if (this.notificationSubscriber) {
+        this.notificationSubscriber.unsubscribe();
+        this.notificationSubscriber = null;
+      }
+      
+      this.messageHandler('** Force disconnect cleanup completed despite failure **');
     }
   }
 
@@ -835,18 +880,59 @@ export class BleService implements OnDestroy {
   async softResetBluetooth(): Promise<void> {
     if (this.platform === 'android' && this.ble && typeof this.ble.isEnabled === 'function' && typeof this.ble.enable === 'function') {
       try {
-        this.messageHandler('softResetBluetooth: Disabling Bluetooth...');
-        await (this.ble as any).disable();
-        this.messageHandler('softResetBluetooth: Bluetooth disabled. Waiting 1s...');
+        this.messageHandler('softResetBluetooth: Stopping scan and resetting BLE state...');
+        
+        // Stop any ongoing scan
+        try {
+          await this.ble.stopScan();
+          this.messageHandler('softResetBluetooth: Scan stopped');
+        } catch (e) {
+          this.messageHandler('softResetBluetooth: Error stopping scan: ' + e);
+        }
+        
+        // Wait a bit for BLE stack to settle
         await new Promise((res) => setTimeout(res, 1000));
-        this.messageHandler('softResetBluetooth: Enabling Bluetooth...');
-        await this.ble.enable();
-        this.messageHandler('softResetBluetooth: Bluetooth enabled.');
+        
+        // Try to enable BLE (this can help reset the stack)
+        try {
+          await this.ble.enable();
+          this.messageHandler('softResetBluetooth: BLE enabled');
+        } catch (e) {
+          this.messageHandler('softResetBluetooth: Error enabling BLE: ' + e);
+        }
+        
+        this.messageHandler('softResetBluetooth: Reset completed');
       } catch (e) {
         this.messageHandler('softResetBluetooth: Failed to reset Bluetooth: ' + e);
       }
     } else {
       this.messageHandler('softResetBluetooth: Not supported on this platform.');
+    }
+  }
+
+  // Send sleep command to lock to force it to disconnect (like old code)
+  async sendSleepCommandToLock(device: any): Promise<void> {
+    try {
+      this.messageHandler('** Sending sleep command to lock **');
+      
+      // Sleep command: CMD_SystemExit
+      const command = this.readableHexToBuffer('F5 6F 00 00 5F C3');
+      command[SUM] = 0;
+      command[SUM] = command.reduce((previous, current) => (previous + current) & 0xFF);
+      
+      // Set UUIDs for the device
+      this.selectUuids(device);
+      
+      // Send the sleep command
+      await this.ble.write(device.id, this.ServiceUuid, this.CommandUuid, command.buffer as ArrayBuffer);
+      this.messageHandler('** Sleep command sent successfully **');
+      
+      // Wait a bit for the lock to process the command
+      await new Promise((res) => setTimeout(res, 500));
+      
+    } catch (error) {
+      this.messageHandler('** Failed to send sleep command: ' + JSON.stringify(error) + ' **');
+      // Don't throw - this is just an additional cleanup step
     }
   }
 }
