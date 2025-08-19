@@ -139,46 +139,49 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 dividerColor: Colors.transparent, // Remove accordion lines
               ),
               child: ExpansionTile(
-                title: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : DS.brandDark,
-                      size: 18,
-                    ),
-                    SizedBox(width: DS.xs),
-                    Expanded(
-                      child: Text(
-                        'Device Details',
-                        style: TextStyle(
-                          fontSize: DS.textSM,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : DS.brandDark,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(DS.xs),
-                      decoration: BoxDecoration(
-                        color: (Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : DS.brandDark).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(DS.rSmall),
-                      ),
-                      child: Icon(
-                        Icons.expand_more_rounded,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : DS.brandDark,
-                        size: 16,
-                      ),
-                    ),
-                  ],
-                ),
+                                 title: Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                   children: [
+                     Row(
+                       children: [
+                         Icon(
+                           Icons.info_outline_rounded,
+                           color: Theme.of(context).brightness == Brightness.dark
+                               ? Colors.white
+                               : DS.brandDark,
+                           size: 18,
+                         ),
+                         SizedBox(width: DS.xs),
+                         Text(
+                           'Device Details',
+                           style: TextStyle(
+                             fontSize: DS.textSM,
+                             fontWeight: FontWeight.w600,
+                             color: Theme.of(context).brightness == Brightness.dark
+                                 ? Colors.white
+                                 : DS.brandDark,
+                           ),
+                         ),
+                       ],
+                     ),
+                     Container(
+                       padding: EdgeInsets.all(DS.xs),
+                       decoration: BoxDecoration(
+                         color: (Theme.of(context).brightness == Brightness.dark
+                             ? Colors.white
+                             : DS.brandDark).withValues(alpha: 0.1),
+                         borderRadius: BorderRadius.circular(DS.rSmall),
+                       ),
+                       child: Icon(
+                         Icons.expand_more_rounded,
+                         color: Theme.of(context).brightness == Brightness.dark
+                             ? Colors.white
+                             : DS.brandDark,
+                         size: 16,
+                       ),
+                     ),
+                   ],
+                 ),
                 iconColor: Colors.transparent,
                 collapsedIconColor: Colors.transparent,
                 childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
