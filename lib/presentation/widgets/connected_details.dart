@@ -27,6 +27,7 @@ class ConnectedDetails extends StatefulWidget {
 
 class _ConnectedDetailsState extends State<ConnectedDetails> {
   late TextEditingController _controller;
+  final String _deviceVersion = 'Tap Version button';
 
   @override
   void initState() {
@@ -183,7 +184,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   context: context,
                   icon: Icons.info_outline_rounded,
                   label: 'Device Version',
-                  value: 'Tap Version button',
+                  value: _deviceVersion,
                   color: Colors.teal,
                 ),
               ],

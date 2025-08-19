@@ -348,7 +348,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           }
                         },
                         onGetVersion: () async {
-                          await bleProvider.getVersion();
+                          final status = await bleProvider.getVersion();
+                          if (status != null && mounted) {
+                            // Version fetched successfully
+                            // TODO: Update the version display in ConnectedDetails
+                          }
                         },
                         lastStatus: bleProvider.lastStatus,
                       ),
