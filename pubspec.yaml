@@ -76,6 +76,34 @@ dev_dependencies:
   # Splash screen generation
   flutter_native_splash: ^2.3.7
 
+# Flutter Launcher Icons configuration
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/square.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icons/square.png"
+    background_color: "#hexcode"
+    theme_color: "#hexcode"
+  windows:
+    generate: true
+    image_path: "assets/icons/square.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icons/square.png"
+
+# Flutter Native Splash configuration
+flutter_native_splash:
+  color: "#1A1A1A"
+  image: assets/icons/horizontal.png
+  android_12:
+    image: assets/icons/horizontal.png
+    color: "#1A1A1A"
+  web: false
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -105,46 +133,5 @@ flutter:
   # fonts:
   #   - family: Roboto
 
-# App icon configuration
-flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
-  image_path: "assets/images/logo.png"
-  min_sdk_android: 21
-  web:
-    generate: true
-    image_path: "assets/images/logo.png"
-    background_color: "#ffffff"
-    theme_color: "#000000"
-  windows:
-    generate: true
-    image_path: "assets/images/logo.png"
-    icon_size: 48
-  macos:
-    generate: true
-    image_path: "assets/images/logo.png"
-
-# Splash screen configuration
-flutter_native_splash:
-  color: "#ffffff"
-  image: assets/images/logo.png
-  branding: assets/images/logo.png
-  color_dark: "#000000"
-  image_dark: assets/images/logo.png
-  branding_dark: assets/images/logo.png
-  
-  android_12:
-    image: assets/images/logo.png
-    icon_background_color: "#ffffff"
-    icon_background_color_dark: "#000000"
-  
-  web: false
-  #     fonts:
-  #       - asset: assets/fonts/Roboto-Regular.ttf
-  #       - asset: assets/fonts/Roboto-Bold.ttf
-  #         weight: 700
-  #       - asset: assets/fonts/Roboto-Medium.ttf
-  #         weight: 500
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
+# For details regarding fonts from package dependencies,
+# see https://flutter.dev/to/font-from-package
