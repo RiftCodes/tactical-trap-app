@@ -57,7 +57,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         children: [
           // Status info first
           if (widget.lastStatus != null) ...[
-            StatusChips(status: widget.lastStatus!),
+            StatusChips(status: widget.lastStatus!, rssi: widget.device.rssi),
             SizedBox(height: DS.m),
           ],
 
@@ -187,6 +187,40 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   value: _deviceVersion,
                   color: Colors.teal,
                 ),
+                SizedBox(height: DS.xs),
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.signal_cellular_4_bar_rounded,
+                  label: 'Signal Strength',
+                  value: '${widget.device.rssi} dBm',
+                  color: _getRSSIColor(widget.device.rssi),
+                ),
+                SizedBox(height: DS.xs),
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.schedule_rounded,
+                  label: 'Discovered',
+                  value: _getTimeAgo(widget.device.discoveredAt),
+                  color: Colors.orange,
+                ),
+                SizedBox(height: DS.xs),
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.memory_rounded,
+                  label: 'Manufacturer Data',
+                  value: widget.device.manufacturerData.isNotEmpty
+                      ? '${widget.device.manufacturerData.length} bytes'
+                      : 'None',
+                  color: Colors.purple,
+                ),
+                SizedBox(height: DS.xs),
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.lock_rounded,
+                  label: 'Device Type',
+                  value: widget.device.isLock ? 'Tactical Lock' : 'Unknown',
+                  color: widget.device.isLock ? Colors.green : Colors.grey,
+                ),
               ],
             ),
           ),
@@ -260,6 +294,30 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           );
         }
       }
+    }
+  }
+
+  /// Get color based on RSSI signal strength
+  Color _getRSSIColor(int rssi) {
+    if (rssi > -50) return Colors.green; // Excellent
+    if (rssi > -60) return Colors.lightGreen; // Good
+    if (rssi > -70) return Colors.orange; // Fair
+    return Colors.red; // Poor
+  }
+
+  /// Get human-readable time ago string
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
     }
   }
 }

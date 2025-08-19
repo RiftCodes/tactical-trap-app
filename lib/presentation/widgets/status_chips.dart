@@ -7,8 +7,9 @@ import 'glass_card.dart';
 /// Professional status chips for lock feedback
 class StatusChips extends StatelessWidget {
   final LockStatus status;
+  final int? rssi; // Optional RSSI for signal health
 
-  const StatusChips({super.key, required this.status});
+  const StatusChips({super.key, required this.status, this.rssi});
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +48,17 @@ class StatusChips extends StatelessWidget {
         color: Colors.blue,
       ),
     );
+
+    // Signal Health (if RSSI is available)
+    if (rssi != null) {
+      chips.add(
+        _chip(
+          icon: _getSignalIcon(rssi!),
+          label: _getSignalLabel(rssi!),
+          color: _getSignalColor(rssi!),
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -96,5 +108,34 @@ class StatusChips extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Get signal icon based on RSSI
+  IconData _getSignalIcon(int rssi) {
+    if (rssi > -50) return Icons.signal_cellular_4_bar; // Excellent
+    if (rssi > -60) return Icons.signal_cellular_alt; // Good
+    if (rssi > -70) {
+      return Icons.wifi; // Fair
+    }
+    if (rssi > -80) return Icons.signal_cellular_nodata; // Poor
+    return Icons.signal_cellular_off; // Very Poor
+  }
+
+  /// Get signal label based on RSSI
+  String _getSignalLabel(int rssi) {
+    if (rssi > -50) return 'Excellent'; // Excellent
+    if (rssi > -60) return 'Good'; // Good
+    if (rssi > -70) return 'Fair'; // Fair
+    if (rssi > -80) return 'Poor'; // Poor
+    return 'Very Poor'; // Very Poor
+  }
+
+  /// Get signal color based on RSSI
+  Color _getSignalColor(int rssi) {
+    if (rssi > -50) return Colors.green; // Excellent
+    if (rssi > -60) return Colors.lightGreen; // Good
+    if (rssi > -70) return Colors.orange; // Fair
+    if (rssi > -80) return Colors.red; // Poor
+    return Colors.red; // Very Poor
   }
 }
