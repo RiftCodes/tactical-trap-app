@@ -52,20 +52,20 @@ class BleProvider extends ChangeNotifier {
   /// Initialize the BLE service
   Future<bool> initialize() async {
     try {
-      print('BLE Provider: Starting initialization...');
+      Logger.info('BLE Provider: Starting initialization...');
       _errorMessage = null;
       notifyListeners();
 
       final success = await _bleService.initialize();
-      print('BLE Provider: BLE service initialization result: $success');
+      Logger.info('BLE Provider: BLE service initialization result: $success');
 
       if (success) {
         _isInitialized = true;
-        print('BLE Provider: Set _isInitialized to true');
+        Logger.info('BLE Provider: Set _isInitialized to true');
 
         // Listen to streams
         _listenToStreams();
-        print('BLE Provider: Streams listening set up');
+        Logger.info('BLE Provider: Streams listening set up');
 
         // Try auto-reconnect after initialization
         Future.delayed(const Duration(milliseconds: 500), () {
@@ -73,17 +73,19 @@ class BleProvider extends ChangeNotifier {
         });
 
         notifyListeners();
-        print('BLE Provider: Initialization complete, notifying listeners');
+        Logger.info(
+          'BLE Provider: Initialization complete, notifying listeners',
+        );
         return true;
       } else {
         _errorMessage = 'Failed to initialize Bluetooth service';
-        print('BLE Provider: Initialization failed');
+        Logger.info('BLE Provider: Initialization failed');
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Initialization error: $e';
-      print('BLE Provider: Initialization error: $e');
+      Logger.info('BLE Provider: Initialization error: $e');
       notifyListeners();
       return false;
     }
@@ -123,33 +125,33 @@ class BleProvider extends ChangeNotifier {
 
   /// Start scanning for devices
   Future<void> startScan() async {
-    print(
+    Logger.info(
       'BLE Provider: startScan called - isScanning: $_isScanning, isInitialized: $_isInitialized',
     );
 
     if (_isScanning || !_isInitialized) {
-      print(
+      Logger.info(
         'BLE Provider: Cannot start scan - isScanning: $_isScanning, isInitialized: $_isInitialized',
       );
       return;
     }
 
     try {
-      print('BLE Provider: Starting scan...');
+      Logger.info('BLE Provider: Starting scan...');
       _isScanning = true;
       _errorMessage = null;
       notifyListeners();
 
       await _bleService.startScan();
-      print('BLE Provider: Scan started successfully');
+      Logger.info('BLE Provider: Scan started successfully');
 
       // Stop scanning after timeout
       Timer(Duration(milliseconds: 5000), () {
-        print('BLE Provider: Auto-stopping scan after timeout');
+        Logger.info('BLE Provider: Auto-stopping scan after timeout');
         stopScan();
       });
     } catch (e) {
-      print('BLE Provider: Failed to start scan: $e');
+      Logger.info('BLE Provider: Failed to start scan: $e');
       _errorMessage = 'Failed to start scan: $e';
       _isScanning = false;
       notifyListeners();

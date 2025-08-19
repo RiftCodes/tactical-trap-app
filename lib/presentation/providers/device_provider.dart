@@ -324,7 +324,7 @@ class DeviceProvider extends ChangeNotifier {
     try {
       return await _storageService.getStorageInfo();
     } catch (e) {
-      print('Failed to get storage info: $e');
+      Logger.info('Failed to get storage info: $e');
       return {};
     }
   }

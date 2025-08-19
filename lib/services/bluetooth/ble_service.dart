@@ -55,7 +55,6 @@ class BleService {
 
   // Track pending responses (like Angular app's notificationHandler)
   Completer<List<int>?>? _pendingResponseCompleter;
-  String? _pendingResponseCommand;
 
   // Store PIN after successful verification
   String? _verifiedPin;
@@ -289,17 +288,10 @@ class BleService {
       _connectionController.add(_currentDevice);
 
       // Start notifications FIRST (before PIN verification)
-      Logger.info('=== STARTING NOTIFICATION LISTENER ===');
       await _startNotificationListener(device);
-      Logger.info('=== NOTIFICATION LISTENER COMPLETED ===');
-      Logger.info(
-        '_statusCharacteristic is now: ${_statusCharacteristic?.uuid}',
-      );
 
       // Check for required BLE service (like Angular app)
-      Logger.info('=== CHECKING REQUIRED SERVICE ===');
       final hasService = await _hasRequiredService(device);
-      Logger.info('Has required service: $hasService');
 
       if (!hasService) {
         Logger.error(
@@ -311,14 +303,7 @@ class BleService {
 
       // If it's a Tactical Traps lock, verify PIN directly (like Angular app)
       if (device.isLock && pin != null) {
-        Logger.info('=== STARTING PIN VERIFICATION ===');
-        Logger.info('Service found, verifying PIN directly (like Angular app)');
-        Logger.info(
-          '_statusCharacteristic before PIN verification: ${_statusCharacteristic?.uuid}',
-        );
-
         // Give lock a moment to settle before firing commands (like Angular app)
-        Logger.info('Waiting 200ms for lock to settle (like Angular app)...');
         await Future.delayed(Duration(milliseconds: 200));
 
         // Verify PIN directly (like Angular app's handleVerification)
@@ -333,21 +318,15 @@ class BleService {
         _verifiedPin = pin;
 
         // Get and store randData for future lock/unlock commands
-        Logger.info('Getting randData for future lock/unlock commands...');
         final statusResponse = await _getCurrentStatus();
         if (statusResponse != null && statusResponse.length >= 15) {
           final randData = statusResponse[14];
           _randData = randData;
-          Logger.info(
-            '✅ randData stored: 0x${randData.toRadixString(16).toUpperCase()}',
-          );
         } else {
           Logger.warning(
             'Could not get randData, lock/unlock commands may fail',
           );
         }
-
-        Logger.info('PIN code verified instantly and stored for future use');
       }
 
       // Reset reconnection
@@ -368,8 +347,6 @@ class BleService {
   /// Initialize lock: Clear all user data & return to factory set (0x65)
   Future<bool> initializeLock() async {
     try {
-      Logger.info('=== LOCK INITIALIZATION START ===');
-
       // Use correct System initialization command per protocol: 0x65
       // Frame (before checksum): F5 65 00 00 5F ??
       final command = [0xF5, 0x65, 0x00, 0x00, 0x5F, 0x00];
@@ -379,13 +356,6 @@ class BleService {
       command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
-      );
-
-      Logger.info(
-        'Initialize command: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-      );
-      Logger.info(
-        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       // Send initialize command and wait for response
@@ -400,20 +370,9 @@ class BleService {
         final commandCode = response[1]; // cmd position (index 1)
         final responseCode = response[2]; // ask position (index 2)
 
-        Logger.info(
-          'Initialize response: ${response.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-        );
-        Logger.info(
-          'Command code: 0x${commandCode.toRadixString(16).toUpperCase()}',
-        );
-        Logger.info(
-          'Response code: 0x${responseCode.toRadixString(16).toUpperCase()}',
-        );
-
         // Check if this is an initialize command (0x65) and response is correct (0x10)
         if (commandCode == 0x65) {
           final isInitialized = responseCode == askCorrect;
-          Logger.info('Initialization result: $isInitialized');
           return isInitialized;
         } else {
           Logger.error(
@@ -434,9 +393,6 @@ class BleService {
   /// Verify PIN for Tactical Traps lock (EXACT COPY of Angular app)
   Future<bool> _verifyPin(String pin) async {
     try {
-      Logger.info('=== PIN VERIFICATION START ===');
-      Logger.info('PIN to verify: $pin');
-      Logger.info('PIN length: ${pin.length}');
 
       // Try different PIN formats (like common lock defaults)
       final pinFormats = [
@@ -461,7 +417,6 @@ class BleService {
 
       for (int i = 0; i < pinFormats.length; i++) {
         final currentPin = pinFormats[i];
-        Logger.info('=== TRYING PIN FORMAT ${i + 1}: $currentPin ===');
 
         // EXACT COPY of Angular app's handleVerification method
         // Build hex string exactly like Angular app: F5 0F 00 04 5F 3B + PIN bytes
@@ -473,26 +428,14 @@ class BleService {
           readable += ' $pinHex';
         }
 
-        Logger.info('Built hex string exactly like Angular app: $readable');
-
         // Convert hex string to bytes exactly like Angular app's readableHexToBuffer
         final command = _readableHexToBuffer(readable);
-        Logger.info(
-          'Command from readableHexToBuffer: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-        );
 
         // Calculate checksum exactly like Angular app's writeToLock
         command[sum] = 0;
         command[sum] = command.fold<int>(
           0,
           (previous, current) => (previous + current) & 0xFF,
-        );
-
-        Logger.info(
-          'Final command with checksum: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-        );
-        Logger.info(
-          'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
         );
 
         // Send command exactly like Angular app
@@ -507,34 +450,12 @@ class BleService {
           final commandCode = response[1]; // cmd position (index 1)
           final responseCode = response[2]; // ask position (index 2)
 
-          Logger.info(
-            'Response: ${response.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-          );
-          Logger.info(
-            'Command code: 0x${commandCode.toRadixString(16).toUpperCase()}',
-          );
-          Logger.info(
-            'Response code: 0x${responseCode.toRadixString(16).toUpperCase()}',
-          );
-
           // Check if this is a verify command (0x0f) and response is correct (0x10)
           if (commandCode == 0x0f) {
             final isVerified = responseCode == askCorrect;
-            Logger.info('Verification result: $isVerified');
 
             if (isVerified) {
-              Logger.info(
-                '✅ PIN verification SUCCESS with format: $currentPin',
-              );
               return true;
-            } else {
-              Logger.info('❌ PIN verification failed with format: $currentPin');
-              // Check if it's a different error that might need different handling
-              if (responseCode == askPasswordNotVerified) {
-                Logger.info('⚠️ Lock needs pairing first (response: 0x26)');
-              } else if (responseCode == askFailedVerification) {
-                Logger.info('⚠️ Wrong PIN (response: 0x27)');
-              }
             }
           } else {
             Logger.error(
@@ -543,7 +464,6 @@ class BleService {
             continue; // Try next PIN format
           }
         } else {
-          Logger.error('No valid response received for PIN: $currentPin');
           continue; // Try next PIN format
         }
       }
@@ -568,75 +488,22 @@ class BleService {
   /// Start notification listener for general status updates
   Future<void> _startNotificationListener(BleDevice device) async {
     try {
-      Logger.info('=== _startNotificationListener START ===');
-      Logger.info('Device: ${device.id}');
-      Logger.info('Starting notification listener...');
-
       final services = await device.device.discoverServices();
-      Logger.info('Found ${services.length} services');
-
-      Logger.info('=== SCANNING SERVICES ===');
       for (final service in services) {
-        Logger.info('Service UUID: ${service.uuid}');
-        Logger.info('Service UUID string: ${service.uuid.toString()}');
-        Logger.info(
-          'Service UUID lowercase: ${service.uuid.toString().toLowerCase()}',
-        );
-        Logger.info(
-          'Contains fff0: ${service.uuid.toString().toLowerCase().contains('fff0')}',
-        );
-
         if (service.uuid.toString().toLowerCase().contains('fff0')) {
-          Logger.info('✅ FOUND FFF0 SERVICE!');
-          Logger.info(
-            'Service has ${service.characteristics.length} characteristics',
-          );
-
-          Logger.info('=== SCANNING CHARACTERISTICS ===');
           for (final characteristic in service.characteristics) {
-            Logger.info('Characteristic UUID: ${characteristic.uuid}');
-            Logger.info(
-              'Characteristic UUID string: ${characteristic.uuid.toString()}',
-            );
-            Logger.info(
-              'Characteristic UUID lowercase: ${characteristic.uuid.toString().toLowerCase()}',
-            );
-            Logger.info(
-              'Contains fff1: ${characteristic.uuid.toString().toLowerCase().contains('fff1')}',
-            );
-
             if (characteristic.uuid.toString().toLowerCase().contains('fff1')) {
-              Logger.info('✅ FOUND FFF1 STATUS CHARACTERISTIC!');
-              Logger.info('Setting notify value to true...');
-
               // Store the status characteristic for PIN verification
               _statusCharacteristic = characteristic;
-              Logger.info(
-                '✅ Status characteristic stored: ${_statusCharacteristic?.uuid}',
-              );
-
-              // Listen for general status updates AND pending responses (like Angular app)
-              Logger.info('Setting up status update listener...');
 
               // Wait for the notification to be properly set up
               await characteristic.setNotifyValue(true);
 
               // Set up the listener
               characteristic.lastValueStream.listen((data) {
-                Logger.info('=== STATUS UPDATE RECEIVED ===');
-                Logger.info(
-                  'Status data: ${data.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-                );
-                Logger.info('Status bytes: ${data.map((b) => b).join(', ')}');
-                Logger.info('Status length: ${data.length}');
-
                 // Check if this is a response to a pending command (like Angular app)
                 if (_pendingResponseCompleter != null &&
                     !_pendingResponseCompleter!.isCompleted) {
-                  Logger.info(
-                    '✅ This is a response to pending command: $_pendingResponseCommand',
-                  );
-                  Logger.info('Completing pending response completer');
                   _pendingResponseCompleter!.complete(data);
                   return; // Don't process as general status
                 }
@@ -644,14 +511,9 @@ class BleService {
                 // Process as general status update
                 final lockStatus = _parseResponse(data);
                 if (lockStatus != null) {
-                  Logger.info('Parsed lock status: $lockStatus');
                   _statusController.add(lockStatus);
-                } else {
-                  Logger.info('Could not parse lock status from data');
                 }
               });
-
-              Logger.info('✅ Status update listener set up successfully');
 
               // Give notification listener a moment to settle
               await Future.delayed(Duration(milliseconds: 100));
@@ -663,30 +525,11 @@ class BleService {
         }
       }
 
-      Logger.info('=== NOTIFICATION LISTENER RESULT ===');
       if (_statusCharacteristic == null) {
-        Logger.error('❌ Status characteristic not found!');
-        Logger.info('_statusCharacteristic is null');
-
-        // Debug: List all services and characteristics
-        Logger.info('All services and characteristics found:');
-        for (final service in services) {
-          Logger.info('Service: ${service.uuid}');
-          for (final characteristic in service.characteristics) {
-            Logger.info('  Characteristic: ${characteristic.uuid}');
-          }
-        }
-      } else {
-        Logger.info('✅ Notification listener started successfully');
-        Logger.info(
-          '_statusCharacteristic UUID: ${_statusCharacteristic!.uuid}',
-        );
+        Logger.error('Status characteristic not found');
       }
-
-      Logger.info('=== _startNotificationListener END ===');
     } catch (e) {
-      Logger.error('❌ Failed to start notifications', e);
-      Logger.error('Exception details: $e');
+      Logger.error('Failed to start notifications', e);
     }
   }
 
@@ -785,24 +628,24 @@ class BleService {
     try {
       if (response.length < 6) return null;
 
-      final cmd = response[cmd];
-      final ask = response[ask];
+      final cmdCode = response[cmd];
+      final askCode = response[ask];
       final dataLen = response[3];
       final dataStart = data; // index 6
       final hasData = response.length >= dataStart + dataLen;
 
       // Default baseline
       var status = LockStatus(
-        response: ask,
+        response: askCode,
         extraBytes: dataLen,
         isStatus: false,
-        isError: ask != askCorrect,
+        isError: askCode != askCorrect,
       );
 
       // Decode per-command
-      switch (cmd) {
+      switch (cmdCode) {
         case 0x60: // Status checking
-          if (ask == askCorrect && hasData && dataLen >= 9) {
+          if (askCode == askCorrect && hasData && dataLen >= 9) {
             final openClose = response[dataStart + 0];
             final hook = response[dataStart + 1];
             final voltageMv = _u16be(response, dataStart + 2); // mV
@@ -826,7 +669,7 @@ class BleService {
           }
           break;
         case 0x63: // Time reading
-          if (ask == askCorrect && hasData && dataLen == 6) {
+          if (askCode == askCorrect && hasData && dataLen == 6) {
             final y = _fromBcd(response[dataStart + 0]);
             final m = _fromBcd(response[dataStart + 1]);
             final d = _fromBcd(response[dataStart + 2]);
@@ -847,29 +690,29 @@ class BleService {
           break;
         case 0x0F: // Pairing password verification
           status = LockStatus(
-            response: ask,
+            response: askCode,
             extraBytes: dataLen,
             isStatus: false,
-            isError: ask != askCorrect,
-            verified: ask == askCorrect,
+            isError: askCode != askCorrect,
+            verified: askCode == askCorrect,
           );
           break;
         case 0x61: // Unlock/Lock command ack
           status = LockStatus(
-            response: ask,
+            response: askCode,
             extraBytes: dataLen,
             isStatus: false,
-            isError: ask != askCorrect,
+            isError: askCode != askCorrect,
           );
           break;
         case 0x74: // Alarm setting & checking
           if (hasData && dataLen == 1) {
             final value = response[dataStart];
             status = LockStatus(
-              response: ask,
+              response: askCode,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != askCorrect,
+              isError: askCode != askCorrect,
               alarmOn: value == 0,
             );
           }
@@ -878,10 +721,10 @@ class BleService {
           if (hasData && dataLen == 1) {
             final value = response[dataStart];
             status = LockStatus(
-              response: ask,
+              response: askCode,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != askCorrect,
+              isError: askCode != askCorrect,
               buzzerOn: value == 0,
             );
           }
@@ -891,10 +734,10 @@ class BleService {
             final soft = response[dataStart];
             final hard = response[dataStart + 1];
             status = LockStatus(
-              response: ask,
+              response: askCode,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != askCorrect,
+              isError: askCode != askCorrect,
               responseMsg:
                   'Version - SW: 0x${soft.toRadixString(16).toUpperCase()}, HW: 0x${hard.toRadixString(16).toUpperCase()}',
             );
@@ -915,8 +758,6 @@ class BleService {
   /// Send lock command
   Future<bool> sendLockCommand() async {
     try {
-      Logger.info('=== SEND LOCK COMMAND START ===');
-
       // Check if PIN is verified, if not, verify it first
       if (_verifiedPin == null) {
         Logger.error('No PIN verified. Please connect with PIN first.');
@@ -929,10 +770,6 @@ class BleService {
         return false;
       }
 
-      Logger.info(
-        'Using stored randData: 0x${_randData!.toRadixString(16).toUpperCase()}',
-      );
-
       // Build lock command: F5 61 00 01 5F XX (0x36 ^ randData)
       final command = [0xF5, 0x61, 0x00, 0x01, 0x5F, 0x00];
       final dataByte = 0x36 ^ _randData!; // Lock command uses 0x36
@@ -943,16 +780,6 @@ class BleService {
       command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
-      );
-
-      Logger.info(
-        'Lock command: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-      );
-      Logger.info(
-        'Data byte (0x36 ^ randData): 0x${dataByte.toRadixString(16).toUpperCase()}',
-      );
-      Logger.info(
-        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       final result = await _writeToLock('lock', command);
@@ -970,8 +797,6 @@ class BleService {
   /// Send unlock command
   Future<bool> sendUnlockCommand() async {
     try {
-      Logger.info('=== SEND UNLOCK COMMAND START ===');
-
       // Check if PIN is verified, if not, verify it first
       if (_verifiedPin == null) {
         Logger.error('No PIN verified. Please connect with PIN first.');
@@ -984,10 +809,6 @@ class BleService {
         return false;
       }
 
-      Logger.info(
-        'Using stored randData: 0x${_randData!.toRadixString(16).toUpperCase()}',
-      );
-
       // Build unlock command: F5 61 00 01 5F XX (0x35 ^ randData)
       final command = [0xF5, 0x61, 0x00, 0x01, 0x5F, 0x00];
       final dataByte = 0x35 ^ _randData!; // Unlock command uses 0x35
@@ -998,16 +819,6 @@ class BleService {
       command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
-      );
-
-      Logger.info(
-        'Unlock command: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-      );
-      Logger.info(
-        'Data byte (0x35 ^ randData): 0x${dataByte.toRadixString(16).toUpperCase()}',
-      );
-      Logger.info(
-        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       final result = await _writeToLock('unlock', command);
@@ -1025,14 +836,10 @@ class BleService {
   /// Refresh randData for lock/unlock commands
   Future<bool> refreshRandData() async {
     try {
-      Logger.info('Refreshing randData...');
       final statusResponse = await _getCurrentStatus();
       if (statusResponse != null && statusResponse.length >= 15) {
         final randData = statusResponse[14];
         _randData = randData;
-        Logger.info(
-          '✅ randData refreshed: 0x${randData.toRadixString(16).toUpperCase()}',
-        );
         return true;
       } else {
         Logger.error('Could not refresh randData');
@@ -1244,43 +1051,18 @@ class BleService {
     Duration? timeout,
   }) async {
     try {
-      Logger.info('=== _writeToLockWithResponse START ===');
-      Logger.info('Command name: $commandName');
-      Logger.info('Command bytes: ${command.map((b) => b).join(', ')}');
-      Logger.info(
-        'Command hex: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-      );
-      Logger.info('Command length: ${command.length}');
-
       if (_currentDevice == null || _statusCharacteristic == null) {
-        Logger.error(
-          '❌ No device connected or status characteristic not found',
-        );
-        Logger.info('_currentDevice: ${_currentDevice?.id}');
-        Logger.info('_statusCharacteristic: ${_statusCharacteristic?.uuid}');
+        Logger.error('No device connected or status characteristic not found');
         return null;
       }
 
-      Logger.info('Device connected: ${_currentDevice!.id}');
-      Logger.info('Status characteristic: ${_statusCharacteristic!.uuid}');
-
       final services = await _currentDevice!.device.discoverServices();
-      Logger.info('Discovered ${services.length} services');
-
       BluetoothCharacteristic? commandChar;
-      Logger.info('Services: ${services.map((s) => s.uuid).join(', ')}');
 
       for (final service in services) {
-        Logger.info('Checking service: ${service.uuid}');
         if (service.uuid.toString().toLowerCase().contains('fff0')) {
-          Logger.info(
-            '✅ Found fff0 service with ${service.characteristics.length} characteristics',
-          );
-
           for (final characteristic in service.characteristics) {
-            Logger.info('Checking characteristic: ${characteristic.uuid}');
             if (characteristic.uuid.toString().toLowerCase().contains('fff2')) {
-              Logger.info('✅ Found fff2 command characteristic');
               commandChar = characteristic;
               break;
             }
@@ -1290,80 +1072,38 @@ class BleService {
       }
 
       if (commandChar == null) {
-        Logger.error('❌ Command characteristic not found');
-        Logger.info('Available characteristics in fff0 service:');
-        for (final service in services) {
-          if (service.uuid.toString().toLowerCase().contains('fff0')) {
-            for (final characteristic in service.characteristics) {
-              Logger.info('  - ${characteristic.uuid}');
-            }
-          }
-        }
+        Logger.error('Command characteristic not found');
         return null;
       }
 
-      Logger.info('✅ Command characteristic found: ${commandChar.uuid}');
-
       // Use existing status listener for response (like Angular app)
-      Logger.info('=== SETTING UP RESPONSE WAITER ===');
       final responseCompleter = Completer<List<int>?>();
 
       // Store the completer so the status listener can complete it
       _pendingResponseCompleter = responseCompleter;
-      _pendingResponseCommand = commandName;
-
-      Logger.info('✅ Response waiter set up for command: $commandName');
 
       // Send command
-      Logger.info('=== SENDING COMMAND ===');
-      Logger.info('Sending command: $commandName');
-      Logger.info(
-        'Command to send: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-      );
-      Logger.info('Command bytes to send: ${command.map((b) => b).join(', ')}');
-
       await commandChar.write(command);
-      Logger.info('✅ Command sent successfully');
-
-      // Wait for response with timeout (like Angular app's 8 second timeout)
-      Logger.info('=== WAITING FOR RESPONSE ===');
-      Logger.info(
-        'Waiting for response with timeout: ${timeout?.inSeconds ?? 8} seconds',
-      );
 
       try {
         final response = await responseCompleter.future.timeout(
           timeout ?? Duration(seconds: 8),
           onTimeout: () {
-            Logger.error('❌ Timeout waiting for response to $commandName');
             return <int>[];
           },
         );
 
-        Logger.info('=== RESPONSE PROCESSING ===');
-        Logger.info(
-          'Response received from completer: ${response?.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ') ?? 'null'}',
-        );
-        Logger.info('Response length: ${response?.length ?? 0}');
-
         if (response != null && response.isNotEmpty) {
-          Logger.info(
-            '✅ Returning response: ${response.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
-          );
           return response;
         }
 
-        Logger.info('❌ Response is empty, returning null');
         return null;
       } finally {
         // Clean up
         _pendingResponseCompleter = null;
-        _pendingResponseCommand = null;
-        Logger.info('✅ Response waiter cleaned up');
       }
     } catch (e) {
-      Logger.error('❌ Failed to write command with response', e);
-      Logger.error('Error details: $e');
+      Logger.error('Failed to write command with response', e);
       return null;
     }
   }
@@ -1411,11 +1151,6 @@ class BleService {
   /// Set app lifecycle state for battery optimization
   void setAppActive(bool active) {
     _isAppActive = active;
-    if (!active) {
-      Logger.info('App backgrounded - reducing status polling');
-    } else {
-      Logger.info('App foregrounded - resuming normal polling');
-    }
   }
 
   /// Dispose resources
