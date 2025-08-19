@@ -92,6 +92,10 @@ class BleProvider extends ChangeNotifier {
   void _listenToStreams() {
     // Listen to discovered devices
     _bleService.devicesStream.listen((devices) {
+      print('DEBUG: Devices stream received: ${devices.length} devices');
+      for (final device in devices) {
+        print('DEBUG: Device: ${device.id} - ${device.name} - isLock: ${device.isLock}');
+      }
       _discoveredDevices = devices;
       notifyListeners();
     });
@@ -219,33 +223,30 @@ class BleProvider extends ChangeNotifier {
 
   /// Start scanning for devices
   Future<void> startScan() async {
-    print(
-      'BLE Provider: startScan called - isScanning: $_isScanning, isInitialized: $_isInitialized',
-    );
+    print('DEBUG: startScan called');
+    print('DEBUG: _isScanning: $_isScanning, _isInitialized: $_isInitialized');
 
     if (_isScanning || !_isInitialized) {
-      print(
-        'BLE Provider: Cannot start scan - isScanning: $_isScanning, isInitialized: $_isInitialized',
-      );
+      print('DEBUG: Cannot start scan - _isScanning: $_isScanning, _isInitialized: $_isInitialized');
       return;
     }
 
     try {
-      print('BLE Provider: Starting scan...');
+      print('DEBUG: Starting scan...');
       _isScanning = true;
       _errorMessage = null;
       notifyListeners();
 
       await _bleService.startScan();
-      print('BLE Provider: Scan started successfully');
+      print('DEBUG: Scan started successfully');
 
       // Stop scanning after timeout
       Timer(Duration(milliseconds: 5000), () {
-        print('BLE Provider: Auto-stopping scan after timeout');
+        print('DEBUG: Auto-stopping scan after timeout');
         stopScan();
       });
     } catch (e) {
-      print('BLE Provider: Failed to start scan: $e');
+      print('DEBUG: Failed to start scan: $e');
       _errorMessage = 'Failed to start scan: $e';
       _isScanning = false;
       notifyListeners();
@@ -268,12 +269,19 @@ class BleProvider extends ChangeNotifier {
 
   /// Connect to a device with PIN if needed (like Angular app)
   Future<bool> connectToDevice(BleDevice device, {String? pin}) async {
-    if (_isConnecting || !_isInitialized) return false;
+    print('DEBUG: connectToDevice called for device: ${device.id}');
+    print('DEBUG: _isConnecting: $_isConnecting, _isInitialized: $_isInitialized');
+    
+    if (_isConnecting || !_isInitialized) {
+      print('DEBUG: Cannot connect - _isConnecting: $_isConnecting, _isInitialized: $_isInitialized');
+      return false;
+    }
 
     try {
       _isConnecting = true;
       _errorMessage = null;
       notifyListeners();
+      print('DEBUG: Starting connection process...');
 
       // Try to get stored PIN if none provided
       String? finalPin = pin;
@@ -282,13 +290,17 @@ class BleProvider extends ChangeNotifier {
         Logger.info(
           'Retrieved stored PIN for device ${device.id}: ${finalPin != null ? 'found' : 'not found'}',
         );
+        print('DEBUG: Stored PIN: ${finalPin != null ? 'found' : 'not found'}');
       }
 
+      print('DEBUG: Calling _bleService.connectToDevice...');
       final success = await _bleService.connectToDevice(device, pin: finalPin);
+      print('DEBUG: _bleService.connectToDevice result: $success');
 
       if (success) {
         _currentDevice = device;
         _connectionState = BluetoothConnectionState.connected;
+        print('DEBUG: Device connected successfully');
 
         // Store PIN and device for auto-reconnect
         if (finalPin != null && device.isLock) {
@@ -300,12 +312,14 @@ class BleProvider extends ChangeNotifier {
         // Device connected successfully
       } else {
         _errorMessage = 'Failed to connect to device';
+        print('DEBUG: Connection failed');
       }
 
       _isConnecting = false;
       notifyListeners();
       return success;
     } catch (e) {
+      print('DEBUG: Connection error: $e');
       _errorMessage = 'Connection error: $e';
       _isConnecting = false;
       notifyListeners();

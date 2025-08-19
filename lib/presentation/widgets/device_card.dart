@@ -34,14 +34,19 @@ class DeviceCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GlassCard(
-      margin: EdgeInsets.only(bottom: DS.xs),
+      margin: EdgeInsets.only(bottom: DS.xs, left: DS.s, right: DS.s),
       child: Column(
         children: [
           // Main card content
           InkWell(
-            onTap: isConnected
-                ? onDisconnect
-                : (isConnecting ? null : onConnect),
+            onTap: () {
+              print('DEBUG: DeviceCard InkWell tapped - isConnected: $isConnected, isConnecting: $isConnecting');
+              if (isConnected) {
+                onDisconnect();
+              } else if (!isConnecting) {
+                onConnect();
+              }
+            },
             borderRadius: BorderRadius.circular(DS.rLarge),
             child: Padding(
               padding: EdgeInsets.all(DS.xs),
@@ -204,7 +209,7 @@ class DeviceCard extends StatelessWidget {
 
   Widget _buildExpandedContent(BuildContext context, bool isDark) {
     return Container(
-      padding: EdgeInsets.fromLTRB(DS.s, DS.xs, DS.s, DS.xs),
+      padding: EdgeInsets.fromLTRB(DS.s, DS.s, DS.s, 0),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(

@@ -20,6 +20,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/glass_pin_dialog.dart';
 import '../widgets/scan_button.dart';
 import '../widgets/success_toast.dart';
+import '../widgets/status_chips.dart';
 
 /// Main home page for the Tactical Traps BLE Lock App
 class HomePage extends StatefulWidget {
@@ -303,8 +304,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                     
                     // Show offline status when device exists but is disconnected
-                    if (bleProvider.currentDevice != null && !bleProvider.isConnected)
+                    if (bleProvider.currentDevice != null &&
+                        !bleProvider.isConnected) ...[
+                      // Show last known status chips even when offline
+                      if (bleProvider.lastStatus != null)
+                        StatusChips(
+                          status: bleProvider.lastStatus!,
+                          rssi: bleProvider.currentDevice!.rssi,
+                        ),
+                      SizedBox(height: DS.m),
                       _buildOfflineStatus(bleProvider, deviceProvider),
+                    ],
                     
                     if (bleProvider.isConnected &&
                         bleProvider.currentDevice != null) ...[
@@ -776,7 +786,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 isVerifyingPin:
                     bleProvider.isVerifyingPin &&
                     bleProvider.currentDevice?.id == device.id,
-                onConnect: () => bleProvider.connectToDevice(device),
+                onConnect: () {
+                  print('DEBUG: Connect button tapped for device: ${device.id}');
+                  bleProvider.connectToDevice(device);
+                },
                 onDisconnect: () => bleProvider.disconnectFromDevice(),
                 onToggleExpansion: () {
                   // Toggle device expansion state
