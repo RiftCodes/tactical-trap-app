@@ -97,11 +97,15 @@ flutter_launcher_icons:
 
 # Flutter Native Splash configuration
 flutter_native_splash:
-  color: "#1A1A1A"
+  color: "#FFFFFF"
   image: assets/icons/square.png
+  color_dark: "#1A1A1A"
+  image_dark: assets/icons/square.png
   android_12:
     image: assets/icons/square.png
-    color: "#1A1A1A"
+    color: "#FFFFFF"
+    icon_background_color: "#FFFFFF"
+    icon_background_color_dark: "#1A1A1A"
   web: false
 
 # For information on the generic Dart part of this file, see the
