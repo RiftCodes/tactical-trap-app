@@ -21,7 +21,7 @@ class ThemeToggle extends StatelessWidget {
           },
           child: Container(
             width: 48,
-            height: 22,
+            height: 24,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(11),
               color: _getBackgroundColor(currentTheme),

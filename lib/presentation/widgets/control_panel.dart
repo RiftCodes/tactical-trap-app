@@ -22,9 +22,9 @@ class ControlPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      margin: EdgeInsets.all(DS.m),
+      margin: EdgeInsets.symmetric(horizontal: DS.m, vertical: DS.s),
       child: Padding(
-        padding: EdgeInsets.all(DS.m),
+        padding: EdgeInsets.all(DS.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

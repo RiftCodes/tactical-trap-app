@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:tactical_trap_flutter/presentation/providers/device_provider.dart';
 
 import '../../core/utils/logger.dart';
 import '../../data/models/ble_device.dart';
@@ -92,10 +93,6 @@ class BleProvider extends ChangeNotifier {
   void _listenToStreams() {
     // Listen to discovered devices
     _bleService.devicesStream.listen((devices) {
-      print('DEBUG: Devices stream received: ${devices.length} devices');
-      for (final device in devices) {
-        print('DEBUG: Device: ${device.id} - ${device.name} - isLock: ${device.isLock}');
-      }
       _discoveredDevices = devices;
       notifyListeners();
     });
@@ -103,18 +100,9 @@ class BleProvider extends ChangeNotifier {
     // Listen to connection changes
     _bleService.connectionStream.listen((device) {
       _currentDevice = device;
-      final wasConnected =
-          _connectionState == BluetoothConnectionState.connected;
       _connectionState = device != null
           ? BluetoothConnectionState.connected
           : BluetoothConnectionState.disconnected;
-      
-      // Handle disconnection with auto-reconnect logic
-      if (wasConnected &&
-          _connectionState == BluetoothConnectionState.disconnected) {
-        _handleDisconnection();
-      }
-      
       notifyListeners();
 
       // Auto-fetch status on connect to populate UI details
@@ -133,120 +121,35 @@ class BleProvider extends ChangeNotifier {
     });
   }
 
-  /// Handle device disconnection with smart reconnection logic
-  void _handleDisconnection() {
-    if (_currentDevice == null || _isAutoReconnecting) return;
-
-    Logger.info('Device disconnected, attempting smart reconnection...');
-
-    // Start auto-reconnect after a short delay
-    Future.delayed(const Duration(seconds: 2), () {
-      if (_connectionState == BluetoothConnectionState.disconnected &&
-          _currentDevice != null &&
-          !_isAutoReconnecting) {
-        _startSmartReconnection();
-      }
-    });
-  }
-
-  /// Start smart reconnection with user feedback
-  Future<void> _startSmartReconnection() async {
-    if (_isAutoReconnecting || _currentDevice == null) return;
-
-    try {
-      _isAutoReconnecting = true;
-      _autoReconnectStatus = 'Lock disconnected, attempting to reconnect...';
-      notifyListeners();
-
-      // Show toast notification
-      _showToast(
-        'Lock disconnected, attempting to reconnect...',
-        isError: false,
-      );
-
-      // Wait a bit before attempting reconnection
-      await Future.delayed(const Duration(seconds: 3));
-
-      if (_connectionState == BluetoothConnectionState.disconnected) {
-        _autoReconnectStatus = 'Scanning for lock...';
-        notifyListeners();
-
-        // Start scanning to find the device
-        await startScan();
-
-        // Wait for scan results
-        await Future.delayed(const Duration(seconds: 5));
-
-        // Look for the device in discovered devices
-        final targetDevice = _discoveredDevices
-            .where((d) => d.id == _currentDevice!.id)
-            .firstOrNull;
-
-        if (targetDevice != null) {
-          _autoReconnectStatus = 'Lock found, connecting...';
-          notifyListeners();
-
-          // Try to connect with stored PIN
-          final storedPin = await _storageService.getPinForDevice(
-            targetDevice.id,
-          );
-          if (storedPin != null) {
-            final success = await connectToDevice(targetDevice, pin: storedPin);
-            if (success) {
-              _autoReconnectStatus = 'Reconnected successfully!';
-              _showToast('Lock reconnected successfully!', isError: false);
-              await Future.delayed(const Duration(seconds: 2));
-            } else {
-              throw Exception('Reconnection failed');
-            }
-          } else {
-            throw Exception('No stored PIN for reconnection');
-          }
-        } else {
-          throw Exception('Lock not found in range');
-        }
-
-        await stopScan();
-      }
-    } catch (e) {
-      Logger.error('Smart reconnection failed', e);
-      _autoReconnectStatus = 'Reconnection failed: ${e.toString()}';
-      _showToast('Reconnection failed: ${e.toString()}', isError: true);
-      await Future.delayed(const Duration(seconds: 3));
-      await stopScan();
-    } finally {
-      _isAutoReconnecting = false;
-      _autoReconnectStatus = null;
-      notifyListeners();
-    }
-  }
-
   /// Start scanning for devices
   Future<void> startScan() async {
-    print('DEBUG: startScan called');
-    print('DEBUG: _isScanning: $_isScanning, _isInitialized: $_isInitialized');
+    print(
+      'BLE Provider: startScan called - isScanning: $_isScanning, isInitialized: $_isInitialized',
+    );
 
     if (_isScanning || !_isInitialized) {
-      print('DEBUG: Cannot start scan - _isScanning: $_isScanning, _isInitialized: $_isInitialized');
+      print(
+        'BLE Provider: Cannot start scan - isScanning: $_isScanning, isInitialized: $_isInitialized',
+      );
       return;
     }
 
     try {
-      print('DEBUG: Starting scan...');
+      print('BLE Provider: Starting scan...');
       _isScanning = true;
       _errorMessage = null;
       notifyListeners();
 
       await _bleService.startScan();
-      print('DEBUG: Scan started successfully');
+      print('BLE Provider: Scan started successfully');
 
       // Stop scanning after timeout
       Timer(Duration(milliseconds: 5000), () {
-        print('DEBUG: Auto-stopping scan after timeout');
+        print('BLE Provider: Auto-stopping scan after timeout');
         stopScan();
       });
     } catch (e) {
-      print('DEBUG: Failed to start scan: $e');
+      print('BLE Provider: Failed to start scan: $e');
       _errorMessage = 'Failed to start scan: $e';
       _isScanning = false;
       notifyListeners();
@@ -269,19 +172,12 @@ class BleProvider extends ChangeNotifier {
 
   /// Connect to a device with PIN if needed (like Angular app)
   Future<bool> connectToDevice(BleDevice device, {String? pin}) async {
-    print('DEBUG: connectToDevice called for device: ${device.id}');
-    print('DEBUG: _isConnecting: $_isConnecting, _isInitialized: $_isInitialized');
-    
-    if (_isConnecting || !_isInitialized) {
-      print('DEBUG: Cannot connect - _isConnecting: $_isConnecting, _isInitialized: $_isInitialized');
-      return false;
-    }
+    if (_isConnecting || !_isInitialized) return false;
 
     try {
       _isConnecting = true;
       _errorMessage = null;
       notifyListeners();
-      print('DEBUG: Starting connection process...');
 
       // Try to get stored PIN if none provided
       String? finalPin = pin;
@@ -290,17 +186,13 @@ class BleProvider extends ChangeNotifier {
         Logger.info(
           'Retrieved stored PIN for device ${device.id}: ${finalPin != null ? 'found' : 'not found'}',
         );
-        print('DEBUG: Stored PIN: ${finalPin != null ? 'found' : 'not found'}');
       }
 
-      print('DEBUG: Calling _bleService.connectToDevice...');
       final success = await _bleService.connectToDevice(device, pin: finalPin);
-      print('DEBUG: _bleService.connectToDevice result: $success');
 
       if (success) {
         _currentDevice = device;
         _connectionState = BluetoothConnectionState.connected;
-        print('DEBUG: Device connected successfully');
 
         // Store PIN and device for auto-reconnect
         if (finalPin != null && device.isLock) {
@@ -312,14 +204,12 @@ class BleProvider extends ChangeNotifier {
         // Device connected successfully
       } else {
         _errorMessage = 'Failed to connect to device';
-        print('DEBUG: Connection failed');
       }
 
       _isConnecting = false;
       notifyListeners();
       return success;
     } catch (e) {
-      print('DEBUG: Connection error: $e');
       _errorMessage = 'Connection error: $e';
       _isConnecting = false;
       notifyListeners();
@@ -771,8 +661,10 @@ class BleProvider extends ChangeNotifier {
         return;
       }
 
-      final deviceId = lastDeviceData['id'];
-      final deviceName = lastDeviceData['name'] ?? 'Unknown Device';
+      final deviceId = lastDeviceData['id']; 
+      final deviceName =
+          DeviceProvider().getDeviceName(lastDeviceData['name']) ??
+          lastDeviceData['name'];
       final storedPin = await _storageService.getPinForDevice(deviceId);
 
       if (storedPin == null) {
@@ -838,17 +730,6 @@ class BleProvider extends ChangeNotifier {
       _errorMessage = 'Permission request failed: $e';
       notifyListeners();
       return false;
-    }
-  }
-
-  /// Show toast notification to user
-  void _showToast(String message, {bool isError = false}) {
-    // This will be handled by the UI layer
-    // For now, just log the message
-    if (isError) {
-      Logger.error('Toast (Error): $message');
-    } else {
-      Logger.info('Toast (Info): $message');
     }
   }
 

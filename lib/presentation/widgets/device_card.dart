@@ -13,8 +13,7 @@ class DeviceCard extends StatelessWidget {
   final bool isVerifyingPin;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
-  final VoidCallback onToggleExpansion;
-  final Function(String) onEditName;
+  final VoidCallback onToggleExpansion; 
 
   const DeviceCard({
     super.key,
@@ -25,8 +24,7 @@ class DeviceCard extends StatelessWidget {
     this.isVerifyingPin = false,
     required this.onConnect,
     required this.onDisconnect,
-    required this.onToggleExpansion,
-    required this.onEditName,
+    required this.onToggleExpansion, 
   });
 
   @override
@@ -39,20 +37,16 @@ class DeviceCard extends StatelessWidget {
         children: [
           // Main card content
           InkWell(
-            onTap: () {
-              print('DEBUG: DeviceCard InkWell tapped - isConnected: $isConnected, isConnecting: $isConnecting');
-              if (isConnected) {
-                onDisconnect();
-              } else if (!isConnecting) {
-                onConnect();
-              }
-            },
-            borderRadius: BorderRadius.circular(DS.rLarge),
+            onTap: isConnected
+                ? onDisconnect
+                : (isConnecting ? null : onConnect),
+            borderRadius: BorderRadius.circular(DS.rMedium),
             child: Padding(
-              padding: EdgeInsets.all(DS.xs),
+              padding: EdgeInsets.all(DS.xs).copyWith(bottom: DS.s),
               child: _buildMainContent(context, isDark),
             ),
           ),
+          
           // Expanded details section
           if (device.isExpanded) _buildExpandedContent(context, isDark),
         ],
@@ -83,7 +77,7 @@ class DeviceCard extends StatelessWidget {
               ),
               SizedBox(height: 2),
               Text(
-                'SN: ${_getShortSN(device.id)}',
+                'SN: ${_getSerialNumber()}',
                 style: TextStyle(
                   fontSize: DS.textXS,
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -105,6 +99,8 @@ class DeviceCard extends StatelessWidget {
       ],
     );
   }
+
+  String _getSerialNumber() => device.name!.split(":")[1];
 
   Widget _buildStatusIndicator() {
     return Container(
@@ -225,10 +221,40 @@ class DeviceCard extends StatelessWidget {
         children: [
           _buildDetailRow('Device ID', device.id, isDark),
           if (device.name != null && device.name != displayName)
-            _buildDetailRow('Original Name', device.name!, isDark),
-          if (device.localName != null && device.localName != displayName)
-            _buildDetailRow('Local Name', device.localName!, isDark),
-          _buildDetailRow('Signal', '${device.rssi} dBm', isDark),
+            _buildDetailRow('Original Name', device.name!, isDark), 
+          Padding(
+            padding: EdgeInsets.only(bottom: DS.xs),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 100,
+                  child: Text(
+                    'Signal Quality:',
+                    style: TextStyle(
+                      fontSize: DS.textXS,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ),
+                SizedBox(width: DS.xs),
+                Text(
+                  _getSignalLabel(device.rssi),
+                  style: TextStyle(
+                    fontSize: DS.textXS,
+                    color: _getSignalColor(device.rssi),
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          _buildDetailRow('Signal Strenght', '${device.rssi} dBm', isDark),
           _buildDetailRow(
             'Found',
             _formatDateTime(device.discoveredAt),
@@ -238,15 +264,32 @@ class DeviceCard extends StatelessWidget {
       ),
     );
   }
+  /// Get signal label based on RSSI
+  String _getSignalLabel(int rssi) {
+    if (rssi > -50) return 'Excellent'; // Excellent
+    if (rssi > -60) return 'Good'; // Good
+    if (rssi > -70) return 'Fair'; // Fair
+    if (rssi > -80) return 'Poor'; // Poor
+    return 'Very Poor'; // Very Poor
+  }
 
+  /// Get signal color based on RSSI
+  Color _getSignalColor(int rssi) {
+    if (rssi > -50) return Colors.green; // Excellent
+    if (rssi > -60) return Colors.lightGreen; // Good
+    if (rssi > -70) return Colors.orange; // Fair
+    if (rssi > -80) return Colors.red; // Poor
+    return Colors.red; // Very Poor
+  }
   Widget _buildDetailRow(String label, String value, bool isDark) {
     return Padding(
       padding: EdgeInsets.only(bottom: DS.xs),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 65,
+            width: 100,
             child: Text(
               '$label:',
               style: TextStyle(
@@ -257,85 +300,22 @@ class DeviceCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: DS.xs),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: DS.textXS,
-                color: isDark ? Colors.grey[300] : Colors.grey[700],
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: DS.textXS,
+              color: isDark ? Colors.grey[300] : Colors.grey[700],
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w500,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
-
-  Widget _buildEditNameButton(BuildContext context, bool isDark) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () => _showEditNameDialog(context),
-        icon: Icon(Icons.edit_rounded, size: 14),
-        label: const Text('Edit Name'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? DS.info : DS.info.withValues(alpha: 0.1),
-          foregroundColor: isDark ? Colors.white : DS.info,
-          elevation: 0,
-          padding: EdgeInsets.symmetric(vertical: DS.xs, horizontal: DS.s),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DS.rMedium),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showEditNameDialog(BuildContext context) {
-    final controller = TextEditingController(text: displayName);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Device Name'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Device Name',
-            border: OutlineInputBorder(),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                onEditName(newName);
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getShortSN(String fullId) {
-    if (fullId.length > 8) {
-      return fullId.substring(fullId.length - 8).toUpperCase();
-    }
-    return fullId.toUpperCase();
-  }
-
+ 
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);

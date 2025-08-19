@@ -274,8 +274,10 @@ class DeviceProvider extends ChangeNotifier {
 
   /// Get display name for device
   String getDisplayName(BleDevice device) {
-    if (device.hasCustomName) {
-      return device.customName!;
+    final customName = getDeviceName(device.id);
+
+    if (customName != null) {
+      return customName;
     }
     if (device.localName != null && device.localName!.isNotEmpty) {
       return device.localName!;

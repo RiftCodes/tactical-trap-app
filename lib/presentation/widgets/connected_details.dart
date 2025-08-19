@@ -212,16 +212,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                         ? Colors.indigo[400]!
                       : Colors.indigo[600]!,
                 ),
-                  // SizedBox(height: DS.xs),
-                  // _buildDetailRow(
-                  //   context: context,
-                  //     icon: Icons.fingerprint_rounded,
-                  //     label: 'Serial Number',
-                  //     value: widget.device.serialNumber ?? 'SN:0000154924',
-                  //     color: Theme.of(context).brightness == Brightness.dark
-                  //         ? Colors.blue[400]!
-                  //         : Colors.blue[600]!,
-                  //   ),
+                   
                   SizedBox(height: DS.xs),
                   _buildDetailRow(
                     context: context,
@@ -308,11 +299,11 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         SizedBox(width: DS.xs),
         Expanded(
           child: Text(
-            label,
+            '$label:',
             style: TextStyle(
               fontSize: DS.textXS,
-              fontWeight: FontWeight.w500,
-              color: color.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.8),
             ),
           ),
         ),
@@ -320,8 +311,8 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         Text(
           value,
           style: TextStyle(
-            fontSize: DS.textSM,
-            fontWeight: FontWeight.w700,
+            fontSize: DS.textXS,
+            fontWeight: FontWeight.w400,
             color: color,
           ),
         ),

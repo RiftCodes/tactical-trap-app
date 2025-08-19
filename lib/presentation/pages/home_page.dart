@@ -20,7 +20,6 @@ import '../widgets/glass_card.dart';
 import '../widgets/glass_pin_dialog.dart';
 import '../widgets/scan_button.dart';
 import '../widgets/success_toast.dart';
-import '../widgets/status_chips.dart';
 
 /// Main home page for the Tactical Traps BLE Lock App
 class HomePage extends StatefulWidget {
@@ -215,8 +214,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           : Colors.white.withValues(alpha: 0.85),
       elevation: 0,
       toolbarHeight: hasConnection ? 80 : 120,
-      leadingWidth: 0, // No leading widget needed
-      leading: null, // Remove theme toggle
+      leadingWidth: hasConnection ? 50 : 0, // No leading widget needed
+      leading: hasConnection
+          ? Padding(
+              padding: const EdgeInsets.only(
+                left: DS.s,
+                top: DS.s,
+                bottom: DS.s,
+              ),
+              child: CircleAvatar(
+                radius: 20,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(50),
+                  child: Image.asset(
+                    "assets/icons/square.png",
+                    fit: BoxFit.fill,
+                  ),
+                ),
+              ),
+            )
+          : SizedBox.shrink(), // Remove theme toggle
       title: hasConnection
           ? _buildConnectionRibbon(
               bleProvider,
@@ -225,7 +242,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             )
           : Image.asset(
               'assets/icons/horizontal.png',
-              height: hasConnection ? 28 : 40,
+              height: hasConnection ? 28 : 60,
               filterQuality: FilterQuality.high,
               errorBuilder: (_, __, ___) => Text(
                 AppConstants.appName,
@@ -302,20 +319,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         currentDevice: bleProvider.currentDevice,
                         deviceProvider: deviceProvider,
                       ),
-                    
-                    // Show offline status when device exists but is disconnected
-                    if (bleProvider.currentDevice != null &&
-                        !bleProvider.isConnected) ...[
-                      // Show last known status chips even when offline
-                      if (bleProvider.lastStatus != null)
-                        StatusChips(
-                          status: bleProvider.lastStatus!,
-                          rssi: bleProvider.currentDevice!.rssi,
-                        ),
-                      SizedBox(height: DS.m),
-                      _buildOfflineStatus(bleProvider, deviceProvider),
-                    ],
-                    
                     if (bleProvider.isConnected &&
                         bleProvider.currentDevice != null) ...[
                       ConnectedDetails(
@@ -378,8 +381,39 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               else if (bleProvider.isVerifyingPin ||
                   bleProvider.isAutoReconnecting)
                 const SizedBox.shrink()
+              else if (bleProvider.discoveredDevices.isEmpty)
+                _buildEmptyState()
               else
-                _buildDeviceList(bleProvider, deviceProvider),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    DS.s,
+                    0,
+                    DS.s,
+                    DS.xl * 5,
+                  ), // Increased bottom padding
+                  child: Column(
+                    children: List.generate(
+                      bleProvider.discoveredDevices.length,
+                      (index) {
+                        final device = bleProvider.discoveredDevices[index];
+                        return DeviceCard(
+                          device: device,
+                          isConnected:
+                              bleProvider.currentDevice?.id == device.id,
+                          displayName: deviceProvider.getDisplayName(device),
+                          isConnecting: bleProvider.isConnecting,
+                          isVerifyingPin: bleProvider.isVerifyingPin,
+                          onConnect: () => _connectToDevice(device),
+                          onDisconnect: () =>
+                              bleProvider.disconnectFromDevice(),
+                          onToggleExpansion: () =>
+                              bleProvider.toggleDeviceExpansion(device),
+                      
+                        );
+                      },
+                    ),
+                  ),
+                ),
 
               // Loading overlays
               if (bleProvider.isAutoReconnecting &&
@@ -512,8 +546,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     DeviceProvider deviceProvider,
     bool isDark,
   ) {
-    // Show connection status even when disconnected for better UX
-    if (bleProvider.currentDevice == null) {
+    if (!bleProvider.isConnected || bleProvider.currentDevice == null) {
       return const SizedBox.shrink();
     }
 
@@ -522,17 +555,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final displayName =
         customName ?? device.localName ?? device.name ?? 'Tactical Lock';
 
-    final isConnected = bleProvider.isConnected;
-    final isReconnecting = bleProvider.isAutoReconnecting;
-    
     return Container(
       padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: DS.xs),
       decoration: BoxDecoration(
-        color: isConnected
-            ? DS.success.withValues(alpha: 0.9)
-            : isReconnecting
-            ? DS.warning.withValues(alpha: 0.9)
-            : DS.brandRed.withValues(alpha: 0.9),
+        color: DS.success.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(DS.rSmall),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.3),
@@ -543,11 +569,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isConnected
-                ? Icons.bluetooth_connected_rounded
-                : isReconnecting
-                ? Icons.bluetooth_searching_rounded
-                : Icons.bluetooth_disabled_rounded,
+            Icons.bluetooth_connected_rounded,
             color: Colors.white,
             size: 16,
           ),
@@ -569,13 +591,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               color: Colors.white.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(
-              isConnected
-                  ? 'ONLINE'
-                  : isReconnecting
-                  ? 'RECONNECTING'
-                  : 'OFFLINE',
-              style: const TextStyle(
+            child: const Text(
+              'ONLINE',
+              style: TextStyle(
                 color: Colors.white,
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
@@ -641,175 +659,5 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } else {
       await deviceProvider.saveDeviceName(deviceId, newName.trim());
     }
-  }
-
-  /// Build offline status indicator
-  Widget _buildOfflineStatus(
-    BleProvider bleProvider,
-    DeviceProvider deviceProvider,
-  ) {
-    final device = bleProvider.currentDevice!;
-    final customName = deviceProvider.getDeviceName(device.id);
-    final displayName =
-        customName ?? device.localName ?? device.name ?? 'Tactical Lock';
-
-    return GlassCard(
-      margin: EdgeInsets.all(DS.m),
-      child: Padding(
-        padding: EdgeInsets.all(DS.m),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.bluetooth_disabled_rounded,
-                  color: DS.brandRed,
-                  size: 24,
-                ),
-                SizedBox(width: DS.m),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: TextStyle(
-                          fontSize: DS.textLG,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white
-                              : DS.brandDark,
-                        ),
-                      ),
-                      SizedBox(height: DS.xs),
-                      Text(
-                        'Lock is offline',
-                        style: TextStyle(
-                          fontSize: DS.textSM,
-                          color: DS.brandRed,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: DS.m),
-            if (bleProvider.isAutoReconnecting)
-              Row(
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(DS.brandRed),
-                    ),
-                  ),
-                  SizedBox(width: DS.s),
-                  Expanded(
-                    child: Text(
-                      bleProvider.autoReconnectStatus ??
-                          'Attempting to reconnect...',
-                      style: TextStyle(fontSize: DS.textXS, color: DS.brandRed),
-                    ),
-                  ),
-                ],
-              ),
-            SizedBox(height: DS.m),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => bleProvider.startScan(),
-                    icon: Icon(Icons.refresh_rounded, size: 16),
-                    label: Text('Retry Connection'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: DS.brandRed,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: DS.s),
-                    ),
-                  ),
-                ),
-                SizedBox(width: DS.m),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    bleProvider.disconnectFromDevice();
-                    // Clear the current device reference - this will be handled by the provider
-                  },
-                  icon: Icon(Icons.clear_rounded, size: 16),
-                  label: Text('Clear'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[600],
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: DS.s),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Build device list for scanning state
-  Widget _buildDeviceList(
-    BleProvider bleProvider,
-    DeviceProvider deviceProvider,
-  ) {
-    return Column(
-      children: [
-        if (bleProvider.discoveredDevices.isEmpty && !bleProvider.isScanning)
-          _buildEmptyState(),
-        if (bleProvider.discoveredDevices.isNotEmpty)
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: bleProvider.discoveredDevices.length,
-            itemBuilder: (context, index) {
-              final device = bleProvider.discoveredDevices[index];
-              final customName = deviceProvider.getDeviceName(device.id);
-              final displayName =
-                  customName ?? device.localName ?? device.name ?? 'Unknown';
-
-              return DeviceCard(
-                device: device,
-                isConnected:
-                    bleProvider.isConnected &&
-                    bleProvider.currentDevice?.id == device.id,
-                displayName: displayName,
-                isConnecting:
-                    bleProvider.isConnecting &&
-                    bleProvider.currentDevice?.id == device.id,
-                isVerifyingPin:
-                    bleProvider.isVerifyingPin &&
-                    bleProvider.currentDevice?.id == device.id,
-                onConnect: () {
-                  print('DEBUG: Connect button tapped for device: ${device.id}');
-                  bleProvider.connectToDevice(device);
-                },
-                onDisconnect: () => bleProvider.disconnectFromDevice(),
-                onToggleExpansion: () {
-                  // Toggle device expansion state
-                  final updatedDevice = device.copyWith(
-                    isExpanded: !device.isExpanded,
-                  );
-                  // Update the device in the discovered devices list
-                  final index = bleProvider.discoveredDevices.indexOf(device);
-                  if (index != -1) {
-                    bleProvider.discoveredDevices[index] = updatedDevice;
-                    // The provider will handle UI updates automatically
-                  }
-                },
-                onEditName: (newName) =>
-                    deviceProvider.saveDeviceName(device.id, newName),
-              );
-            },
-          ),
-        SizedBox(height: DS.xl * 5), // Bottom spacing for floating bottom sheet
-      ],
-    );
   }
 }
