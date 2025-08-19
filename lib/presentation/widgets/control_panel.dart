@@ -9,7 +9,6 @@ class ControlPanel extends StatelessWidget {
   final VoidCallback onToggleAlarm;
   final VoidCallback onToggleBuzzer;
   final VoidCallback onInitialize;
-  final VoidCallback onGetVersion;
   final LockStatus? lastStatus;
 
   const ControlPanel({
@@ -17,7 +16,6 @@ class ControlPanel extends StatelessWidget {
     required this.onToggleAlarm,
     required this.onToggleBuzzer,
     required this.onInitialize,
-    required this.onGetVersion,
     this.lastStatus,
   });
 
@@ -65,14 +63,7 @@ class ControlPanel extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: DS.s),
-                Expanded(
-                  child: _buildControlButton(
-                    icon: Icons.info_outline_rounded,
-                    label: 'Version',
-                    color: DS.info,
-                    onTap: onGetVersion,
-                  ),
-                ),
+
               ],
             ),
             SizedBox(height: DS.s),

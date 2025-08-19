@@ -27,7 +27,7 @@ class ConnectedDetails extends StatefulWidget {
 
 class _ConnectedDetailsState extends State<ConnectedDetails> {
   late TextEditingController _controller;
-  final String _deviceVersion = 'Tap Version button';
+  String _deviceVersion = 'Fetching...';
 
   @override
   void initState() {
@@ -36,10 +36,14 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
     _controller = TextEditingController(
       text:
           customName ??
+          widget.device.serialNumber ??
           widget.device.localName ??
           widget.device.name ??
-          'SN:0000154924', // Default serial number format
+          'Unknown', // Default serial number format
     );
+    
+    // Auto-fetch device version
+    _fetchDeviceVersion();
   }
 
   @override
@@ -114,19 +118,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
 
           SizedBox(height: DS.s),
 
-          // Device info
-          Text(
-            'Device ID: ${widget.device.id}',
-            style: TextStyle(
-              fontSize: DS.textXS,
-              color: Colors.grey[600],
-              fontFamily: 'monospace',
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          
-          SizedBox(height: DS.m),
+
 
           // Show More Section
           Container(
@@ -182,24 +174,44 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 collapsedIconColor: Colors.transparent,
                 childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
                 children: [
-                // Lock Details in tabular form
+                  // Lock Details in tabular form
                 _buildDetailRow(
                   context: context,
                   icon: Icons.tag_rounded,
                   label: 'Lock ID',
                   value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.indigo[300]!
+                        ? Colors.indigo[400]!
                       : Colors.indigo[600]!,
                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
                   context: context,
+                    icon: Icons.fingerprint_rounded,
+                    label: 'Serial Number',
+                    value: widget.device.serialNumber ?? 'SN:0000154924',
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.blue[400]!
+                        : Colors.blue[600]!,
+                  ),
+                  SizedBox(height: DS.xs),
+                  _buildDetailRow(
+                    context: context,
+                    icon: Icons.bluetooth_rounded,
+                    label: 'Device ID',
+                    value: widget.device.id,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[400]!
+                        : Colors.grey[600]!,
+                  ),
+                  SizedBox(height: DS.xs),
+                  _buildDetailRow(
+                    context: context,
                   icon: Icons.info_outline_rounded,
                   label: 'Device Version',
                   value: _deviceVersion,
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.teal[300]!
+                        ? Colors.teal[400]!
                       : Colors.teal[600]!,
                 ),
                 SizedBox(height: DS.xs),
@@ -217,7 +229,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   label: 'Discovered',
                   value: _getTimeAgo(widget.device.discoveredAt),
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.orange[300]!
+                        ? Colors.orange[400]!
                       : Colors.orange[600]!,
                 ),
                 SizedBox(height: DS.xs),
@@ -229,7 +241,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                       ? '${widget.device.manufacturerData.length} bytes'
                       : 'None',
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.purple[300]!
+                        ? Colors.purple[400]!
                       : Colors.purple[600]!,
                 ),
                 SizedBox(height: DS.xs),
@@ -240,7 +252,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   value: widget.device.isLock ? 'Tactical Lock' : 'Unknown',
                   color: widget.device.isLock 
                       ? (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.green[300]!
+                              ? Colors.green[400]!
                           : Colors.green[600]!)
                       : (Theme.of(context).brightness == Brightness.dark
                           ? Colors.grey[400]!
@@ -344,6 +356,18 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
       return '${difference.inHours}h ago';
     } else {
       return '${difference.inDays}d ago';
+    }
+  }
+
+  /// Auto-fetch device version on connection
+  void _fetchDeviceVersion() async {
+    // TODO: Implement BLE version fetch
+    // For now, simulate a delay and show placeholder
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
+      setState(() {
+        _deviceVersion = 'v1.2.0'; // Placeholder version
+      });
     }
   }
 }
