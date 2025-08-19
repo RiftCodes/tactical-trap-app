@@ -314,9 +314,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                       ControlPanel(
                         onStatus: () => bleProvider.getDeviceStatus(),
-                        onVersion: () => bleProvider.getVersion(),
-                        onReadTime: () => bleProvider.readTime(),
-                        onSetTimeNow: () => bleProvider.setTime(DateTime.now()),
                         onToggleAlarm: () async {
                           final st = await bleProvider.getAlarmStatus();
                           if (st != null) {
@@ -364,7 +361,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               // Device list or empty state
               if (bleProvider.isConnected)
-                SizedBox(height: DS.xl * 3)
+                SizedBox(
+                  height: DS.xl * 4,
+                ) // Increased spacing for connected state
               else if (bleProvider.isVerifyingPin ||
                   bleProvider.isAutoReconnecting)
                 const SizedBox.shrink()
@@ -372,7 +371,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 _buildEmptyState()
               else
                 Padding(
-                  padding: EdgeInsets.fromLTRB(DS.s, 0, DS.s, DS.m * 3),
+                  padding: EdgeInsets.fromLTRB(
+                    DS.s,
+                    0,
+                    DS.s,
+                    DS.xl * 4,
+                  ), // Increased bottom padding
                   child: Column(
                     children: List.generate(
                       bleProvider.discoveredDevices.length,
