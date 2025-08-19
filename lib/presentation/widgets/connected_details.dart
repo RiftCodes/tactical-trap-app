@@ -131,53 +131,66 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           // Show More Section
           Container(
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[900]
+                  : Colors.grey[50],
               borderRadius: BorderRadius.circular(DS.rSmall),
-              border: Border.all(color: Colors.grey[200]!, width: 1),
-            ),
-            child: ExpansionTile(
-              title: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: DS.brandDark,
-                    size: 18,
-                  ),
-                  SizedBox(width: DS.xs),
-                  Text(
-                    'Device Details',
-                    style: TextStyle(
-                      fontSize: DS.textSM,
-                      fontWeight: FontWeight.w600,
-                      color: DS.brandDark,
-                    ),
-                  ),
-                  Spacer(),
-                  Container(
-                    padding: EdgeInsets.all(DS.xs),
-                    decoration: BoxDecoration(
-                      color: DS.brandDark.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(DS.rSmall),
-                    ),
-                    child: Icon(
-                      Icons.expand_more_rounded,
-                      color: DS.brandDark,
-                      size: 16,
-                    ),
-                  ),
-                ],
+              border: Border.all(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[700]!
+                    : Colors.grey[200]!,
+                width: 1,
               ),
-              iconColor: Colors.transparent,
-              collapsedIconColor: Colors.transparent,
-              childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
-              children: [
+            ),
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                dividerColor: Colors.transparent, // Remove accordion lines
+              ),
+              child: ExpansionTile(
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      color: DS.brandDark,
+                      size: 18,
+                    ),
+                    SizedBox(width: DS.xs),
+                    Text(
+                      'Device Details',
+                      style: TextStyle(
+                        fontSize: DS.textSM,
+                        fontWeight: FontWeight.w600,
+                        color: DS.brandDark,
+                      ),
+                    ),
+                    Spacer(),
+                    Container(
+                      padding: EdgeInsets.all(DS.xs),
+                      decoration: BoxDecoration(
+                        color: DS.brandDark.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(DS.rSmall),
+                      ),
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        color: DS.brandDark,
+                        size: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                iconColor: Colors.transparent,
+                collapsedIconColor: Colors.transparent,
+                childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
+                children: [
                 // Lock Details in tabular form
                 _buildDetailRow(
                   context: context,
                   icon: Icons.tag_rounded,
                   label: 'Lock ID',
                   value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
-                  color: Colors.indigo,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.indigo[300]!
+                      : Colors.indigo[600]!,
                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
@@ -185,7 +198,9 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   icon: Icons.info_outline_rounded,
                   label: 'Device Version',
                   value: _deviceVersion,
-                  color: Colors.teal,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.teal[300]!
+                      : Colors.teal[600]!,
                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
@@ -201,7 +216,9 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   icon: Icons.schedule_rounded,
                   label: 'Discovered',
                   value: _getTimeAgo(widget.device.discoveredAt),
-                  color: Colors.orange,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.orange[300]!
+                      : Colors.orange[600]!,
                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
@@ -211,7 +228,9 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   value: widget.device.manufacturerData.isNotEmpty
                       ? '${widget.device.manufacturerData.length} bytes'
                       : 'None',
-                  color: Colors.purple,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.purple[300]!
+                      : Colors.purple[600]!,
                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
@@ -219,9 +238,16 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   icon: Icons.lock_rounded,
                   label: 'Device Type',
                   value: widget.device.isLock ? 'Tactical Lock' : 'Unknown',
-                  color: widget.device.isLock ? Colors.green : Colors.grey,
+                  color: widget.device.isLock 
+                      ? (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.green[300]!
+                          : Colors.green[600]!)
+                      : (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[400]!
+                          : Colors.grey[600]!),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
