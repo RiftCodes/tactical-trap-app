@@ -347,6 +347,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             await bleProvider.initializeLock();
                           }
                         },
+                        onGetVersion: () async {
+                          await bleProvider.getVersion();
+                        },
                         lastStatus: bleProvider.lastStatus,
                       ),
                     ],

@@ -14,17 +14,6 @@ class StatusChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <Widget>[];
 
-    // Main status
-    chips.add(
-      _chip(
-        icon: status.isSuccess
-            ? Icons.check_circle_rounded
-            : Icons.error_rounded,
-        label: status.responseMsg ?? status.statusDescription,
-        color: status.isSuccess ? DS.success : DS.brandRed,
-      ),
-    );
-
     // Battery
     if (status.voltageValue != null) {
       chips.add(
@@ -47,27 +36,17 @@ class StatusChips extends StatelessWidget {
       );
     }
 
-    // Alarm
-    if (status.alarmOn != null) {
-      chips.add(
-        _chip(
-          icon: Icons.alarm_rounded,
-          label: status.alarmOn == true ? 'Alarm On' : 'Alarm Off',
-          color: status.alarmOn == true ? DS.warning : Colors.grey,
-        ),
-      );
-    }
-
-    // Buzzer
-    if (status.buzzerOn != null) {
-      chips.add(
-        _chip(
-          icon: Icons.volume_up_rounded,
-          label: status.buzzerOn == true ? 'Buzzer On' : 'Buzzer Off',
-          color: status.buzzerOn == true ? DS.warning : Colors.grey,
-        ),
-      );
-    }
+    // Lock Time (current time in user timezone)
+    chips.add(
+      _chip(
+        icon: Icons.access_time_rounded,
+        label: DateTime.now().toLocal().toString().substring(
+          11,
+          19,
+        ), // HH:MM:SS
+        color: Colors.blue,
+      ),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {

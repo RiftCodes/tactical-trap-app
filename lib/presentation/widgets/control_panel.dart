@@ -9,6 +9,7 @@ class ControlPanel extends StatelessWidget {
   final VoidCallback onToggleAlarm;
   final VoidCallback onToggleBuzzer;
   final VoidCallback onInitialize;
+  final VoidCallback onGetVersion;
   final LockStatus? lastStatus;
 
   const ControlPanel({
@@ -16,6 +17,7 @@ class ControlPanel extends StatelessWidget {
     required this.onToggleAlarm,
     required this.onToggleBuzzer,
     required this.onInitialize,
+    required this.onGetVersion,
     this.lastStatus,
   });
 
@@ -64,11 +66,32 @@ class ControlPanel extends StatelessWidget {
                 SizedBox(width: DS.s),
                 Expanded(
                   child: _buildControlButton(
+                    icon: Icons.info_outline_rounded,
+                    label: 'Version',
+                    color: DS.info,
+                    onTap: onGetVersion,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: DS.s),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildControlButton(
                     icon: Icons.refresh_rounded,
                     label: 'Reset',
                     color: DS.error,
                     onTap: onInitialize,
                   ),
+                ),
+                SizedBox(width: DS.xs),
+                Expanded(
+                  child: Container(), // Empty space to maintain layout
+                ),
+                SizedBox(width: DS.xs),
+                Expanded(
+                  child: Container(), // Empty space to maintain layout
                 ),
               ],
             ),

@@ -37,7 +37,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           customName ??
           widget.device.localName ??
           widget.device.name ??
-          'My Lock',
+          'SN:0000154924', // Default serial number format
     );
   }
 
@@ -115,7 +115,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
 
           // Device info
           Text(
-            'SN: ${widget.device.id}',
+            'Device ID: ${widget.device.id}',
             style: TextStyle(
               fontSize: DS.textXS,
               color: Colors.grey[600],
@@ -128,71 +128,72 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           SizedBox(height: DS.m),
 
           // Show More Section
-          ExpansionTile(
-            title: Row(
-              children: [
-                Icon(Icons.expand_more_rounded, color: DS.brandDark, size: 18),
-                SizedBox(width: DS.xs),
-                Text(
-                  'Show More',
-                  style: TextStyle(
-                    fontSize: DS.textSM,
-                    fontWeight: FontWeight.w600,
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(DS.rSmall),
+              border: Border.all(color: Colors.grey[200]!, width: 1),
+            ),
+            child: ExpansionTile(
+              title: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
                     color: DS.brandDark,
+                    size: 18,
                   ),
+                  SizedBox(width: DS.xs),
+                  Text(
+                    'Device Details',
+                    style: TextStyle(
+                      fontSize: DS.textSM,
+                      fontWeight: FontWeight.w600,
+                      color: DS.brandDark,
+                    ),
+                  ),
+                  Spacer(),
+                  Container(
+                    padding: EdgeInsets.all(DS.xs),
+                    decoration: BoxDecoration(
+                      color: DS.brandDark.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DS.rSmall),
+                    ),
+                    child: Icon(
+                      Icons.expand_more_rounded,
+                      color: DS.brandDark,
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ),
+              iconColor: Colors.transparent,
+              collapsedIconColor: Colors.transparent,
+              childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
+              children: [
+                // Lock Details in chip style
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDetailChip(
+                        icon: Icons.tag_rounded,
+                        label: 'Lock ID',
+                        value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
+                        color: Colors.indigo,
+                      ),
+                    ),
+                    SizedBox(width: DS.xs),
+                    Expanded(
+                      child: _buildDetailChip(
+                        icon: Icons.info_outline_rounded,
+                        label: 'Device Version',
+                        value: 'Tap Version button',
+                        color: Colors.teal,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            iconColor: DS.brandDark,
-            childrenPadding: EdgeInsets.only(bottom: DS.s),
-            children: [
-              // Lock Details in chip style
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDetailChip(
-                      icon: Icons.tag_rounded,
-                      label: 'Lock ID',
-                      value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
-                      color: Colors.indigo,
-                    ),
-                  ),
-                  SizedBox(width: DS.xs),
-                  Expanded(
-                    child: _buildDetailChip(
-                      icon: Icons.schedule_rounded,
-                      label: 'Response',
-                      value:
-                          '0x${(widget.lastStatus?.response ?? 0).toRadixString(16).toUpperCase()}',
-                      color: Colors.teal,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: DS.xs),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDetailChip(
-                      icon: Icons.access_time_rounded,
-                      label: 'Extra Bytes',
-                      value: '${widget.lastStatus?.extraBytes ?? 0}',
-                      color: Colors.cyan,
-                    ),
-                  ),
-                  SizedBox(width: DS.xs),
-                  Expanded(
-                    child: _buildDetailChip(
-                      icon: Icons.battery_full_rounded,
-                      label: 'Battery',
-                      value:
-                          '${widget.lastStatus?.voltageValue?.toStringAsFixed(2) ?? '5.11'}V',
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ],
       ),
@@ -205,20 +206,41 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
     required String value,
     required Color color,
   }) {
-    return Chip(
-      label: Text(
-        '$label: $value',
-        style: TextStyle(
-          fontSize: DS.textXS,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-      backgroundColor: Colors.grey[200],
-      shape: RoundedRectangleBorder(
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: DS.m),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(DS.rSmall),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
       ),
-      labelPadding: EdgeInsets.symmetric(horizontal: DS.xs, vertical: DS.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 16),
+              SizedBox(width: DS.xs),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: DS.textXS,
+                  fontWeight: FontWeight.w500,
+                  color: color.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: DS.xs),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: DS.textSM,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
