@@ -269,7 +269,7 @@ class BleProvider extends ChangeNotifier {
         await _silentGetDeviceStatus();
         _successMessage = 'Lock engaged';
         notifyListeners();
-        Future.delayed(const Duration(seconds: 3), () {
+        Future.delayed(const Duration(seconds: 1), () {
           _successMessage = null;
           notifyListeners();
         });
@@ -306,7 +306,7 @@ class BleProvider extends ChangeNotifier {
         await _silentGetDeviceStatus();
         _successMessage = 'Lock released';
         notifyListeners();
-        Future.delayed(const Duration(seconds: 3), () {
+        Future.delayed(const Duration(seconds: 1), () {
           _successMessage = null;
           notifyListeners();
         });
@@ -681,9 +681,7 @@ class BleProvider extends ChangeNotifier {
 
       // Start scanning to find the device
       await startScan();
-
-      // Wait for scan results
-      await Future.delayed(const Duration(seconds: 3));
+ 
 
       // Look for the device in discovered devices
       final targetDevice = _discoveredDevices
@@ -702,8 +700,7 @@ class BleProvider extends ChangeNotifier {
 
       if (success) {
         Logger.info('Auto-reconnect successful');
-        _autoReconnectStatus = 'Connected to $deviceName';
-        await Future.delayed(const Duration(seconds: 1));
+        _autoReconnectStatus = 'Connected to $deviceName'; 
       } else {
         throw Exception('Connection failed');
       }
@@ -711,8 +708,7 @@ class BleProvider extends ChangeNotifier {
       await stopScan();
     } catch (e) {
       Logger.error('Auto-reconnect failed', e);
-      _autoReconnectStatus = 'Auto-reconnect failed';
-      await Future.delayed(const Duration(seconds: 2));
+      _autoReconnectStatus = 'Auto-reconnect failed'; 
       await stopScan();
     } finally {
       _isAutoReconnecting = false;

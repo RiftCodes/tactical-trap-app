@@ -650,14 +650,5 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       onStopScan: () => bleProvider.stopScan(),
     );
   }
-
-  Future<void> _editDeviceName(String deviceId, String newName) async {
-    final deviceProvider = context.read<DeviceProvider>();
-
-    if (newName.trim().isEmpty) {
-      await deviceProvider.removeDeviceName(deviceId);
-    } else {
-      await deviceProvider.saveDeviceName(deviceId, newName.trim());
-    }
-  }
+ 
 }

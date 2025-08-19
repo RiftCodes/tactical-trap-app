@@ -56,7 +56,7 @@ class ConnectedBottomSheet extends StatelessWidget {
                         label: !isLocked ? 'LOCK' : 'UNLOCK',
                         color: !isLocked ? DS.brandRed : DS.success,
                         onTap: () {
-                          HapticFeedback.mediumImpact();
+                          HapticFeedback.vibrate();
                           if (isLocked) {
                             bleProvider.sendLockCommand();
                           } else {
