@@ -98,9 +98,9 @@ flutter_launcher_icons:
 # Flutter Native Splash configuration
 flutter_native_splash:
   color: "#1A1A1A"
-  image: assets/icons/horizontal.png
+  image: assets/icons/square.png
   android_12:
-    image: assets/icons/horizontal.png
+    image: assets/icons/square.png
     color: "#1A1A1A"
   web: false
 
