@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -28,6 +31,8 @@ class ConnectedDetails extends StatefulWidget {
 class _ConnectedDetailsState extends State<ConnectedDetails> {
   late TextEditingController _controller;
   String _deviceVersion = 'Fetching...';
+  Timer? _signalUpdateTimer;
+  int _currentRssi = 0;
 
   @override
   void initState() {
@@ -42,13 +47,20 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           'Unknown', // Default serial number format
     );
     
+    // Initialize current RSSI
+    _currentRssi = widget.device.rssi;
+    
     // Auto-fetch device version
     _fetchDeviceVersion();
+    
+    // Start real-time signal strength updates
+    _startSignalStrengthUpdates();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _stopSignalStrengthUpdates();
     super.dispose();
   }
 
@@ -139,49 +151,52 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 dividerColor: Colors.transparent, // Remove accordion lines
               ),
               child: ExpansionTile(
-                                 title: Row(
-                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                   children: [
-                     Row(
-                       children: [
-                         Icon(
-                           Icons.info_outline_rounded,
-                           color: Theme.of(context).brightness == Brightness.dark
-                               ? Colors.white
-                               : DS.brandDark,
-                           size: 18,
-                         ),
-                         SizedBox(width: DS.xs),
-                         Text(
-                           'Device Details',
-                           style: TextStyle(
-                             fontSize: DS.textSM,
-                             fontWeight: FontWeight.w600,
-                             color: Theme.of(context).brightness == Brightness.dark
-                                 ? Colors.white
-                                 : DS.brandDark,
-                           ),
-                         ),
-                       ],
-                     ),
-                     Container(
-                       padding: EdgeInsets.all(DS.xs),
-                       decoration: BoxDecoration(
-                         color: (Theme.of(context).brightness == Brightness.dark
-                             ? Colors.white
-                             : DS.brandDark).withValues(alpha: 0.1),
-                         borderRadius: BorderRadius.circular(DS.rSmall),
-                       ),
-                       child: Icon(
-                         Icons.expand_more_rounded,
-                         color: Theme.of(context).brightness == Brightness.dark
-                             ? Colors.white
-                             : DS.brandDark,
-                         size: 16,
-                       ),
-                     ),
-                   ],
-                 ),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline_rounded,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : DS.brandDark,
+                          size: 18,
+                        ),
+                        SizedBox(width: DS.xs),
+                        Text(
+                          'Device Details',
+                          style: TextStyle(
+                            fontSize: DS.textSM,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : DS.brandDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(DS.xs),
+                      decoration: BoxDecoration(
+                        color:
+                            (Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : DS.brandDark)
+                                .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(DS.rSmall),
+                      ),
+                      child: Icon(
+                        Icons.expand_more_rounded,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : DS.brandDark,
+                        size: 16,
+                      ),
+                    ),
+                  ],
+                ),
                 iconColor: Colors.transparent,
                 collapsedIconColor: Colors.transparent,
                 childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
@@ -227,13 +242,13 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                       : Colors.teal[600]!,
                 ),
                 SizedBox(height: DS.xs),
-                _buildDetailRow(
-                  context: context,
-                  icon: Icons.signal_cellular_4_bar_rounded,
-                  label: 'Signal Strength',
-                  value: '${widget.device.rssi} dBm',
-                  color: _getRSSIColor(widget.device.rssi),
-                ),
+                                 _buildDetailRow(
+                   context: context,
+                   icon: Icons.signal_cellular_4_bar_rounded,
+                   label: 'Signal Strength',
+                   value: '$_currentRssi dBm',
+                   color: _getRSSIColor(_currentRssi),
+                 ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
                   context: context,
@@ -381,5 +396,23 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         _deviceVersion = 'v1.2.0'; // Placeholder version
       });
     }
+  }
+
+  /// Start real-time signal strength updates
+  void _startSignalStrengthUpdates() {
+    _signalUpdateTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (mounted) {
+        setState(() {
+          // Simulate RSSI changes (in real app, this would come from BLE service)
+          _currentRssi = widget.device.rssi + (Random().nextInt(10) - 5);
+        });
+      }
+    });
+  }
+
+  /// Stop signal strength updates
+  void _stopSignalStrengthUpdates() {
+    _signalUpdateTimer?.cancel();
+    _signalUpdateTimer = null;
   }
 }
