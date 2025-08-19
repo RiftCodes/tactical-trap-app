@@ -284,10 +284,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     BleProvider bleProvider,
     DeviceProvider deviceProvider,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasConnection =
-        bleProvider.isConnected && bleProvider.currentDevice != null;
-
     return Stack(
       children: [
         const GlassBackground(),
@@ -313,7 +309,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         lastStatus: bleProvider.lastStatus,
                       ),
                       ControlPanel(
-                        onStatus: () => bleProvider.getDeviceStatus(),
                         onToggleAlarm: () async {
                           final st = await bleProvider.getAlarmStatus();
                           if (st != null) {
@@ -409,110 +404,106 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               // PIN Verifying Overlay
               if (bleProvider.isVerifyingPin)
-                Container(
-                  child: Center(
-                    child: Container(
-                      margin: EdgeInsets.all(DS.l),
-                      constraints: const BoxConstraints(maxWidth: 300),
-                      child: GlassCard(
-                        child: Padding(
-                          padding: EdgeInsets.all(DS.l),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Elegant lock icon
-                              Container(
-                                width: 64,
-                                height: 64,
-                                decoration: BoxDecoration(
-                                  color: DS.brandRed.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(32),
-                                  border: Border.all(
-                                    color: DS.brandRed.withValues(alpha: 0.3),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.lock_outline_rounded,
-                                    size: 32,
-                                    color: DS.brandRed,
-                                  ),
+                Center(
+                  child: Container(
+                    margin: EdgeInsets.all(DS.l),
+                    constraints: const BoxConstraints(maxWidth: 300),
+                    child: GlassCard(
+                      child: Padding(
+                        padding: EdgeInsets.all(DS.l),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Elegant lock icon
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: DS.brandRed.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(
+                                  color: DS.brandRed.withValues(alpha: 0.3),
+                                  width: 2,
                                 ),
                               ),
-
-                              SizedBox(height: DS.m),
-
-                              // Animated progress indicator
-                              SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    DS.brandRed,
-                                  ),
-                                  backgroundColor:
-                                      Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? Colors.white.withValues(alpha: 0.1)
-                                      : Colors.black.withValues(alpha: 0.05),
+                              child: Center(
+                                child: Icon(
+                                  Icons.lock_outline_rounded,
+                                  size: 32,
+                                  color: DS.brandRed,
                                 ),
                               ),
+                            ),
 
-                              SizedBox(height: DS.m),
+                            SizedBox(height: DS.m),
 
-                              // Main title
-                              Text(
-                                'Verifying PIN...',
+                            // Animated progress indicator
+                            SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 3,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  DS.brandRed,
+                                ),
+                                backgroundColor:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withValues(alpha: 0.1)
+                                    : Colors.black.withValues(alpha: 0.05),
+                              ),
+                            ),
+
+                            SizedBox(height: DS.m),
+
+                            // Main title
+                            Text(
+                              'Verifying PIN...',
+                              style: TextStyle(
+                                fontSize: DS.textLG,
+                                fontWeight: FontWeight.w700,
+                                color: DS.getTextPrimary(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+
+                            SizedBox(height: DS.s),
+
+                            // Status message
+                            Text(
+                              'Please wait while we verify your PIN',
+                              style: TextStyle(
+                                fontSize: DS.textSM,
+                                color: DS.getTextSecondary(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+
+                            SizedBox(height: DS.m),
+
+                            // Subtle hint
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: DS.s,
+                                vertical: DS.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.03),
+                                borderRadius: BorderRadius.circular(DS.rSmall),
+                              ),
+                              child: Text(
+                                'This may take a few seconds',
                                 style: TextStyle(
-                                  fontSize: DS.textLG,
-                                  fontWeight: FontWeight.w700,
-                                  color: DS.getTextPrimary(context),
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-
-                              SizedBox(height: DS.s),
-
-                              // Status message
-                              Text(
-                                'Please wait while we verify your PIN',
-                                style: TextStyle(
-                                  fontSize: DS.textSM,
+                                  fontSize: DS.textXS,
                                   color: DS.getTextSecondary(context),
                                 ),
-                                textAlign: TextAlign.center,
                               ),
-
-                              SizedBox(height: DS.m),
-
-                              // Subtle hint
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: DS.s,
-                                  vertical: DS.xs,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? Colors.white.withValues(alpha: 0.05)
-                                      : Colors.black.withValues(alpha: 0.03),
-                                  borderRadius: BorderRadius.circular(
-                                    DS.rSmall,
-                                  ),
-                                ),
-                                child: Text(
-                                  'This may take a few seconds',
-                                  style: TextStyle(
-                                    fontSize: DS.textXS,
-                                    color: DS.getTextSecondary(context),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -545,9 +536,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final customName = deviceProvider.getDeviceName(device.id);
     final displayName =
         customName ?? device.localName ?? device.name ?? 'Tactical Lock';
-    final shortSN = device.id.length > 6
-        ? device.id.substring(device.id.length - 6).toUpperCase()
-        : device.id.toUpperCase();
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: DS.xs),

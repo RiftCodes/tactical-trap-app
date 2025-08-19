@@ -6,7 +6,6 @@ import 'glass_card.dart';
 
 /// Essential controls panel for lock management
 class ControlPanel extends StatelessWidget {
-  final VoidCallback onStatus;
   final VoidCallback onToggleAlarm;
   final VoidCallback onToggleBuzzer;
   final VoidCallback onInitialize;
@@ -14,7 +13,6 @@ class ControlPanel extends StatelessWidget {
 
   const ControlPanel({
     super.key,
-    required this.onStatus,
     required this.onToggleAlarm,
     required this.onToggleBuzzer,
     required this.onInitialize,
@@ -48,26 +46,13 @@ class ControlPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _buildControlButton(
-                    icon: Icons.info_outline_rounded,
-                    label: 'Status',
-                    color: DS.info,
-                    onTap: onStatus,
-                  ),
-                ),
-                SizedBox(width: DS.s),
-                Expanded(
-                  child: _buildControlButton(
                     icon: Icons.alarm_rounded,
                     label: 'Alarm',
                     color: DS.warning,
                     onTap: onToggleAlarm,
                   ),
                 ),
-              ],
-            ),
-            SizedBox(height: DS.s),
-            Row(
-              children: [
+                SizedBox(width: DS.s),
                 Expanded(
                   child: _buildControlButton(
                     icon: Icons.volume_up_rounded,

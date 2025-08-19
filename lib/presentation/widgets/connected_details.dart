@@ -146,37 +146,51 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
             iconColor: DS.brandDark,
             childrenPadding: EdgeInsets.only(bottom: DS.s),
             children: [
-              // Lock Details
-              _buildDetailRow(
-                context,
-                icon: Icons.tag_rounded,
-                label: 'Lock ID',
-                value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
-                color: Colors.indigo,
+              // Lock Details in chip style
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailChip(
+                      icon: Icons.tag_rounded,
+                      label: 'Lock ID',
+                      value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
+                      color: Colors.indigo,
+                    ),
+                  ),
+                  SizedBox(width: DS.xs),
+                  Expanded(
+                    child: _buildDetailChip(
+                      icon: Icons.schedule_rounded,
+                      label: 'Response',
+                      value:
+                          '0x${(widget.lastStatus?.response ?? 0).toRadixString(16).toUpperCase()}',
+                      color: Colors.teal,
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: DS.xs),
-              _buildDetailRow(
-                context,
-                icon: Icons.schedule_rounded,
-                label: 'Response',
-                value: '0x${(widget.lastStatus?.response ?? 0).toRadixString(16).toUpperCase()}',
-                color: Colors.teal,
-              ),
-              SizedBox(height: DS.xs),
-              _buildDetailRow(
-                context,
-                icon: Icons.access_time_rounded,
-                label: 'Extra Bytes',
-                value: '${widget.lastStatus?.extraBytes ?? 0}',
-                color: Colors.cyan,
-              ),
-              SizedBox(height: DS.xs),
-              _buildDetailRow(
-                context,
-                icon: Icons.battery_full_rounded,
-                label: 'Battery',
-                value: '${widget.lastStatus?.voltageValue?.toStringAsFixed(2) ?? '5.11'}V',
-                color: Colors.green,
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDetailChip(
+                      icon: Icons.access_time_rounded,
+                      label: 'Extra Bytes',
+                      value: '${widget.lastStatus?.extraBytes ?? 0}',
+                      color: Colors.cyan,
+                    ),
+                  ),
+                  SizedBox(width: DS.xs),
+                  Expanded(
+                    child: _buildDetailChip(
+                      icon: Icons.battery_full_rounded,
+                      label: 'Battery',
+                      value:
+                          '${widget.lastStatus?.voltageValue?.toStringAsFixed(2) ?? '5.11'}V',
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -185,43 +199,26 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
     );
   }
 
-  Widget _buildDetailRow(
-    BuildContext context, {
+  Widget _buildDetailChip({
     required IconData icon,
     required String label,
     required String value,
     required Color color,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color, size: 18),
-        SizedBox(width: DS.xs),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: DS.textXS,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
-                ),
-              ),
-              SizedBox(height: DS.xs),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: DS.textSM,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
+    return Chip(
+      label: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: DS.textXS,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
-      ],
+      ),
+      backgroundColor: Colors.grey[200],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(DS.rSmall),
+      ),
+      labelPadding: EdgeInsets.symmetric(horizontal: DS.xs, vertical: DS.xs),
     );
   }
 
