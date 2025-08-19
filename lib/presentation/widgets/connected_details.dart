@@ -177,25 +177,26 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: EdgeInsets.all(DS.xs),
-                      decoration: BoxDecoration(
-                        color:
-                            (Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white
-                                    : DS.brandDark)
-                                .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(DS.rSmall),
-                      ),
-                      child: Icon(
-                        Icons.expand_more_rounded,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : DS.brandDark,
-                        size: 16,
-                      ),
-                    ),
+                   
                   ],
+                ),
+                trailing: Container(
+                  padding: EdgeInsets.all(DS.xs),
+                  decoration: BoxDecoration(
+                    color:
+                        (Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : DS.brandDark)
+                            .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(DS.rSmall),
+                  ),
+                  child: Icon(
+                    Icons.expand_more_rounded,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : DS.brandDark,
+                    size: 16,
+                  ),
                 ),
                 iconColor: Colors.transparent,
                 collapsedIconColor: Colors.transparent,
@@ -242,13 +243,13 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                       : Colors.teal[600]!,
                 ),
                 SizedBox(height: DS.xs),
-                                 _buildDetailRow(
-                   context: context,
-                   icon: Icons.signal_cellular_4_bar_rounded,
-                   label: 'Signal Strength',
-                   value: '$_currentRssi dBm',
-                   color: _getRSSIColor(_currentRssi),
-                 ),
+                  _buildDetailRow(
+                    context: context,
+                    icon: Icons.signal_cellular_4_bar_rounded,
+                    label: 'Signal Strength',
+                    value: '$_currentRssi dBm',
+                    color: _getRSSIColor(_currentRssi),
+                  ),
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
                   context: context,

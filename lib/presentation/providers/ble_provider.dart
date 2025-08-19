@@ -99,9 +99,18 @@ class BleProvider extends ChangeNotifier {
     // Listen to connection changes
     _bleService.connectionStream.listen((device) {
       _currentDevice = device;
+      final wasConnected =
+          _connectionState == BluetoothConnectionState.connected;
       _connectionState = device != null
           ? BluetoothConnectionState.connected
           : BluetoothConnectionState.disconnected;
+      
+      // Handle disconnection with auto-reconnect logic
+      if (wasConnected &&
+          _connectionState == BluetoothConnectionState.disconnected) {
+        _handleDisconnection();
+      }
+      
       notifyListeners();
 
       // Auto-fetch status on connect to populate UI details
@@ -118,6 +127,94 @@ class BleProvider extends ChangeNotifier {
       _lastStatus = status;
       notifyListeners();
     });
+  }
+
+  /// Handle device disconnection with smart reconnection logic
+  void _handleDisconnection() {
+    if (_currentDevice == null || _isAutoReconnecting) return;
+
+    Logger.info('Device disconnected, attempting smart reconnection...');
+
+    // Start auto-reconnect after a short delay
+    Future.delayed(const Duration(seconds: 2), () {
+      if (_connectionState == BluetoothConnectionState.disconnected &&
+          _currentDevice != null &&
+          !_isAutoReconnecting) {
+        _startSmartReconnection();
+      }
+    });
+  }
+
+  /// Start smart reconnection with user feedback
+  Future<void> _startSmartReconnection() async {
+    if (_isAutoReconnecting || _currentDevice == null) return;
+
+    try {
+      _isAutoReconnecting = true;
+      _autoReconnectStatus = 'Lock disconnected, attempting to reconnect...';
+      notifyListeners();
+
+      // Show toast notification
+      _showToast(
+        'Lock disconnected, attempting to reconnect...',
+        isError: false,
+      );
+
+      // Wait a bit before attempting reconnection
+      await Future.delayed(const Duration(seconds: 3));
+
+      if (_connectionState == BluetoothConnectionState.disconnected) {
+        _autoReconnectStatus = 'Scanning for lock...';
+        notifyListeners();
+
+        // Start scanning to find the device
+        await startScan();
+
+        // Wait for scan results
+        await Future.delayed(const Duration(seconds: 5));
+
+        // Look for the device in discovered devices
+        final targetDevice = _discoveredDevices
+            .where((d) => d.id == _currentDevice!.id)
+            .firstOrNull;
+
+        if (targetDevice != null) {
+          _autoReconnectStatus = 'Lock found, connecting...';
+          notifyListeners();
+
+          // Try to connect with stored PIN
+          final storedPin = await _storageService.getPinForDevice(
+            targetDevice.id,
+          );
+          if (storedPin != null) {
+            final success = await connectToDevice(targetDevice, pin: storedPin);
+            if (success) {
+              _autoReconnectStatus = 'Reconnected successfully!';
+              _showToast('Lock reconnected successfully!', isError: false);
+              await Future.delayed(const Duration(seconds: 2));
+            } else {
+              throw Exception('Reconnection failed');
+            }
+          } else {
+            throw Exception('No stored PIN for reconnection');
+          }
+        } else {
+          throw Exception('Lock not found in range');
+        }
+
+        await stopScan();
+      }
+    } catch (e) {
+      Logger.error('Smart reconnection failed', e);
+      _autoReconnectStatus = 'Reconnection failed: ${e.toString()}';
+      _showToast('Reconnection failed: ${e.toString()}', isError: true);
+      await Future.delayed(const Duration(seconds: 3));
+      await stopScan();
+    } finally {
+      _isAutoReconnecting = false;
+      _autoReconnectStatus = null;
+      notifyListeners();
+    }
   }
 
   /// Start scanning for devices
@@ -727,6 +824,17 @@ class BleProvider extends ChangeNotifier {
       _errorMessage = 'Permission request failed: $e';
       notifyListeners();
       return false;
+    }
+  }
+
+  /// Show toast notification to user
+  void _showToast(String message, {bool isError = false}) {
+    // This will be handled by the UI layer
+    // For now, just log the message
+    if (isError) {
+      Logger.error('Toast (Error): $message');
+    } else {
+      Logger.info('Toast (Info): $message');
     }
   }
 
