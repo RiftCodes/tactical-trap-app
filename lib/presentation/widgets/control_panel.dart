@@ -24,6 +24,7 @@ class ControlPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      margin: EdgeInsets.all(DS.m),
       child: Padding(
         padding: EdgeInsets.all(DS.m),
         child: Column(
@@ -84,14 +85,6 @@ class ControlPanel extends StatelessWidget {
                     color: DS.error,
                     onTap: onInitialize,
                   ),
-                ),
-                SizedBox(width: DS.xs),
-                Expanded(
-                  child: Container(), // Empty space to maintain layout
-                ),
-                SizedBox(width: DS.xs),
-                Expanded(
-                  child: Container(), // Empty space to maintain layout
                 ),
               ],
             ),

@@ -170,27 +170,21 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
               collapsedIconColor: Colors.transparent,
               childrenPadding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
               children: [
-                // Lock Details in chip style
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDetailChip(
-                        icon: Icons.tag_rounded,
-                        label: 'Lock ID',
-                        value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
-                        color: Colors.indigo,
-                      ),
-                    ),
-                    SizedBox(width: DS.xs),
-                    Expanded(
-                      child: _buildDetailChip(
-                        icon: Icons.info_outline_rounded,
-                        label: 'Device Version',
-                        value: 'Tap Version button',
-                        color: Colors.teal,
-                      ),
-                    ),
-                  ],
+                // Lock Details in tabular form
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.tag_rounded,
+                  label: 'Lock ID',
+                  value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
+                  color: Colors.indigo,
+                ),
+                SizedBox(height: DS.xs),
+                _buildDetailRow(
+                  context: context,
+                  icon: Icons.info_outline_rounded,
+                  label: 'Device Version',
+                  value: 'Tap Version button',
+                  color: Colors.teal,
                 ),
               ],
             ),
@@ -200,47 +194,37 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
     );
   }
 
-  Widget _buildDetailChip({
+  Widget _buildDetailRow({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
     required Color color,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: DS.m),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(DS.rSmall),
-        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 16),
-              SizedBox(width: DS.xs),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: DS.textXS,
-                  fontWeight: FontWeight.w500,
-                  color: color.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: DS.xs),
-          Text(
-            value,
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 16),
+        SizedBox(width: DS.xs),
+        Expanded(
+          child: Text(
+            label,
             style: TextStyle(
-              fontSize: DS.textSM,
-              fontWeight: FontWeight.w700,
-              color: color,
+              fontSize: DS.textXS,
+              fontWeight: FontWeight.w500,
+              color: color.withValues(alpha: 0.7),
             ),
           ),
-        ],
-      ),
+        ),
+        SizedBox(width: DS.xs),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: DS.textSM,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 
