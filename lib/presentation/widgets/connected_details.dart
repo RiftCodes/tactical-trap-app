@@ -124,8 +124,104 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          
+          SizedBox(height: DS.m),
+
+          // Show More Section
+          ExpansionTile(
+            title: Row(
+              children: [
+                Icon(Icons.expand_more_rounded, color: DS.brandDark, size: 18),
+                SizedBox(width: DS.xs),
+                Text(
+                  'Show More',
+                  style: TextStyle(
+                    fontSize: DS.textSM,
+                    fontWeight: FontWeight.w600,
+                    color: DS.brandDark,
+                  ),
+                ),
+              ],
+            ),
+            iconColor: DS.brandDark,
+            childrenPadding: EdgeInsets.only(bottom: DS.s),
+            children: [
+              // Lock Details
+              _buildDetailRow(
+                context,
+                icon: Icons.tag_rounded,
+                label: 'Lock ID',
+                value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
+                color: Colors.indigo,
+              ),
+              SizedBox(height: DS.xs),
+              _buildDetailRow(
+                context,
+                icon: Icons.schedule_rounded,
+                label: 'Response',
+                value: '0x${(widget.lastStatus?.response ?? 0).toRadixString(16).toUpperCase()}',
+                color: Colors.teal,
+              ),
+              SizedBox(height: DS.xs),
+              _buildDetailRow(
+                context,
+                icon: Icons.access_time_rounded,
+                label: 'Extra Bytes',
+                value: '${widget.lastStatus?.extraBytes ?? 0}',
+                color: Colors.cyan,
+              ),
+              SizedBox(height: DS.xs),
+              _buildDetailRow(
+                context,
+                icon: Icons.battery_full_rounded,
+                label: 'Battery',
+                value: '${widget.lastStatus?.voltageValue?.toStringAsFixed(2) ?? '5.11'}V',
+                color: Colors.green,
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: color, size: 18),
+        SizedBox(width: DS.xs),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: DS.textXS,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[600],
+                ),
+              ),
+              SizedBox(height: DS.xs),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: DS.textSM,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

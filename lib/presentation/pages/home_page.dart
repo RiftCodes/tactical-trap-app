@@ -362,7 +362,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               // Device list or empty state
               if (bleProvider.isConnected)
                 SizedBox(
-                  height: DS.xl * 4,
+                  height: DS.xl * 5,
                 ) // Increased spacing for connected state
               else if (bleProvider.isVerifyingPin ||
                   bleProvider.isAutoReconnecting)
@@ -375,7 +375,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     DS.s,
                     0,
                     DS.s,
-                    DS.xl * 4,
+                    DS.xl * 5,
                   ), // Increased bottom padding
                   child: Column(
                     children: List.generate(
