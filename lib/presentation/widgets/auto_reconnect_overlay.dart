@@ -13,8 +13,7 @@ class AutoReconnectOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      child: Center(
+    return Center(
         child: Container(
           margin: EdgeInsets.all(DS.l),
           constraints: const BoxConstraints(maxWidth: 300),
@@ -114,7 +113,6 @@ class AutoReconnectOverlay extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

@@ -14,21 +14,21 @@ class BleService {
   BleService._internal();
 
   // Response codes and constants (EXACT COPY of Angular app)
-  static const int ASK_correct = 0x10; // Success
-  static const int ASK_failure = 0x11; // Operation failed
-  static const int ASK_timeout = 0x12; // Operation timed out
-  static const int ASK_unknown = 0x13; // Unknown command
-  static const int ASK_checksum = 0x16; // Communication error
-  static const int ASK_password_not_verified = 0x26; // Lock not paired
-  static const int ASK_failed_verification = 0x27; // PIN verification failed
+  static const int askCorrect = 0x10; // Success
+  static const int askFailure = 0x11; // Operation failed
+  static const int askTimeout = 0x12; // Operation timed out
+  static const int askUnknown = 0x13; // Unknown command
+  static const int askChecksum = 0x16; // Communication error
+  static const int askPasswordNotVerified = 0x26; // Lock not paired
+  static const int askFailedVerification = 0x27; // PIN verification failed
 
   // Constants from Angular app (EXACT COPY)
-  static const int CMD = 1;
-  static const int ASK = 2;
-  static const int EXT = 3;
-  static const int SUM = 5;
-  static const int DATA = 6;
-  static const int RANDDATA = 14;
+  static const int cmd = 1;
+  static const int ask = 2;
+  static const int ext = 3;
+  static const int sum = 5;
+  static const int data = 6;
+  static const int randData = 14;
 
   // Stream controllers
   final StreamController<List<BleDevice>> _devicesController =
@@ -375,8 +375,8 @@ class BleService {
       final command = [0xF5, 0x65, 0x00, 0x00, 0x5F, 0x00];
 
       // Calculate checksum exactly like Angular app
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(
+      command[sum] = 0;
+      command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
       );
@@ -385,7 +385,7 @@ class BleService {
         'Initialize command: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
       );
       Logger.info(
-        'Checksum at position $SUM: 0x${command[SUM].toRadixString(16).toUpperCase()}',
+        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       // Send initialize command and wait for response
@@ -396,9 +396,9 @@ class BleService {
       );
 
       if (response != null && response.length >= 3) {
-        // Parse response: CMD = 1, ASK = 2
-        final commandCode = response[1]; // CMD position (index 1)
-        final responseCode = response[2]; // ASK position (index 2)
+        // Parse response: cmd = 1, ask = 2
+        final commandCode = response[1]; // cmd position (index 1)
+        final responseCode = response[2]; // ask position (index 2)
 
         Logger.info(
           'Initialize response: ${response.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
@@ -412,7 +412,7 @@ class BleService {
 
         // Check if this is an initialize command (0x65) and response is correct (0x10)
         if (commandCode == 0x65) {
-          final isInitialized = responseCode == ASK_correct;
+          final isInitialized = responseCode == askCorrect;
           Logger.info('Initialization result: $isInitialized');
           return isInitialized;
         } else {
@@ -482,8 +482,8 @@ class BleService {
         );
 
         // Calculate checksum exactly like Angular app's writeToLock
-        command[SUM] = 0;
-        command[SUM] = command.fold<int>(
+        command[sum] = 0;
+        command[sum] = command.fold<int>(
           0,
           (previous, current) => (previous + current) & 0xFF,
         );
@@ -492,7 +492,7 @@ class BleService {
           'Final command with checksum: ${command.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
         );
         Logger.info(
-          'Checksum at position $SUM: 0x${command[SUM].toRadixString(16).toUpperCase()}',
+          'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
         );
 
         // Send command exactly like Angular app
@@ -503,9 +503,9 @@ class BleService {
         );
 
         if (response != null && response.length >= 3) {
-          // Parse response exactly like Angular app: CMD = 1, ASK = 2
-          final commandCode = response[1]; // CMD position (index 1)
-          final responseCode = response[2]; // ASK position (index 2)
+          // Parse response exactly like Angular app: cmd = 1, ask = 2
+          final commandCode = response[1]; // cmd position (index 1)
+          final responseCode = response[2]; // ask position (index 2)
 
           Logger.info(
             'Response: ${response.map((b) => '0x${b.toRadixString(16).toUpperCase()}').join(' ')}',
@@ -519,7 +519,7 @@ class BleService {
 
           // Check if this is a verify command (0x0f) and response is correct (0x10)
           if (commandCode == 0x0f) {
-            final isVerified = responseCode == ASK_correct;
+            final isVerified = responseCode == askCorrect;
             Logger.info('Verification result: $isVerified');
 
             if (isVerified) {
@@ -530,9 +530,9 @@ class BleService {
             } else {
               Logger.info('❌ PIN verification failed with format: $currentPin');
               // Check if it's a different error that might need different handling
-              if (responseCode == ASK_password_not_verified) {
+              if (responseCode == askPasswordNotVerified) {
                 Logger.info('⚠️ Lock needs pairing first (response: 0x26)');
-              } else if (responseCode == ASK_failed_verification) {
+              } else if (responseCode == askFailedVerification) {
                 Logger.info('⚠️ Wrong PIN (response: 0x27)');
               }
             }
@@ -718,8 +718,8 @@ class BleService {
     try {
       final command = [0xF5, 0x6F, 0x00, 0x00, 0x5F, 0xC3];
       // Calculate checksum exactly like Angular app
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(
+      command[sum] = 0;
+      command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
       );
@@ -739,7 +739,7 @@ class BleService {
       final response = await _writeToLockWithResponse(commandName, command);
       if (response == null || response.isEmpty) {
         return LockStatus(
-          response: ASK_timeout,
+          response: askTimeout,
           extraBytes: 0,
           isStatus: false,
           isError: true,
@@ -751,7 +751,7 @@ class BleService {
       if (parsed != null) return parsed;
 
       return LockStatus(
-        response: response.length >= 3 ? response[2] : ASK_unknown,
+        response: response.length >= 3 ? response[2] : askUnknown,
         extraBytes: response.length >= 4 ? response[3] : 0,
         isStatus: false,
         isError: true,
@@ -760,7 +760,7 @@ class BleService {
     } catch (e) {
       Logger.error('Failed to write command', e);
       return LockStatus(
-        response: ASK_failure,
+        response: askFailure,
         extraBytes: 0,
         isStatus: false,
         isError: true,
@@ -785,10 +785,10 @@ class BleService {
     try {
       if (response.length < 6) return null;
 
-      final cmd = response[CMD];
-      final ask = response[ASK];
+      final cmd = response[cmd];
+      final ask = response[ask];
       final dataLen = response[3];
-      final dataStart = DATA; // index 6
+      final dataStart = data; // index 6
       final hasData = response.length >= dataStart + dataLen;
 
       // Default baseline
@@ -796,13 +796,13 @@ class BleService {
         response: ask,
         extraBytes: dataLen,
         isStatus: false,
-        isError: ask != ASK_correct,
+        isError: ask != askCorrect,
       );
 
       // Decode per-command
       switch (cmd) {
         case 0x60: // Status checking
-          if (ask == ASK_correct && hasData && dataLen >= 9) {
+          if (ask == askCorrect && hasData && dataLen >= 9) {
             final openClose = response[dataStart + 0];
             final hook = response[dataStart + 1];
             final voltageMv = _u16be(response, dataStart + 2); // mV
@@ -826,7 +826,7 @@ class BleService {
           }
           break;
         case 0x63: // Time reading
-          if (ask == ASK_correct && hasData && dataLen == 6) {
+          if (ask == askCorrect && hasData && dataLen == 6) {
             final y = _fromBcd(response[dataStart + 0]);
             final m = _fromBcd(response[dataStart + 1]);
             final d = _fromBcd(response[dataStart + 2]);
@@ -850,8 +850,8 @@ class BleService {
             response: ask,
             extraBytes: dataLen,
             isStatus: false,
-            isError: ask != ASK_correct,
-            verified: ask == ASK_correct,
+            isError: ask != askCorrect,
+            verified: ask == askCorrect,
           );
           break;
         case 0x61: // Unlock/Lock command ack
@@ -859,7 +859,7 @@ class BleService {
             response: ask,
             extraBytes: dataLen,
             isStatus: false,
-            isError: ask != ASK_correct,
+            isError: ask != askCorrect,
           );
           break;
         case 0x74: // Alarm setting & checking
@@ -869,7 +869,7 @@ class BleService {
               response: ask,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != ASK_correct,
+              isError: ask != askCorrect,
               alarmOn: value == 0,
             );
           }
@@ -881,7 +881,7 @@ class BleService {
               response: ask,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != ASK_correct,
+              isError: ask != askCorrect,
               buzzerOn: value == 0,
             );
           }
@@ -894,7 +894,7 @@ class BleService {
               response: ask,
               extraBytes: dataLen,
               isStatus: false,
-              isError: ask != ASK_correct,
+              isError: ask != askCorrect,
               responseMsg:
                   'Version - SW: 0x${soft.toRadixString(16).toUpperCase()}, HW: 0x${hard.toRadixString(16).toUpperCase()}',
             );
@@ -939,8 +939,8 @@ class BleService {
       command.add(dataByte);
 
       // Calculate checksum exactly like Angular app
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(
+      command[sum] = 0;
+      command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
       );
@@ -952,7 +952,7 @@ class BleService {
         'Data byte (0x36 ^ randData): 0x${dataByte.toRadixString(16).toUpperCase()}',
       );
       Logger.info(
-        'Checksum at position $SUM: 0x${command[SUM].toRadixString(16).toUpperCase()}',
+        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       final result = await _writeToLock('lock', command);
@@ -994,8 +994,8 @@ class BleService {
       command.add(dataByte);
 
       // Calculate checksum exactly like Angular app
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(
+      command[sum] = 0;
+      command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
       );
@@ -1007,7 +1007,7 @@ class BleService {
         'Data byte (0x35 ^ randData): 0x${dataByte.toRadixString(16).toUpperCase()}',
       );
       Logger.info(
-        'Checksum at position $SUM: 0x${command[SUM].toRadixString(16).toUpperCase()}',
+        'Checksum at position $sum: 0x${command[sum].toRadixString(16).toUpperCase()}',
       );
 
       final result = await _writeToLock('unlock', command);
@@ -1049,8 +1049,8 @@ class BleService {
     try {
       final command = [0xF5, 0x60, 0x00, 0x00, 0x5F, 0xB4];
       // Calculate checksum exactly like Angular app
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(
+      command[sum] = 0;
+      command[sum] = command.fold<int>(
         0,
         (previous, current) => (previous + current) & 0xFF,
       );
@@ -1066,15 +1066,15 @@ class BleService {
   Future<LockStatus?> getDeviceStatus() async {
     try {
       final command = [0xF5, 0x60, 0x00, 0x00, 0x5F, 0x00];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
 
       final bytes = await _writeToLockWithResponse('status', command);
       if (bytes == null) return null;
       final parsed = _parseResponse(bytes);
       if (parsed != null) return parsed;
       return LockStatus(
-        response: bytes.length >= 3 ? bytes[2] : ASK_unknown,
+        response: bytes.length >= 3 ? bytes[2] : askUnknown,
         extraBytes: bytes.length >= 4 ? bytes[3] : 0,
         isStatus: false,
         isError: true,
@@ -1090,8 +1090,8 @@ class BleService {
   Future<LockStatus?> getVersion() async {
     try {
       final command = [0xF5, 0x6E, 0x00, 0x00, 0x5F, 0x00];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
 
       final bytes = await _writeToLockWithResponse('version', command);
       if (bytes == null) return null;
@@ -1102,12 +1102,12 @@ class BleService {
     }
   }
 
-  /// Alarm checking (true => enabled), per spec DATALEN=0 means check
+  /// Alarm checking (true => enabled), per spec dataLEN=0 means check
   Future<LockStatus?> getAlarmStatus() async {
     try {
       final command = [0xF5, 0x74, 0x00, 0x00, 0x5F, 0x00];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('alarm_check', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
@@ -1122,8 +1122,8 @@ class BleService {
     try {
       final param = enabled ? 0x00 : 0x01;
       final command = [0xF5, 0x74, 0x00, 0x01, 0x5F, 0x00, param];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('alarm_set', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
@@ -1133,12 +1133,12 @@ class BleService {
     }
   }
 
-  /// Buzzer checking (true => enabled), per spec DATALEN=0 means check
+  /// Buzzer checking (true => enabled), per spec dataLEN=0 means check
   Future<LockStatus?> getBuzzerStatus() async {
     try {
       final command = [0xF5, 0x75, 0x00, 0x00, 0x5F, 0x00];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('buzzer_check', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
@@ -1153,8 +1153,8 @@ class BleService {
     try {
       final param = enabled ? 0x00 : 0x01;
       final command = [0xF5, 0x75, 0x00, 0x01, 0x5F, 0x00, param];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('buzzer_set', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
@@ -1181,8 +1181,8 @@ class BleService {
       ];
 
       final command = [0xF5, 0x62, 0x00, 0x06, 0x5F, 0x00, ...payload];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('time_set', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
@@ -1196,8 +1196,8 @@ class BleService {
   Future<LockStatus?> readTime() async {
     try {
       final command = [0xF5, 0x63, 0x00, 0x00, 0x5F, 0x00];
-      command[SUM] = 0;
-      command[SUM] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
+      command[sum] = 0;
+      command[sum] = command.fold<int>(0, (p, c) => (p + c) & 0xFF);
       final bytes = await _writeToLockWithResponse('time_read', command);
       if (bytes == null) return null;
       return _parseResponse(bytes);
