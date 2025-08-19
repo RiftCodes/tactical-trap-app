@@ -11,7 +11,7 @@
     <item android:gravity="center">
         <bitmap
             android:gravity="center"
-            android:src="@drawable/app_logo"
+            android:src="@drawable/horizontal_logo"
             android:scaleType="fitCenter" />
     </item>
     
