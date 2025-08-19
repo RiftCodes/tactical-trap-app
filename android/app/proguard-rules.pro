@@ -32,6 +32,12 @@
 -keep class com.polidea.rxandroidble2.** { *; }
 -keep class com.polidea.rxandroidble2.internal.** { *; }
 
+# Google Play Core rules (fixes R8 missing classes)
+-keep class com.google.android.play.core.** { *; }
+-keep class com.google.android.play.core.splitcompat.** { *; }
+-keep class com.google.android.play.core.splitinstall.** { *; }
+-keep class com.google.android.play.core.tasks.** { *; }
+
 # Keep native methods
 -keepclasseswithmembernames class * {
     native <methods>;

@@ -46,8 +46,8 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the release keys for production
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")
