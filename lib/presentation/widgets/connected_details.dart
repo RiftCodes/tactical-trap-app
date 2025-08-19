@@ -36,7 +36,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
     _controller = TextEditingController(
       text:
           customName ??
-          widget.device.serialNumber ??
+          // widget.device.serialNumber ??
           widget.device.localName ??
           widget.device.name ??
           'Unknown', // Default serial number format
@@ -143,28 +143,37 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   children: [
                     Icon(
                       Icons.info_outline_rounded,
-                      color: DS.brandDark,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : DS.brandDark,
                       size: 18,
                     ),
                     SizedBox(width: DS.xs),
-                    Text(
-                      'Device Details',
-                      style: TextStyle(
-                        fontSize: DS.textSM,
-                        fontWeight: FontWeight.w600,
-                        color: DS.brandDark,
+                    Expanded(
+                      child: Text(
+                        'Device Details',
+                        style: TextStyle(
+                          fontSize: DS.textSM,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white
+                              : DS.brandDark,
+                        ),
                       ),
                     ),
-                    Spacer(),
                     Container(
                       padding: EdgeInsets.all(DS.xs),
                       decoration: BoxDecoration(
-                        color: DS.brandDark.withValues(alpha: 0.1),
+                        color: (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : DS.brandDark).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(DS.rSmall),
                       ),
                       child: Icon(
                         Icons.expand_more_rounded,
-                        color: DS.brandDark,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : DS.brandDark,
                         size: 16,
                       ),
                     ),
@@ -184,16 +193,16 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                         ? Colors.indigo[400]!
                       : Colors.indigo[600]!,
                 ),
-                SizedBox(height: DS.xs),
-                _buildDetailRow(
-                  context: context,
-                    icon: Icons.fingerprint_rounded,
-                    label: 'Serial Number',
-                    value: widget.device.serialNumber ?? 'SN:0000154924',
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.blue[400]!
-                        : Colors.blue[600]!,
-                  ),
+                  // SizedBox(height: DS.xs),
+                  // _buildDetailRow(
+                  //   context: context,
+                  //     icon: Icons.fingerprint_rounded,
+                  //     label: 'Serial Number',
+                  //     value: widget.device.serialNumber ?? 'SN:0000154924',
+                  //     color: Theme.of(context).brightness == Brightness.dark
+                  //         ? Colors.blue[400]!
+                  //         : Colors.blue[600]!,
+                  //   ),
                   SizedBox(height: DS.xs),
                   _buildDetailRow(
                     context: context,

@@ -61,8 +61,7 @@ class ControlPanel extends StatelessWidget {
                     color: DS.brandRed,
                     onTap: onToggleBuzzer,
                   ),
-                ),
-                SizedBox(width: DS.s),
+                ), 
 
               ],
             ),
