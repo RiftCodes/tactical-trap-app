@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background color -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" /> <!-- Light theme background -->
+        </shape>
+    </item>
+    
+    <!-- Logo in center -->
+    <item android:gravity="center">
+        <bitmap
+            android:gravity="center"
+            android:src="@drawable/app_logo"
+            android:scaleType="fitCenter" />
+    </item>
+    
+    <!-- App name below logo -->
+    <item android:gravity="center_horizontal" android:top="200dp">
+        <text
+            android:text="Tactical Trap"
+            android:textSize="24sp"
+            android:textColor="#1A1A1A"
+            android:textStyle="bold"
+            android:gravity="center" />
+    </item>
+</layer-list>

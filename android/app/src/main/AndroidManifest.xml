@@ -12,9 +12,9 @@
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
     
     <application
-        android:label="tactical_trap_flutter"
+        android:label="Tactical Traps"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

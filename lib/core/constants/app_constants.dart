@@ -2,8 +2,8 @@
 class AppConstants {
   // App Information
   static const String appName = 'Tactical Traps';
-  static const String appVersion = '1.0.0';
-  static const String appDescription = 'BLE Lock Control App';
+  static const String appVersion = '1.5.1';
+  static const String appDescription = 'Controls a Bluetooth Low Energy lock';
 
   // Company Information
   static const String companyName = 'Tactical Traps';

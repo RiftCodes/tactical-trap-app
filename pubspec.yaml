@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.5.1+2
 
 environment:
   sdk: ^3.8.1
@@ -69,6 +69,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  
+  # App icon generation
+  flutter_launcher_icons: ^0.13.1
+  
+  # Splash screen generation
+  flutter_native_splash: ^2.3.7
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -98,6 +104,41 @@ flutter:
   # example:
   # fonts:
   #   - family: Roboto
+
+# App icon configuration
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
+    background_color: "#ffffff"
+    theme_color: "#000000"
+  windows:
+    generate: true
+    image_path: "assets/images/logo.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/images/logo.png"
+
+# Splash screen configuration
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/images/logo.png
+  branding: assets/images/logo.png
+  color_dark: "#000000"
+  image_dark: assets/images/logo.png
+  branding_dark: assets/images/logo.png
+  
+  android_12:
+    image: assets/images/logo.png
+    icon_background_color: "#ffffff"
+    icon_background_color_dark: "#000000"
+  
+  web: false
   #     fonts:
   #       - asset: assets/fonts/Roboto-Regular.ttf
   #       - asset: assets/fonts/Roboto-Bold.ttf

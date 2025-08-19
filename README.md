@@ -1,168 +1,270 @@
-# Tactical Traps BLE Lock App - Flutter Version
+# 🚀 Tactical Traps BLE Lock Control App
 
-A modern Flutter application for controlling Tactical Traps KR-S80 Bluetooth Low Energy locks with improved performance and user experience.
+**Flutter Version 1.5.1** - Controls a Bluetooth Low Energy lock
 
-## Features
+## 📱 App Information
 
+- **App Name**: Tactical Traps
+- **Version**: 1.5.1
+- **Build Number**: 2
+- **Package ID**: `com.tacticaltraps.bluetooth.lock_2`
+- **Description**: Controls a Bluetooth Low Energy lock
+- **Company**: Tactical Traps
+- **Website**: https://tacticaltraps.com/
+
+## 🔧 Features
+
+### ✅ Core Functionality
 - **Bluetooth Low Energy (BLE) Communication**
+- **Lock/Unlock Commands** with PIN verification
+- **Device Discovery & Scanning** (Tactical Traps locks only)
+- **Auto-reconnection** to last connected device
+- **Device History & Management**
+- **PIN Storage & Security**
 
-  - Fast device scanning (500ms vs 1s in original)
-  - Efficient connection management
-  - Auto-reconnection with smart retry logic
-  - Keep-alive functionality to maintain connections
+### 🎨 User Interface
+- **Material Design 3** with Tactical Traps branding
+- **Responsive Design** for all screen sizes
+- **Dark/Light Theme** support
+- **Loading States** and error handling
+- **Intuitive Controls** for lock management
 
-- **Lock Management**
+### 🔐 Security Features
+- **PIN Verification** required for lock access
+- **Secure PIN Storage** using device-specific encryption
+- **Session Management** with auto-logout
+- **Permission Handling** for Bluetooth and Location
 
-  - PIN verification and device pairing
-  - Custom lock naming with persistent storage
-  - Real-time connection status monitoring
-  - Comprehensive error handling and retry strategies
+## 🏗️ Architecture
 
-- **Modern User Interface**
-
-  - Material Design 3 components
-  - Dark/Light theme support
-  - Smooth animations and transitions
-  - Expandable device cards with full information
-  - Responsive design for all screen sizes
-
-- **Performance Improvements**
-  - Reduced scan time for faster device discovery
-  - Optimized Bluetooth operations
-  - Efficient state management with Provider
-  - Background processing capabilities
-
-## Architecture
-
-The app follows a clean architecture pattern with:
-
-- **Core Layer**: Constants, utilities, and exceptions
-- **Data Layer**: Models, repositories, and data sources
-- **Domain Layer**: Entities, repositories, and use cases
-- **Presentation Layer**: Pages, widgets, and providers
-- **Services Layer**: Bluetooth, storage, and permissions
-
-## Getting Started
-
-### Prerequisites
-
-- Flutter SDK (3.8.1 or higher)
-- Dart SDK (3.8.1 or higher)
-- Android Studio / Xcode for platform-specific builds
-- Physical device for Bluetooth testing
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone <repository-url>
-   cd tactical_trap_flutter
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   flutter pub get
-   ```
-
-3. **Run the app**
-   ```bash
-   flutter run
-   ```
-
-### Building for Production
-
-**Android:**
-
-```bash
-flutter build apk --release
+### **Clean Architecture Pattern**
+```
+lib/
+├── core/           # Core utilities, constants, and models
+├── data/           # Data layer (models, repositories)
+├── domain/         # Business logic and use cases
+├── presentation/   # UI layer (pages, widgets, providers)
+└── services/       # External services (BLE, storage)
 ```
 
-**iOS:**
+### **State Management**
+- **Provider Pattern** for state management
+- **Stream-based** BLE communication
+- **Reactive UI** updates
 
+### **BLE Protocol Implementation**
+- **Tactical Traps Protocol** support
+- **Command Structure**: `F5 [CMD] [LEN] [DATA] [5F] [CHECKSUM]`
+- **Response Handling** with timeout management
+- **Checksum Validation** for data integrity
+
+## 🚀 Getting Started
+
+### **Prerequisites**
+- Flutter SDK 3.8.1+
+- Android Studio / VS Code
+- Android SDK (API 21+)
+- iOS Development Tools (for iOS builds)
+
+### **Installation**
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd tactical_trap_flutter
+
+# Install dependencies
+flutter pub get
+
+# Run the app
+flutter run
+```
+
+### **Building for Production**
+
+#### **Android APK**
+```bash
+# Debug build
+flutter build apk --debug
+
+# Release build
+flutter build apk --release
+
+# Split APKs for different architectures
+flutter build apk --split-per-abi --release
+```
+
+#### **Android App Bundle (AAB)**
+```bash
+# Generate app bundle for Play Store
+flutter build appbundle --release
+```
+
+#### **iOS**
+```bash
+# Build for iOS
 flutter build ios --release
 ```
 
-## Dependencies
+## 🔑 Keystore Configuration
 
-- **flutter_blue_plus**: Bluetooth Low Energy communication
-- **provider**: State management
-- **shared_preferences**: Local storage
-- **permission_handler**: Device permissions
-- **flutter_local_notifications**: Local notifications
-- **google_fonts**: Modern typography
-- **flutter_animate**: Smooth animations
+### **Android Keystore Setup**
+1. **Generate Keystore**:
+   ```bash
+   keytool -genkey -v -keystore tactical-traps-key.keystore -alias tactical-traps -keyalg RSA -keysize 2048 -validity 10000
+   ```
 
-## Bluetooth Protocol
+2. **Configure in `android/app/build.gradle.kts`**:
+   ```kotlin
+   android {
+       signingConfigs {
+           create("release") {
+               storeFile = file("tactical-traps-key.keystore")
+               storePassword = "your-store-password"
+               keyAlias = "tactical-traps"
+               keyPassword = "your-key-password"
+           }
+       }
+       
+       buildTypes {
+           release {
+               signingConfig = signingConfigs.getByName("release")
+               minifyEnabled = true
+               proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+           }
+       }
+   }
+   ```
 
-The app implements the Tactical Traps KR-S80 lock protocol with:
+3. **Add keystore file** to `android/app/` directory
 
-- Command structure (CMD, ASK, EXT, SUM, DATA, RANDDATA)
-- Response code handling
-- Error categorization and retry strategies
-- Lock state management
+### **iOS Code Signing**
+1. **Configure in Xcode**:
+   - Set Bundle Identifier: `com.tacticaltraps.bluetooth.lock2`
+   - Configure Team and Provisioning Profile
+   - Set version and build number
 
-## Configuration
+## 📱 App Icons & Splash Screen
 
-### User Preferences
+### **Generated Assets**
+- **App Icons**: Multiple sizes for Android, iOS, Web, Windows, macOS
+- **Splash Screen**: Native splash with Tactical Traps branding
+- **Dark/Light Mode**: Support for both themes
 
-- Auto-connect to last device
-- Keep-alive intervals
-- Scan and connection timeouts
-- Notification settings
-- Theme preferences
+### **Customization**
+- **Logo Source**: `assets/images/logo.png`
+- **Icon Generation**: Uses `flutter_launcher_icons`
+- **Splash Generation**: Uses `flutter_native_splash`
 
-### Connection Settings
+## 🔧 Configuration Files
 
-- Scan timeout: 1-10 seconds
-- Connection timeout: 5-30 seconds
-- Keep-alive interval: 10-60 seconds
+### **pubspec.yaml**
+- **Version**: 1.5.1+2
+- **Dependencies**: Production-ready packages
+- **Assets**: Images and icons configuration
 
-## Testing
+### **Android Configuration**
+- **Application ID**: `com.tacticaltraps.bluetooth.lock_2`
+- **Version Code**: 2
+- **Version Name**: 1.5.1
+- **Min SDK**: 21 (Android 5.0+)
 
-The app includes comprehensive testing:
+### **iOS Configuration**
+- **Bundle ID**: `com.tacticaltraps.bluetooth.lock2`
+- **Version**: 1.5.1
+- **Build**: 2
 
-- Unit tests for services and models
-- Integration tests for Bluetooth operations
-- UI tests for user interactions
+## 🚀 Deployment
 
-## Performance Metrics
+### **Google Play Store**
+1. **Build AAB**: `flutter build appbundle --release`
+2. **Upload to Play Console**
+3. **Configure Store Listing**
+4. **Submit for Review**
 
-- **App startup time**: < 2 seconds
-- **BLE scan time**: < 500ms
-- **Connection time**: < 3 seconds
-- **Battery usage**: < 5% per hour
+### **Apple App Store**
+1. **Build iOS**: `flutter build ios --release`
+2. **Archive in Xcode**
+3. **Upload to App Store Connect**
+4. **Submit for Review**
 
-## Migration from Angular
+### **Direct Distribution**
+1. **Build APK**: `flutter build apk --release`
+2. **Sign with production keystore**
+3. **Distribute via direct download**
 
-This Flutter version is a complete rewrite of the original Angular/Ionic app with:
+## 🔍 Testing
 
-- **Improved Performance**: Faster scanning and better battery life
-- **Better UX**: Modern Material Design 3 interface
-- **Enhanced Bluetooth**: More reliable connections and error handling
-- **Cleaner Code**: Flutter's reactive programming model
+### **Unit Tests**
+```bash
+flutter test
+```
 
-## Contributing
+### **Integration Tests**
+```bash
+flutter test integration_test/
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+### **Device Testing**
+- **Android**: Test on multiple API levels (21+)
+- **iOS**: Test on different iOS versions
+- **BLE Testing**: Test with actual Tactical Traps locks
 
-## License
+## 📊 Performance
 
-Proprietary - Tactical Traps. Contact for commercial use or distribution.
+### **Optimizations**
+- **Minified Release Builds**
+- **ProGuard Rules** for Android
+- **Asset Optimization**
+- **Memory Management**
 
-## Support
+### **Monitoring**
+- **Performance Profiling**
+- **Memory Usage Tracking**
+- **Battery Usage Optimization**
 
-For support and questions:
+## 🔒 Security
 
-- Visit: [tacticaltraps.com](https://tacticaltraps.com/)
-- FAQs: [tacticaltraps.com/faqs/](https://tacticaltraps.com/faqs/)
+### **Data Protection**
+- **PIN Encryption** using device-specific keys
+- **Secure Storage** using Flutter's secure storage
+- **Permission Handling** for sensitive features
+
+### **Network Security**
+- **BLE Communication** encryption
+- **No Internet Access** required
+- **Local Data Storage** only
+
+## 📞 Support
+
+### **Technical Support**
+- **Email**: support@tacticaltraps.com
+- **Website**: https://tacticaltraps.com/
+- **Documentation**: This README
+
+### **User Support**
+- **FAQ**: www.tacticaltraps.com/faqs/
+- **User Manual**: Available in app settings
+
+## 📄 License
+
+**Proprietary Software** - Tactical Traps
+© 2024 Tactical Traps. All rights reserved.
+
+## 🚀 Version History
+
+### **v1.5.1 (Current)**
+- ✅ Complete Flutter migration from Angular
+- ✅ BLE protocol implementation
+- ✅ PIN verification system
+- ✅ Production-ready configuration
+- ✅ App icons and splash screen
+- ✅ Keystore setup for publishing
+
+### **v1.0.0 (Original Angular)**
+- ✅ Initial Angular + Ionic + Capacitor app
+- ✅ Basic BLE functionality
+- ✅ Lock/unlock commands
 
 ---
 
-_Built with Flutter for superior performance and user experience._
+**Built with ❤️ by Tactical Traps Team**
