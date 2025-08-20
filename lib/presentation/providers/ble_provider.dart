@@ -52,40 +52,50 @@ class BleProvider extends ChangeNotifier {
   /// Initialize the BLE service
   Future<bool> initialize() async {
     try {
-      Logger.info('BLE Provider: Starting initialization...');
+      if (kDebugMode) Logger.info('BLE Provider: Starting initialization...');
       _errorMessage = null;
       notifyListeners();
 
       final success = await _bleService.initialize();
-      Logger.info('BLE Provider: BLE service initialization result: $success');
+      if (kDebugMode)
+        Logger.info(
+          'BLE Provider: BLE service initialization result: $success',
+        );
 
       if (success) {
         _isInitialized = true;
-        Logger.info('BLE Provider: Set _isInitialized to true');
+        if (kDebugMode) Logger.info('BLE Provider: Set _isInitialized to true');
 
         // Listen to streams
         _listenToStreams();
-        Logger.info('BLE Provider: Streams listening set up');
+        if (kDebugMode) Logger.info('BLE Provider: Streams listening set up');
 
         // Try auto-reconnect after initialization
         Future.delayed(const Duration(milliseconds: 500), () {
-          tryAutoReconnect();
+          if (_isInitialized) {
+            if (kDebugMode)
+              Logger.info(
+                'BLE Provider: Attempting auto-reconnect after initialization',
+              );
+            tryAutoReconnect();
+          }
         });
 
         notifyListeners();
-        Logger.info(
+        if (kDebugMode)
+          Logger.info(
           'BLE Provider: Initialization complete, notifying listeners',
         );
         return true;
       } else {
         _errorMessage = 'Failed to initialize Bluetooth service';
-        Logger.info('BLE Provider: Initialization failed');
+        if (kDebugMode) Logger.info('BLE Provider: Initialization failed');
         notifyListeners();
         return false;
       }
     } catch (e) {
       _errorMessage = 'Initialization error: $e';
-      Logger.info('BLE Provider: Initialization error: $e');
+      if (kDebugMode) Logger.info('BLE Provider: Initialization error: $e');
       notifyListeners();
       return false;
     }
@@ -125,33 +135,36 @@ class BleProvider extends ChangeNotifier {
 
   /// Start scanning for devices
   Future<void> startScan() async {
-    Logger.info(
+    if (kDebugMode)
+      Logger.info(
       'BLE Provider: startScan called - isScanning: $_isScanning, isInitialized: $_isInitialized',
     );
 
     if (_isScanning || !_isInitialized) {
-      Logger.info(
+      if (kDebugMode)
+        Logger.info(
         'BLE Provider: Cannot start scan - isScanning: $_isScanning, isInitialized: $_isInitialized',
       );
       return;
     }
 
     try {
-      Logger.info('BLE Provider: Starting scan...');
+      if (kDebugMode) Logger.info('BLE Provider: Starting scan...');
       _isScanning = true;
       _errorMessage = null;
       notifyListeners();
 
       await _bleService.startScan();
-      Logger.info('BLE Provider: Scan started successfully');
+      if (kDebugMode) Logger.info('BLE Provider: Scan started successfully');
 
       // Stop scanning after timeout
-      Timer(Duration(milliseconds: 5000), () {
-        Logger.info('BLE Provider: Auto-stopping scan after timeout');
+      Timer(Duration(milliseconds: 8000), () {
+        if (kDebugMode)
+          Logger.info('BLE Provider: Auto-stopping scan after timeout');
         stopScan();
       });
     } catch (e) {
-      Logger.info('BLE Provider: Failed to start scan: $e');
+      if (kDebugMode) Logger.info('BLE Provider: Failed to start scan: $e');
       _errorMessage = 'Failed to start scan: $e';
       _isScanning = false;
       notifyListeners();
@@ -177,44 +190,71 @@ class BleProvider extends ChangeNotifier {
     if (_isConnecting || !_isInitialized) return false;
 
     try {
-      _isConnecting = true;
-      _errorMessage = null;
-      notifyListeners();
+      // Clear auto-reconnect state when manually connecting
+      _isAutoReconnecting = false;
+      _autoReconnectStatus = null;
+
+      // Batch initial state changes to reduce UI rebuilds
+      _batchUpdateStates(
+        isConnecting: true,
+        isVerifyingPin: true,
+        errorMessage: null,
+        successMessage: null,
+      );
 
       // Try to get stored PIN if none provided
       String? finalPin = pin;
       if (finalPin == null && device.isLock) {
         finalPin = await _storageService.getPinForDevice(device.id);
-        Logger.info(
-          'Retrieved stored PIN for device ${device.id}: ${finalPin != null ? 'found' : 'not found'}',
-        );
+        if (kDebugMode)
+          Logger.info(
+            'Retrieved stored PIN for device ${device.id}: ${finalPin != null ? 'found' : 'not found'}',
+          );
       }
 
-      final success = await _bleService.connectToDevice(device, pin: finalPin);
+      // Add timeout for PIN verification to prevent hanging
+      final success = await _bleService
+          .connectToDevice(device, pin: finalPin)
+          .timeout(
+            const Duration(seconds: 10), // Reduced timeout for better UX
+            onTimeout: () {
+              _errorMessage = 'Connection timeout - please try again';
+              return false;
+            },
+          );
 
       if (success) {
         _currentDevice = device;
         _connectionState = BluetoothConnectionState.connected;
+        _successMessage =
+            'Successfully connected to ${device.name ?? 'device'}';
 
         // Store PIN and device for auto-reconnect
         if (finalPin != null && device.isLock) {
           await _storageService.storePinForDevice(device.id, finalPin);
           await _storageService.saveLastConnectedDevice(device);
-          Logger.info('Stored PIN and device for auto-reconnect');
+          if (kDebugMode)
+            Logger.info('Stored PIN and device for auto-reconnect');
         }
 
-        // Device connected successfully
+        // Clear success message after delay
+        Future.delayed(const Duration(seconds: 2), () {
+          if (_successMessage != null) {
+            _successMessage = null;
+            notifyListeners();
+          }
+        });
       } else {
         _errorMessage = 'Failed to connect to device';
       }
 
-      _isConnecting = false;
-      notifyListeners();
+      // Batch final state changes to reduce UI rebuilds
+      _batchUpdateStates(isConnecting: false, isVerifyingPin: false);
       return success;
     } catch (e) {
       _errorMessage = 'Connection error: $e';
-      _isConnecting = false;
-      notifyListeners();
+      // Batch error state changes
+      _batchUpdateStates(isConnecting: false, isVerifyingPin: false);
       return false;
     }
   }
@@ -223,6 +263,46 @@ class BleProvider extends ChangeNotifier {
   void setPinVerificationState(bool isVerifying) {
     _isVerifyingPin = isVerifying;
     notifyListeners();
+  }
+
+  /// Clear PIN verification state (for error handling)
+  void clearPinVerificationState() {
+    _isVerifyingPin = false;
+    notifyListeners();
+  }
+
+  /// Batch update multiple states to reduce UI rebuilds
+  void _batchUpdateStates({
+    bool? isConnecting,
+    bool? isVerifyingPin,
+    String? errorMessage,
+    String? successMessage,
+  }) {
+    bool hasChanges = false;
+
+    if (isConnecting != null && _isConnecting != isConnecting) {
+      _isConnecting = isConnecting;
+      hasChanges = true;
+    }
+
+    if (isVerifyingPin != null && _isVerifyingPin != isVerifyingPin) {
+      _isVerifyingPin = isVerifyingPin;
+      hasChanges = true;
+    }
+
+    if (errorMessage != null && _errorMessage != errorMessage) {
+      _errorMessage = errorMessage;
+      hasChanges = true;
+    }
+
+    if (successMessage != null && _successMessage != successMessage) {
+      _successMessage = successMessage;
+      hasChanges = true;
+    }
+
+    if (hasChanges) {
+      notifyListeners();
+    }
   }
 
   /// Disconnect from current device
@@ -633,7 +713,19 @@ class BleProvider extends ChangeNotifier {
 
   /// Try to auto-reconnect to last device on app start
   Future<void> tryAutoReconnect() async {
-    if (!_isInitialized || _isConnecting || _isAutoReconnecting) return;
+    if (!_isInitialized ||
+        _isConnecting ||
+        _isAutoReconnecting ||
+        _isVerifyingPin)
+      return;
+
+    // Check if Bluetooth is enabled
+    final isBluetoothOn = await isBluetoothEnabled();
+    if (!isBluetoothOn) {
+      if (kDebugMode)
+        Logger.info('Bluetooth not enabled, skipping auto-reconnect');
+      return;
+    }
 
     try {
       _isAutoReconnecting = true;
@@ -642,9 +734,9 @@ class BleProvider extends ChangeNotifier {
 
       final prefs = await _storageService.getUserPreferences();
       final autoConnect = prefs['autoConnect'] ?? true;
-
+      if (kDebugMode) Logger.info('Auto-connect: $autoConnect');
       if (!autoConnect) {
-        Logger.info('Auto-connect disabled in preferences');
+        if (kDebugMode) Logger.info('Auto-connect disabled in preferences ');
         _isAutoReconnecting = false;
         _autoReconnectStatus = null;
         notifyListeners();
@@ -656,42 +748,66 @@ class BleProvider extends ChangeNotifier {
 
       final lastDeviceData = await _storageService.getLastConnectedDevice();
       if (lastDeviceData == null) {
-        Logger.info('No last connected device found');
+        if (kDebugMode)
+          Logger.info('No last connected device found, starting new scan');
         _isAutoReconnecting = false;
         _autoReconnectStatus = null;
         notifyListeners();
+        
+        // Start a new scan for discovery
         return;
       }
 
-      final deviceId = lastDeviceData['id']; 
+      final deviceId = lastDeviceData['id'];
       final deviceName =
           DeviceProvider().getDeviceName(lastDeviceData['name']) ??
           lastDeviceData['name'];
       final storedPin = await _storageService.getPinForDevice(deviceId);
 
       if (storedPin == null) {
-        Logger.info('No stored PIN for last device');
+        if (kDebugMode)
+          Logger.info('No stored PIN for last device, starting new scan');
         _isAutoReconnecting = false;
         _autoReconnectStatus = null;
         notifyListeners();
+        
+        // Start a new scan for discovery
+        await startScan();
         return;
       }
 
       _autoReconnectStatus = 'Scanning for $deviceName...';
       notifyListeners();
-      Logger.info('Attempting auto-reconnect to $deviceId');
+      if (kDebugMode) Logger.info('Attempting auto-reconnect to $deviceId');
 
       // Start scanning to find the device
       await startScan();
- 
+
+      // Wait for devices to be discovered
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       // Look for the device in discovered devices
-      final targetDevice = _discoveredDevices
+      BleDevice? targetDevice = _discoveredDevices
           .where((d) => d.id == deviceId)
           .firstOrNull;
 
       if (targetDevice == null) {
-        throw Exception('Device not found in range');
+        if (kDebugMode)
+          Logger.info(
+            'Device not found in initial scan, waiting for more devices...',
+          );
+        // Retry with longer delay
+        await Future.delayed(const Duration(milliseconds: 2000));
+
+        targetDevice = _discoveredDevices
+            .where((d) => d.id == deviceId)
+            .firstOrNull;
+
+        if (targetDevice == null) {
+          if (kDebugMode)
+            Logger.info('Device still not found after extended wait');
+          throw Exception('Device not found in range');
+        }
       }
 
       _autoReconnectStatus = 'Connecting to $deviceName...';
@@ -701,22 +817,28 @@ class BleProvider extends ChangeNotifier {
       final success = await connectToDevice(targetDevice, pin: storedPin);
 
       if (success) {
-        Logger.info('Auto-reconnect successful');
-        _autoReconnectStatus = 'Connected to $deviceName'; 
+        if (kDebugMode) Logger.info('Auto-reconnect successful');
+        _autoReconnectStatus = 'Connected to $deviceName';
       } else {
         throw Exception('Connection failed');
       }
 
       await stopScan();
     } catch (e) {
-      Logger.error('Auto-reconnect failed', e);
-      _autoReconnectStatus = 'Auto-reconnect failed'; 
+      if (kDebugMode) Logger.error('Auto-reconnect failed', e);
+      _autoReconnectStatus = 'Auto-reconnect failed';
       await stopScan();
     } finally {
       _isAutoReconnecting = false;
       _autoReconnectStatus = null;
       notifyListeners();
     }
+  }
+
+  /// Public method to manually trigger auto-reconnect
+  Future<void> manualAutoReconnect() async {
+    if (kDebugMode) Logger.info('Manual auto-reconnect triggered');
+    await tryAutoReconnect();
   }
 
   /// Request Bluetooth permissions

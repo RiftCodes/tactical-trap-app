@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/ble_device.dart';
+import '../../l10n/app_localizations.dart';
 import '../style/design_system.dart';
 import 'glass_card.dart';
 
@@ -13,7 +14,7 @@ class DeviceCard extends StatelessWidget {
   final bool isVerifyingPin;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
-  final VoidCallback onToggleExpansion; 
+  final VoidCallback onToggleExpansion;
 
   const DeviceCard({
     super.key,
@@ -24,7 +25,7 @@ class DeviceCard extends StatelessWidget {
     this.isVerifyingPin = false,
     required this.onConnect,
     required this.onDisconnect,
-    required this.onToggleExpansion, 
+    required this.onToggleExpansion,
   });
 
   @override
@@ -55,6 +56,7 @@ class DeviceCard extends StatelessWidget {
   }
 
   Widget _buildMainContent(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
         // Status indicator with better sizing
@@ -77,7 +79,7 @@ class DeviceCard extends StatelessWidget {
               ),
               SizedBox(height: 2),
               Text(
-                'SN: ${_getSerialNumber()}',
+                l10n.serialNumberShort(_getSerialNumber()),
                 style: TextStyle(
                   fontSize: DS.textXS,
                   color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -204,6 +206,7 @@ class DeviceCard extends StatelessWidget {
   }
 
   Widget _buildExpandedContent(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsets.fromLTRB(DS.s, DS.s, DS.s, 0),
       decoration: BoxDecoration(
@@ -219,9 +222,9 @@ class DeviceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildDetailRow('Device ID', device.id, isDark),
+          _buildDetailRow(l10n.deviceId, device.id, isDark),
           if (device.name != null && device.name != displayName)
-            _buildDetailRow('Original Name', device.name!, isDark), 
+            _buildDetailRow(l10n.originalName, device.name!, isDark), 
           Padding(
             padding: EdgeInsets.only(bottom: DS.xs),
             child: Row(
@@ -231,7 +234,7 @@ class DeviceCard extends StatelessWidget {
                 SizedBox(
                   width: 100,
                   child: Text(
-                    'Signal Quality:',
+                    l10n.signalQuality,
                     style: TextStyle(
                       fontSize: DS.textXS,
                       fontWeight: FontWeight.w600,
@@ -241,7 +244,7 @@ class DeviceCard extends StatelessWidget {
                 ),
                 SizedBox(width: DS.xs),
                 Text(
-                  _getSignalLabel(device.rssi),
+                  _getSignalLabel(context, device.rssi),
                   style: TextStyle(
                     fontSize: DS.textXS,
                     color: _getSignalColor(device.rssi),
@@ -254,10 +257,10 @@ class DeviceCard extends StatelessWidget {
               ],
             ),
           ),
-          _buildDetailRow('Signal Strenght', '${device.rssi} dBm', isDark),
+          _buildDetailRow(l10n.signalStrength, '${device.rssi} dBm', isDark),
           _buildDetailRow(
-            'Found',
-            _formatDateTime(device.discoveredAt),
+            l10n.found,
+            _formatDateTime(context, device.discoveredAt),
             isDark,
           ),
         ],
@@ -265,12 +268,13 @@ class DeviceCard extends StatelessWidget {
     );
   }
   /// Get signal label based on RSSI
-  String _getSignalLabel(int rssi) {
-    if (rssi > -50) return 'Excellent'; // Excellent
-    if (rssi > -60) return 'Good'; // Good
-    if (rssi > -70) return 'Fair'; // Fair
-    if (rssi > -80) return 'Poor'; // Poor
-    return 'Very Poor'; // Very Poor
+  String _getSignalLabel(BuildContext context, int rssi) {
+    final l10n = AppLocalizations.of(context)!;
+    if (rssi > -50) return l10n.excellent; // Excellent
+    if (rssi > -60) return l10n.good; // Good
+    if (rssi > -70) return l10n.fair; // Fair
+    if (rssi > -80) return l10n.poor; // Poor
+    return l10n.veryPoor; // Very Poor
   }
 
   /// Get signal color based on RSSI
@@ -315,13 +319,14 @@ class DeviceCard extends StatelessWidget {
       ),
     );
   }
- 
-  String _formatDateTime(DateTime dateTime) {
+
+  String _formatDateTime(BuildContext context, DateTime dateTime) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n.justNow;
     } else if (difference.inHours < 1) {
       return '${difference.inMinutes}m ago';
     } else if (difference.inDays < 1) {

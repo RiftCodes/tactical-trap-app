@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../data/models/ble_device.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/device_provider.dart';
 import '../style/design_system.dart';
 import 'theme_toggle.dart';
@@ -117,12 +118,13 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildConnectionRibbon(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final customName = deviceProvider.getDeviceName(currentDevice!.id);
     final displayName =
         customName ??
         currentDevice!.localName ??
         currentDevice!.name ??
-        'Tactical Lock';
+        l10n.tacticalLock;
     final shortSN = _getShortSN(currentDevice!.name ?? currentDevice!.id);
 
     return Container(
@@ -189,7 +191,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     return Text(
-                      'SN: $shortSN',
+                      l10n.serialNumberShort(shortSN),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 13,
@@ -217,8 +219,8 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 1,
               ),
             ),
-            child: const Text(
-              'ONLINE',
+            child: Text(
+              l10n.online,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 10,

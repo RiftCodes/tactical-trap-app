@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../data/models/ble_device.dart';
 import '../../data/models/lock_status.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/device_provider.dart';
 import '../style/design_system.dart';
 import 'glass_card.dart';
@@ -30,13 +31,14 @@ class ConnectedDetails extends StatefulWidget {
 
 class _ConnectedDetailsState extends State<ConnectedDetails> {
   late TextEditingController _controller;
-  String _deviceVersion = 'Fetching...';
+  String _deviceVersion = '';
   Timer? _signalUpdateTimer;
   int _currentRssi = 0;
 
   @override
   void initState() {
     super.initState();
+    // Note: l10n is not available in initState, will set in build method
     final customName = widget.deviceProvider.getDeviceName(widget.device.id);
     _controller = TextEditingController(
       text:
@@ -44,7 +46,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           // widget.device.serialNumber ??
           widget.device.localName ??
           widget.device.name ??
-          'Unknown', // Default serial number format
+          'Unknown', // Will be replaced with l10n.unknown in build
     );
     
     // Initialize current RSSI
@@ -66,6 +68,13 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Update controller text with localized unknown if needed
+    if (_controller.text == 'Unknown') {
+      _controller.text = l10n.unknown;
+    }
+    
     return GlassCard(
       margin: EdgeInsets.all(DS.m),
       child: Column(
@@ -78,7 +87,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           ],
 
           Text(
-            'LOCK SETTINGS',
+            l10n.lockSettings,
             style: TextStyle(
               fontSize: DS.textXS,
               fontWeight: FontWeight.w600,
@@ -97,8 +106,8 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 child: TextField(
                   controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'Lock Name',
-                    hintText: 'Name this lock',
+                    labelText: l10n.lockName,
+                    hintText: l10n.nameThisLock,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(DS.rMedium),
                     ),
@@ -123,7 +132,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                     borderRadius: BorderRadius.circular(DS.rMedium),
                   ),
                 ),
-                child: const Text('Save'),
+                child: Text(l10n.save),
               ),
             ],
           ),
@@ -165,7 +174,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                         ),
                         SizedBox(width: DS.xs),
                         Text(
-                          'Device Details',
+                          l10n.deviceDetails,
                           style: TextStyle(
                             fontSize: DS.textSM,
                             fontWeight: FontWeight.w600,
@@ -206,7 +215,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 _buildDetailRow(
                   context: context,
                   icon: Icons.tag_rounded,
-                  label: 'Lock ID',
+                    label: l10n.lockId,
                   value: widget.lastStatus?.lockId?.toString() ?? 'N/A',
                   color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.indigo[400]!
@@ -217,7 +226,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   _buildDetailRow(
                     context: context,
                     icon: Icons.bluetooth_rounded,
-                    label: 'Device ID',
+                    label: l10n.deviceId,
                     value: widget.device.id,
                     color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.grey[400]!
@@ -227,7 +236,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   _buildDetailRow(
                     context: context,
                   icon: Icons.info_outline_rounded,
-                  label: 'Device Version',
+                    label: l10n.deviceVersion,
                   value: _deviceVersion,
                   color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.teal[400]!
@@ -237,7 +246,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   _buildDetailRow(
                     context: context,
                     icon: Icons.signal_cellular_4_bar_rounded,
-                    label: 'Signal Strength',
+                    label: l10n.signalStrength,
                     value: '$_currentRssi dBm',
                     color: _getRSSIColor(_currentRssi),
                   ),
@@ -245,7 +254,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 _buildDetailRow(
                   context: context,
                   icon: Icons.schedule_rounded,
-                  label: 'Discovered',
+                    label: l10n.discovered,
                   value: _getTimeAgo(widget.device.discoveredAt),
                   color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.orange[400]!
@@ -255,10 +264,10 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 _buildDetailRow(
                   context: context,
                   icon: Icons.memory_rounded,
-                  label: 'Manufacturer Data',
+                    label: l10n.manufacturerData,
                   value: widget.device.manufacturerData.isNotEmpty
                       ? '${widget.device.manufacturerData.length} bytes'
-                      : 'None',
+                        : l10n.none,
                   color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.purple[400]!
                       : Colors.purple[600]!,
@@ -267,8 +276,10 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                 _buildDetailRow(
                   context: context,
                   icon: Icons.lock_rounded,
-                  label: 'Device Type',
-                  value: widget.device.isLock ? 'Tactical Lock' : 'Unknown',
+                    label: l10n.deviceType,
+                    value: widget.device.isLock
+                        ? l10n.tacticalLock
+                        : l10n.unknown,
                   color: widget.device.isLock 
                       ? (Theme.of(context).brightness == Brightness.dark
                               ? Colors.green[400]!
@@ -321,6 +332,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
   }
 
   void _saveName() async {
+    final l10n = AppLocalizations.of(context)!;
     final name = _controller.text.trim();
     if (name.isNotEmpty) {
       final success = await widget.deviceProvider.saveDeviceName(
@@ -332,7 +344,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Lock renamed to "$name"'),
+              content: Text(l10n.lockRenamedTo(name)),
               backgroundColor: DS.success,
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
@@ -343,7 +355,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Failed to save name'),
+              content: Text(l10n.failedToSaveName),
               backgroundColor: DS.brandRed,
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
@@ -364,11 +376,12 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
 
   /// Get human-readable time ago string
   String _getTimeAgo(DateTime dateTime) {
+    final l10n = AppLocalizations.of(context)!;
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n.justNow;
     } else if (difference.inMinutes < 60) {
       return '${difference.inMinutes}m ago';
     } else if (difference.inHours < 24) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../data/models/ble_device.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/device_provider.dart';
 import 'glass_card.dart';
 
@@ -29,6 +30,9 @@ class ConnectionStatus extends StatelessWidget {
 
   /// Build disconnected status
   Widget _buildDisconnectedStatus(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+    
     return GlassCard(
       margin: const EdgeInsets.all(AppConstants.defaultPadding),
       child: Row(
@@ -40,14 +44,14 @@ class ConnectionStatus extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Not Connected',
+                  l10n.notConnected,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Colors.grey[700],
                   ),
                 ),
                 Text(
-                  'Connect to your Tactical Traps lock to control it',
+                  l10n.connectToLockMessage,
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
@@ -62,6 +66,9 @@ class ConnectionStatus extends StatelessWidget {
 
   /// Build connected status
   Widget _buildConnectedStatus(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+    
     final displayName = deviceProvider.getDisplayName(currentDevice!);
 
     return GlassCard(
@@ -75,7 +82,7 @@ class ConnectionStatus extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Connected',
+                  l10n.connected,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Colors.green[700],
@@ -90,7 +97,7 @@ class ConnectionStatus extends StatelessWidget {
                 ),
                 if (currentDevice!.serialNumber != null)
                   Text(
-                    'SN: ${currentDevice!.serialNumber}',
+                    l10n.serialNumberShort(currentDevice!.serialNumber!),
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.green[600]),
@@ -105,7 +112,7 @@ class ConnectionStatus extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              'ONLINE',
+              l10n.online,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.green[700],
                 fontWeight: FontWeight.w600,

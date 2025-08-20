@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../providers/ble_provider.dart';
 import '../style/design_system.dart';
 
@@ -11,6 +12,7 @@ class ConnectedBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Consumer<BleProvider>(
       builder: (context, bleProvider, child) {
         final isLocked = bleProvider.lastStatus?.isLocked ?? true;
@@ -35,7 +37,7 @@ class ConnectedBottomSheet extends StatelessWidget {
               children: [
                 // Title
                 Text(
-                  'Lock Controls',
+                  l10n.lockControls,
                   style: TextStyle(
                     fontSize: DS.textLG,
                     fontWeight: FontWeight.w600,
@@ -53,7 +55,9 @@ class ConnectedBottomSheet extends StatelessWidget {
                         icon: !isLocked
                             ? Icons.lock_rounded
                             : Icons.lock_open_rounded,
-                        label: !isLocked ? 'LOCK' : 'UNLOCK',
+                        label: !isLocked
+                            ? l10n.lock.toUpperCase()
+                            : l10n.unlock.toUpperCase(),
                         color: !isLocked ? DS.brandRed : DS.success,
                         onTap: () {
                           HapticFeedback.vibrate();
@@ -70,7 +74,7 @@ class ConnectedBottomSheet extends StatelessWidget {
                       child: _buildControlButton(
                         context: context,
                         icon: Icons.link_off_rounded,
-                        label: 'DISCONNECT',
+                        label: l10n.disconnect.toUpperCase(),
                         color: DS.brandDark,
                         onTap: () {
                           HapticFeedback.mediumImpact();
@@ -120,12 +124,17 @@ class ConnectedBottomSheet extends StatelessWidget {
               children: [
                 Icon(icon, color: Colors.white, size: 20),
                 SizedBox(width: DS.xs),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: DS.textSM,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: DS.textSM,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],

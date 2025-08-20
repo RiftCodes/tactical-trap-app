@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/utils/logger.dart';
@@ -30,7 +31,7 @@ class StorageService {
 
       return await prefs.setString(_deviceNamesKey, jsonEncode(deviceNames));
     } catch (e) {
-      Logger.info('Failed to save device name: $e');
+      if (kDebugMode) Logger.info('Failed to save device name: $e');
       return false;
     }
   }
@@ -41,7 +42,7 @@ class StorageService {
       final deviceNames = await getDeviceNames();
       return deviceNames[deviceId];
     } catch (e) {
-      Logger.info('Failed to get device name: $e');
+      if (kDebugMode) Logger.info('Failed to get device name: $e');
       return null;
     }
   }
@@ -59,7 +60,7 @@ class StorageService {
 
       return {};
     } catch (e) {
-      Logger.info('Failed to get device names: $e');
+      if (kDebugMode) Logger.info('Failed to get device names: $e');
       return {};
     }
   }
@@ -73,7 +74,7 @@ class StorageService {
 
       return await prefs.setString(_deviceNamesKey, jsonEncode(deviceNames));
     } catch (e) {
-      Logger.info('Failed to remove device name: $e');
+      if (kDebugMode) Logger.info('Failed to remove device name: $e');
       return false;
     }
   }
@@ -96,7 +97,7 @@ class StorageService {
         jsonEncode(deviceData),
       );
     } catch (e) {
-      Logger.info('Failed to save last connected device: $e');
+      if (kDebugMode) Logger.info('Failed to save last connected device: $e');
       return false;
     }
   }
@@ -113,7 +114,7 @@ class StorageService {
 
       return null;
     } catch (e) {
-      Logger.info('Failed to get last connected device: $e');
+      if (kDebugMode) Logger.info('Failed to get last connected device: $e');
       return null;
     }
   }
@@ -124,7 +125,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.remove(_lastConnectedDeviceKey);
     } catch (e) {
-      Logger.info('Failed to clear last connected device: $e');
+      if (kDebugMode) Logger.info('Failed to clear last connected device: $e');
       return false;
     }
   }
@@ -138,7 +139,7 @@ class StorageService {
         jsonEncode(preferences),
       );
     } catch (e) {
-      Logger.info('Failed to save user preferences: $e');
+      if (kDebugMode) Logger.info('Failed to save user preferences: $e');
       return false;
     }
   }
@@ -156,7 +157,7 @@ class StorageService {
 
       return _getDefaultPreferences();
     } catch (e) {
-      Logger.info('Failed to get user preferences: $e');
+      if (kDebugMode) Logger.info('Failed to get user preferences: $e');
       return _getDefaultPreferences();
     }
   }
@@ -182,7 +183,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.setString(_appSettingsKey, jsonEncode(settings));
     } catch (e) {
-      Logger.info('Failed to save app settings: $e');
+      if (kDebugMode) Logger.info('Failed to save app settings: $e');
       return false;
     }
   }
@@ -200,7 +201,7 @@ class StorageService {
 
       return _getDefaultAppSettings();
     } catch (e) {
-      Logger.info('Failed to get app settings: $e');
+      if (kDebugMode) Logger.info('Failed to get app settings: $e');
       return _getDefaultAppSettings();
     }
   }
@@ -223,7 +224,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.clear();
     } catch (e) {
-      Logger.info('Failed to clear all data: $e');
+      if (kDebugMode) Logger.info('Failed to clear all data: $e');
       return false;
     }
   }
@@ -252,7 +253,7 @@ class StorageService {
         'keySizes': keySizes,
       };
     } catch (e) {
-      Logger.info('Failed to get storage info: $e');
+      if (kDebugMode) Logger.info('Failed to get storage info: $e');
       return {};
     }
   }
@@ -263,7 +264,7 @@ class StorageService {
       final prefs = await _prefs;
       return prefs.containsKey(key);
     } catch (e) {
-      Logger.info('Failed to check if key exists: $e');
+      if (kDebugMode) Logger.info('Failed to check if key exists: $e');
       return false;
     }
   }
@@ -274,7 +275,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.remove(key);
     } catch (e) {
-      Logger.info('Failed to remove key: $e');
+      if (kDebugMode) Logger.info('Failed to remove key: $e');
       return false;
     }
   }
@@ -285,7 +286,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.setString('pin_$deviceName', pin);
     } catch (e) {
-      Logger.info('Failed to store PIN for device: $e');
+      if (kDebugMode) Logger.info('Failed to store PIN for device: $e');
       return false;
     }
   }
@@ -296,7 +297,7 @@ class StorageService {
       final prefs = await _prefs;
       return prefs.getString('pin_$deviceName');
     } catch (e) {
-      Logger.info('Failed to retrieve PIN for device: $e');
+      if (kDebugMode) Logger.info('Failed to retrieve PIN for device: $e');
       return null;
     }
   }
@@ -307,7 +308,7 @@ class StorageService {
       final prefs = await _prefs;
       return await prefs.remove('pin_$deviceName');
     } catch (e) {
-      Logger.info('Failed to remove PIN for device: $e');
+      if (kDebugMode) Logger.info('Failed to remove PIN for device: $e');
       return false;
     }
   }
@@ -319,7 +320,8 @@ class StorageService {
       final pin = prefs.getString('pin_$deviceName');
       return pin != null && pin.isNotEmpty;
     } catch (e) {
-      Logger.info('Failed to check if device has stored PIN: $e');
+      if (kDebugMode)
+        Logger.info('Failed to check if device has stored PIN: $e');
       return false;
     }
   }

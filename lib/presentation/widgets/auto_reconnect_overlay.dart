@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../style/design_system.dart';
 import 'glass_card.dart';
 
@@ -11,6 +12,7 @@ class AutoReconnectOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Center(
@@ -63,7 +65,7 @@ class AutoReconnectOverlay extends StatelessWidget {
 
                   // Main title
                   Text(
-                    'Reconnecting...',
+                  l10n.reconnecting,
                     style: TextStyle(
                       fontSize: DS.textLG,
                       fontWeight: FontWeight.w700,
@@ -100,13 +102,13 @@ class AutoReconnectOverlay extends StatelessWidget {
                           : Colors.black.withValues(alpha: 0.03),
                       borderRadius: BorderRadius.circular(DS.rSmall),
                     ),
-                    child: Text(
-                      'Please wait while we reconnect',
-                      style: TextStyle(
-                        fontSize: DS.textXS,
-                        color: DS.getTextSecondary(context),
-                      ),
+                  child: Text(
+                    l10n.pleaseWaitWhileReconnect,
+                    style: TextStyle(
+                      fontSize: DS.textXS,
+                      color: DS.getTextSecondary(context),
                     ),
+                  ),
                   ),
                 ],
               ),

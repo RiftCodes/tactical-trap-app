@@ -117,14 +117,14 @@ lib/
 
 ### **Installation Steps**
 1. **Clone Repository**
-   ```bash
+```bash
    git clone https://github.com/RiftCodes/tactical-trap-app.git
    cd tactical-trap-app
    ```
 
 2. **Install Dependencies**
    ```bash
-   flutter pub get
+flutter pub get
    ```
 
 3. **Generate Assets**
@@ -137,12 +137,12 @@ lib/
    ```
 
 4. **Run Application**
-   ```bash
+```bash
    # Debug mode
    flutter run
-   
-   # Release build
-   flutter build apk --release
+
+# Release build
+flutter build apk --release
    ```
 
 ### **Build Scripts**

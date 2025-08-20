@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/lock_status.dart';
+import '../../l10n/app_localizations.dart';
 import '../style/design_system.dart';
 import 'glass_card.dart';
 
@@ -13,6 +14,7 @@ class StatusChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final chips = <Widget>[];
 
     // Battery
@@ -31,7 +33,7 @@ class StatusChips extends StatelessWidget {
       chips.add(
         _chip(
           icon: status.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
-          label: status.isLocked ? 'Locked' : 'Unlocked',
+          label: status.isLocked ? l10n.locked : l10n.unlocked,
           color: status.isLocked ? DS.brandRed : DS.success,
         ),
       );
@@ -54,7 +56,7 @@ class StatusChips extends StatelessWidget {
       chips.add(
         _chip(
           icon: _getSignalIcon(rssi!),
-          label: _getSignalLabel(rssi!),
+          label: _getSignalLabel(rssi!, context),
           color: _getSignalColor(rssi!),
         ),
       );
@@ -122,12 +124,13 @@ class StatusChips extends StatelessWidget {
   }
 
   /// Get signal label based on RSSI
-  String _getSignalLabel(int rssi) {
-    if (rssi > -50) return 'Excellent'; // Excellent
-    if (rssi > -60) return 'Good'; // Good
-    if (rssi > -70) return 'Fair'; // Fair
-    if (rssi > -80) return 'Poor'; // Poor
-    return 'Very Poor'; // Very Poor
+  String _getSignalLabel(int rssi, BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (rssi > -50) return l10n.excellent;
+    if (rssi > -60) return l10n.good;
+    if (rssi > -70) return l10n.fair;
+    if (rssi > -80) return l10n.poor;
+    return l10n.veryPoor;
   }
 
   /// Get signal color based on RSSI

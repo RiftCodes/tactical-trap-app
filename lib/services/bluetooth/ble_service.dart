@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -81,7 +82,7 @@ class BleService {
   /// Initialize BLE service
   Future<bool> initialize() async {
     try {
-      Logger.info('BLE: activate');
+      if (kDebugMode) Logger.info('BLE: activate');
 
       if (!await FlutterBluePlus.isSupported) {
         throw Exception('Bluetooth not supported');
@@ -92,7 +93,7 @@ class BleService {
 
       return true;
     } catch (e) {
-      Logger.error('Failed to initialize BLE service', e);
+      if (kDebugMode) Logger.error('Failed to initialize BLE service', e);
       return false;
     }
   }
@@ -112,7 +113,8 @@ class BleService {
     if (_isScanning) return;
 
     try {
-      Logger.info('Starting scan for Tactical Traps locks only');
+      if (kDebugMode)
+        Logger.info('Starting scan for Tactical Traps locks only');
       _isScanning = true;
       _devicesController.add([]);
 
@@ -219,7 +221,7 @@ class BleService {
   /// Enable Bluetooth
   Future<bool> enableBluetooth() async {
     try {
-      Logger.info('Attempting to enable Bluetooth...');
+      if (kDebugMode) Logger.info('Attempting to enable Bluetooth...');
 
       // Check current state first
       final currentState = await FlutterBluePlus.adapterState.first;
@@ -274,7 +276,7 @@ class BleService {
   /// Connect to device with PIN verification (like Angular app)
   Future<bool> connectToDevice(BleDevice device, {String? pin}) async {
     try {
-      Logger.info('Connecting to: ${device.id}');
+      if (kDebugMode) Logger.info('Connecting to: ${device.id}');
 
       if (_currentDevice != null) {
         await disconnectFromDevice();
@@ -303,8 +305,8 @@ class BleService {
 
       // If it's a Tactical Traps lock, verify PIN directly (like Angular app)
       if (device.isLock && pin != null) {
-        // Give lock a moment to settle before firing commands (like Angular app)
-        await Future.delayed(Duration(milliseconds: 200));
+        // Wait for connection to settle
+        await Future.delayed(Duration(milliseconds: 300));
 
         // Verify PIN directly (like Angular app's handleVerification)
         final verified = await _verifyPin(pin);
@@ -394,25 +396,12 @@ class BleService {
   Future<bool> _verifyPin(String pin) async {
     try {
 
-      // Try different PIN formats (like common lock defaults)
+      // Try only essential PIN formats for faster connection
       final pinFormats = [
-        pin, // Original: 6215
-        pin.padLeft(4, '0'), // Padded: 0621 (if pin was 621)
+        pin, // Original PIN
+        pin.padLeft(4, '0'), // Padded PIN
         '0000', // Common default
         '1234', // Common default
-        '1111', // Common default
-        '9999', // All nines
-        '8888', // All eights
-        '7777', // All sevens
-        '6666', // All sixes
-        '5555', // All fives
-        '4444', // All fours
-        '3333', // All threes
-        '2222', // All twos
-        '0123', // Sequential
-        '3210', // Reverse sequential
-        '1590', // Common pattern
-        '9510', // Reverse pattern
       ];
 
       for (int i = 0; i < pinFormats.length; i++) {
@@ -438,11 +427,11 @@ class BleService {
           (previous, current) => (previous + current) & 0xFF,
         );
 
-        // Send command exactly like Angular app
+        // Send command with adequate timeout
         final response = await _writeToLockWithResponse(
           'verify',
           command,
-          timeout: Duration(seconds: 8),
+          timeout: Duration(seconds: 5),
         );
 
         if (response != null && response.length >= 3) {

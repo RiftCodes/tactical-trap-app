@@ -53,7 +53,7 @@ class DeviceProvider extends ChangeNotifier {
     try {
       _deviceNames = await _storageService.getDeviceNames();
     } catch (e) {
-      Logger.error('Failed to load device names', e);
+      if (kDebugMode) Logger.error('Failed to load device names', e);
       _deviceNames = {};
     }
   }
@@ -63,7 +63,7 @@ class DeviceProvider extends ChangeNotifier {
     try {
       _lastConnectedDevice = await _storageService.getLastConnectedDevice();
     } catch (e) {
-      Logger.error('Failed to load last connected device', e);
+      if (kDebugMode) Logger.error('Failed to load last connected device', e);
       _lastConnectedDevice = null;
     }
   }
@@ -73,7 +73,7 @@ class DeviceProvider extends ChangeNotifier {
     try {
       _userPreferences = await _storageService.getUserPreferences();
     } catch (e) {
-      Logger.error('Failed to load user preferences', e);
+      if (kDebugMode) Logger.error('Failed to load user preferences', e);
       _userPreferences = {};
     }
   }
@@ -83,7 +83,7 @@ class DeviceProvider extends ChangeNotifier {
     try {
       _appSettings = await _storageService.getAppSettings();
     } catch (e) {
-      Logger.error('Failed to load app settings', e);
+      if (kDebugMode) Logger.error('Failed to load app settings', e);
     }
   }
 

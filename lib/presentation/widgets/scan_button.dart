@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Floating action button for scanning Bluetooth devices
 class ScanButton extends StatelessWidget {
@@ -17,6 +18,9 @@ class ScanButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return const SizedBox.shrink();
+    
     return FloatingActionButton.extended(
       onPressed: isScanning ? onStopScan : onScan,
       backgroundColor: isScanning
@@ -33,7 +37,7 @@ class ScanButton extends StatelessWidget {
               ),
             )
           : const Icon(Icons.bluetooth_searching),
-      label: Text(isScanning ? 'Stop Scan' : 'Scan'),
+      label: Text(isScanning ? l10n.stopScan : l10n.scan),
       elevation: AppConstants.defaultElevation,
     );
   }

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../style/design_system.dart';
 
 /// Compact iOS-style PIN dialog with glass effect
@@ -118,6 +119,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.fromLTRB(DS.m, DS.m, DS.xs, DS.s),
       child: Column(
@@ -155,7 +157,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
           ),
           SizedBox(height: DS.xs),
           Text(
-            'Enter PIN',
+            l10n.enterPin,
             style: TextStyle(
               fontSize: DS.textLG,
               fontWeight: FontWeight.w700,
@@ -212,6 +214,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
   }
 
   Widget _buildKeypad(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: DS.m).copyWith(bottom: DS.m),
       child: LayoutBuilder(
@@ -223,7 +226,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
               _buildKeypadRow(['4', '5', '6'], context, isDark, buttonSize),
               _buildKeypadRow(['7', '8', '9'], context, isDark, buttonSize),
               _buildKeypadRow(
-                ['delete', '0', 'ok'],
+                [l10n.delete, '0', l10n.ok],
                 context,
                 isDark,
                 buttonSize,
@@ -255,8 +258,9 @@ class _GlassPinDialogState extends State<GlassPinDialog>
     bool isDark,
     double size,
   ) {
-    final isDelete = key == 'delete';
-    final isOK = key == 'ok';
+    final l10n = AppLocalizations.of(context)!;
+    final isDelete = key == l10n.delete;
+    final isOK = key == l10n.ok;
 
     final buttonColor = isOK && _pin.length == 4
         ? DS.brandRed
@@ -322,13 +326,14 @@ class _GlassPinDialogState extends State<GlassPinDialog>
 
   void _onKeyTap(String key) {
     HapticFeedback.lightImpact();
+    final l10n = AppLocalizations.of(context)!;
 
     setState(() {
-      if (key == 'delete') {
+      if (key == l10n.delete) {
         if (_pin.isNotEmpty) {
           _pin = _pin.substring(0, _pin.length - 1);
         }
-      } else if (key == 'ok') {
+      } else if (key == l10n.ok) {
         if (_pin.length == 4) {
           HapticFeedback.mediumImpact();
           widget.onPinEntered(_pin);
