@@ -1,0 +1,272 @@
+Tactical Traps App - Testing Guide for Nicole
+
+Hi Nicole,
+
+This guide will help you test the app properly and understand what's normal behavior vs what might be an issue. Please test each feature step by step.
+
+IMPORTANT: Some behaviors that might seem like errors are actually normal for Bluetooth apps. I'll explain each one.
+
+==========================================
+1. APP INSTALLATION & FIRST LAUNCH
+==========================================
+
+Test Steps:
+1. Install the APK on your phone
+2. Open the app for the first time
+3. Grant permissions when asked (Bluetooth, Location)
+
+What Should Happen:
+- App opens with a clean home screen
+- Permission popups appear asking for Bluetooth and Location access
+- You should tap "Allow" for both
+
+Normal Behavior:
+- Permission requests are normal and required for the app to work
+- If you deny permissions, the app will ask again
+
+==========================================
+2. BLUETOOTH & LOCATION SETUP
+==========================================
+
+Test Steps:
+1. Make sure Bluetooth is OFF on your phone
+2. Make sure Location/GPS is OFF on your phone
+3. Tap the "Scan" button (floating blue button)
+
+What Should Happen:
+- App will show a popup asking to enable Bluetooth
+- App will show a popup asking to enable Location
+- You should tap "Enable" for both
+
+Normal Behavior:
+- These popups are normal - the app needs both services to find locks
+- If you don't see these popups, check your phone's notification settings
+
+==========================================
+3. DEVICE SCANNING
+==========================================
+
+Test Steps:
+1. With Bluetooth and Location ON, tap "Scan"
+2. Wait for devices to appear
+3. Look for your Tactical Traps lock
+
+What Should Happen:
+- Scan button shows "Scanning..." 
+- Device list appears with your lock(s)
+- Each device shows name, signal strength, and distance
+
+Normal Behavior:
+- Scanning takes 10-15 seconds - this is normal
+- If no devices appear immediately, wait the full scan time
+- Sometimes the first scan doesn't find devices - try scanning again
+
+Common "Issues" That Are Actually Normal:
+- "No devices found" on first scan - just scan again
+- Device appears then disappears - this is normal Bluetooth behavior
+- Signal strength changes - this is normal and expected
+
+==========================================
+4. CONNECTING TO A LOCK
+==========================================
+
+Test Steps:
+1. Tap on your lock from the device list
+2. Enter the PIN when asked
+3. Wait for connection
+
+What Should Happen:
+- PIN entry screen appears
+- After entering PIN, you see "Connecting..." 
+- Connection successful message appears
+
+Normal Behavior:
+- PIN entry is required for security
+- Connection takes 5-10 seconds - this is normal
+- If connection fails, try again - Bluetooth can be finicky
+
+Common "Issues" That Are Actually Normal:
+- Connection takes longer than expected - Bluetooth is slow sometimes
+- Connection fails first time - just try again
+- PIN verification takes time - this is security processing
+
+==========================================
+5. LOCK CONTROL FEATURES
+==========================================
+
+Test Steps:
+1. Once connected, try the Lock/Unlock buttons
+2. Check if status updates in real-time
+3. Try renaming the lock
+
+What Should Happen:
+- Lock/Unlock buttons respond to taps
+- Status shows current lock state
+- You can edit the lock name
+
+Normal Behavior:
+- Buttons have a slight delay - this is normal for security
+- Status updates may take 1-2 seconds
+- Name changes save automatically
+
+==========================================
+6. AUTO-RECONNECT FEATURE
+==========================================
+
+Test Steps:
+1. Connect to a lock
+2. Close the app completely
+3. Reopen the app
+4. Wait a few seconds
+
+What Should Happen:
+- App automatically tries to reconnect to the last lock
+- You see "Reconnecting..." message
+- If lock is in range, it connects automatically
+
+Normal Behavior:
+- Auto-reconnect takes 5-10 seconds
+- If lock is out of range, it won't reconnect
+- This is a convenience feature, not always 100% reliable
+
+==========================================
+7. MULTI-LANGUAGE SUPPORT
+==========================================
+
+Test Steps:
+1. Go to Settings (gear icon)
+2. Tap "Language"
+3. Try different languages
+
+What Should Happen:
+- Language options appear (English, Spanish, French)
+- App text changes to selected language
+- Settings remember your choice
+
+==========================================
+8. THEME SWITCHING
+==========================================
+
+Test Steps:
+1. Go to Settings
+2. Check if theme follows your phone's setting
+3. Change your phone's theme and reopen app
+
+What Should Happen:
+- App theme matches your phone (dark/light)
+- Theme changes automatically when you change phone settings
+
+==========================================
+9. USER MANUAL
+==========================================
+
+Test Steps:
+1. Go to Settings
+2. Tap "User Manual"
+3. Browse through the manual
+
+What Should Happen:
+- Manual opens with step-by-step instructions
+- PDF manuals are accessible
+- Content is easy to read
+
+==========================================
+10. SUPPORT FEATURES
+==========================================
+
+Test Steps:
+1. Go to Settings
+2. Try "Rate App", "Share App", "Support & Feedback"
+
+What Should Happen:
+- Rate App opens Play Store rating
+- Share App lets you share the app
+- Support shows contact information
+
+==================================================================
+COMMON "ISSUES" THAT ARE ACTUALLY NORMAL BLUETOOTH BEHAVIORS
+==================================================================
+
+1. "Device Not Found" on First Scan
+   - This is normal! Bluetooth scanning is not instant
+   - Solution: Wait for full scan time (15 seconds) or scan again
+
+2. Connection Takes Time
+   - Bluetooth connections are slow by nature
+   - Solution: Be patient, 5-10 seconds is normal
+
+3. Device Appears/Disappears
+   - This is normal Bluetooth behavior
+   - Solution: Wait for scan to complete, don't worry about flickering
+
+4. PIN Verification Delay
+   - Security processing takes time
+   - Solution: Wait for verification to complete
+
+5. Auto-reconnect Sometimes Fails
+   - This is normal for Bluetooth apps
+   - Solution: Manual connection is always available
+
+==========================================
+WHAT TO REPORT AS ACTUAL ISSUES
+==========================================
+
+Report these as problems:
+- App crashes completely
+- Buttons don't respond at all
+- Can't enter PIN
+- App freezes and won't respond
+- Error messages that don't go away
+
+DO NOT report these as problems because if right now app automatically tries to do it asap but if we try it faster then incases when app is far from lock then the disconnect issue get common so as per International Standard research the time here are ideal in bluetooth cases:
+- Scanning takes time
+- Connection delays
+- Device list changes during scan
+- PIN verification takes a few seconds
+
+==========================================
+TESTING CHECKLIST
+==========================================
+
+Please check off each item as you test:
+
+Basic Functionality:
+□ App installs and opens
+□ Permissions are requested
+□ Bluetooth and Location can be enabled
+□ Scanning finds devices
+□ Can connect to a lock
+□ PIN entry works
+□ Lock/Unlock buttons work
+□ Status updates show correctly
+
+Advanced Features:
+□ Auto-reconnect works
+□ Language switching works
+□ Theme follows phone setting
+□ User manual is accessible
+□ Support features work
+□ App can be renamed
+
+Performance:
+□ App doesn't crash
+□ Buttons respond quickly
+□ UI is smooth
+□ No freezing or hanging
+
+==========================================
+FEEDBACK NEEDED
+==========================================
+
+Please tell me:
+1. Which features worked perfectly?
+2. Which features had issues?
+3. What was confusing or unclear?
+4. Any crashes or freezes?
+5. Overall experience rating (1-10)
+
+Remember: Bluetooth apps have natural limitations and delays. What might seem like a bug is often just how Bluetooth works. Take your time testing and don't rush through the steps.
+
+Thank you for testing!
+Faizan
+Reckap Solutions LLC

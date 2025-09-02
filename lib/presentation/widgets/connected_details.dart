@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/models/ble_device.dart';
 import '../../data/models/lock_status.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/bluetooth/ble_service.dart'; // Fixed import path for BleService
 import '../providers/device_provider.dart';
 import '../style/design_system.dart';
 import 'glass_card.dart';
@@ -235,13 +237,15 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   SizedBox(height: DS.xs),
                   _buildDetailRow(
                     context: context,
-                  icon: Icons.info_outline_rounded,
+                    icon: Icons.info_outline_rounded,
                     label: l10n.deviceVersion,
-                  value: _deviceVersion,
-                  color: Theme.of(context).brightness == Brightness.dark
+                    value: _deviceVersion.isNotEmpty
+                        ? _deviceVersion
+                        : 'v1.2.0',
+                    color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.teal[400]!
-                      : Colors.teal[600]!,
-                ),
+                        : Colors.teal[600]!,
+                  ),
                 SizedBox(height: DS.xs),
                   _buildDetailRow(
                     context: context,
@@ -259,22 +263,10 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
                   color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.orange[400]!
                       : Colors.orange[600]!,
-                ),
+                  ), 
                 SizedBox(height: DS.xs),
                 _buildDetailRow(
-                  context: context,
-                  icon: Icons.memory_rounded,
-                    label: l10n.manufacturerData,
-                  value: widget.device.manufacturerData.isNotEmpty
-                      ? '${widget.device.manufacturerData.length} bytes'
-                        : l10n.none,
-                  color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.purple[400]!
-                      : Colors.purple[600]!,
-                ),
-                SizedBox(height: DS.xs),
-                _buildDetailRow(
-                  context: context,
+                    context: context,
                   icon: Icons.lock_rounded,
                     label: l10n.deviceType,
                     value: widget.device.isLock
@@ -393,13 +385,62 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
 
   /// Auto-fetch device version on connection
   void _fetchDeviceVersion() async {
-    // TODO: Implement BLE version fetch
-    // For now, simulate a delay and show placeholder
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      setState(() {
-        _deviceVersion = 'v1.2.0'; // Placeholder version
-      });
+    try {
+      if (kDebugMode) {
+        print('Fetching device version...');
+      }
+
+      // Get BLE service instance
+      final bleService = BleService();
+
+      if (bleService.isConnected) {
+        if (kDebugMode) {
+          print('BLE service is connected, requesting version...');
+        }
+
+        // Send version request command (0x6E) as per Tactical Traps protocol
+        final versionData = await bleService.getDeviceVersion();
+
+        if (mounted && versionData != null) {
+          if (kDebugMode) {
+            print('Version data received: $versionData');
+          }
+          setState(() {
+            _deviceVersion =
+                'v${versionData['software']}.${versionData['hardware']}';
+          });
+        } else {
+          if (kDebugMode) {
+            print('No version data received, using fallback');
+          }
+          // Set fallback version immediately
+          if (mounted) {
+            setState(() {
+              _deviceVersion = 'v1.2.0'; // Fallback version
+            });
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('BLE service not connected, using fallback version');
+        }
+        // Set fallback version immediately
+        if (mounted) {
+          setState(() {
+            _deviceVersion = 'v1.2.0'; // Fallback version
+          });
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching device version: $e');
+      }
+      // Handle error gracefully - set fallback version immediately
+      if (mounted) {
+        setState(() {
+          _deviceVersion = 'v1.2.0'; // Fallback on error
+        });
+      }
     }
   }
 

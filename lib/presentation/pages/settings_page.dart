@@ -812,7 +812,10 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
               Navigator.of(ctx).pop();
               await provider.clearAllData();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: DS.brandRed),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: DS.brandRed,
+              foregroundColor: Colors.white,
+            ),
             child: Text(l10n.clearButton),
           ),
         ],

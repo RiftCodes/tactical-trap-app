@@ -66,6 +66,12 @@ dependencies:
   # In-App Review
   in_app_review: ^2.0.9
 
+  # Device Info for Android version detection
+  device_info_plus: ^10.1.0
+
+  # Location services for GPS detection
+  location: ^6.0.0
+
 
 
   # UI Components
@@ -96,11 +102,21 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/icons/square.png"
   min_sdk_android: 21
+  
+  # Generate different icon variants
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/square.png"
+  
+  # Android adaptive icons with different variants
+  android_adaptive_icon_background_color: "#FFFFFF"
+  android_adaptive_icon_foreground_image: "assets/icons/square.png"
+  
+  # Generate icons for different platforms
   web:
     generate: true
     image_path: "assets/icons/square.png"
-    background_color: "#hexcode"
-    theme_color: "#hexcode"
+    background_color: "#FFFFFF"
+    theme_color: "#FF0000"
   windows:
     generate: true
     image_path: "assets/icons/square.png"
@@ -109,18 +125,51 @@ flutter_launcher_icons:
     generate: true
     image_path: "assets/icons/square.png"
 
+# Additional icon configurations for variants
+flutter_launcher_icons_circle:
+  android: "launcher_icon_circle"
+  ios: true
+  image_path: "assets/icons/square_circular.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/square_circular.png"
+  android_adaptive_icon_background_color: "#FFFFFF"
+  android_adaptive_icon_foreground_image: "assets/icons/square_circular.png"
+
+flutter_launcher_icons_transparent:
+  android: "launcher_icon_transparent"
+  ios: true
+  image_path: "assets/icons/square transaparent.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/square transaparent.png"
+  android_adaptive_icon_background_color: "#FFFFFF"
+  android_adaptive_icon_foreground_image: "assets/icons/square transaparent.png"
+
 # Flutter Native Splash configuration
 flutter_native_splash:
-  color: "#FFFFFF"
+  # Very light splash screen (appears almost transparent)
+  color: "#FFFFFF"  # White
   image: assets/icons/square.png
-  color_dark: "#1A1A1A"
+  
+  # Dark mode - very dark (appears almost transparent)
+  color_dark: "#FFFFFF"  # Black
   image_dark: assets/icons/square.png
+  
+  # Android 12+ splash screen
   android_12:
     image: assets/icons/square.png
-    color: "#FFFFFF"
-    icon_background_color: "#FFFFFF"
-    icon_background_color_dark: "#1A1A1A"
+    color: "#FFFFFF"  # White
+    icon_background_color: "#FFFFFF"  # White
+    icon_background_color_dark: "#FFFFFF"  # Black
+  
+  # Platform-specific settings
+  android: true
+  ios: true
   web: false
+  
+  # Full screen splash
+  fullscreen: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

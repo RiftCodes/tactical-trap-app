@@ -225,6 +225,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ),
               child: CircleAvatar(
                 radius: 20,
+                backgroundColor: Colors.transparent,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(50),
                   child: Image.asset(
@@ -400,6 +401,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
                         lastStatus: bleProvider.lastStatus,
                       ),
+                  
                     ],
                   ],
                 ),
@@ -421,7 +423,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     DS.s,
                     0,
                     DS.s,
-                    DS.xl * 5,
+                    DS.m, // Much more bottom padding for FAB visibility
                   ), // Increased bottom padding
                   child: Column(
                     children: List.generate(
@@ -451,7 +453,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 height: bleProvider.isConnected
                     ? 0
                     : MediaQuery.of(context).size.height *
-                          0.6, // Reduced height - just enough for overlays
+                          0.5, // Further reduced height for overlays
                 child: Stack(
                   children: [
                     // Loading overlays - Show only one at a time

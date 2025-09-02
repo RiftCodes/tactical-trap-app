@@ -157,8 +157,8 @@ class BleProvider extends ChangeNotifier {
       await _bleService.startScan();
       if (kDebugMode) Logger.info('BLE Provider: Scan started successfully');
 
-      // Stop scanning after timeout
-      Timer(Duration(milliseconds: 8000), () {
+      // Stop scanning after optimized timeout
+      Timer(Duration(milliseconds: 12000), () {
         if (kDebugMode)
           Logger.info('BLE Provider: Auto-stopping scan after timeout');
         stopScan();
@@ -216,7 +216,7 @@ class BleProvider extends ChangeNotifier {
       final success = await _bleService
           .connectToDevice(device, pin: finalPin)
           .timeout(
-            const Duration(seconds: 10), // Reduced timeout for better UX
+            const Duration(seconds: 15), // Optimized timeout for reliability
             onTimeout: () {
               _errorMessage = 'Connection timeout - please try again';
               return false;
@@ -783,8 +783,8 @@ class BleProvider extends ChangeNotifier {
       // Start scanning to find the device
       await startScan();
 
-      // Wait for devices to be discovered
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // Wait for devices to be discovered (optimized timing)
+      await Future.delayed(const Duration(milliseconds: 2000));
 
       // Look for the device in discovered devices
       BleDevice? targetDevice = _discoveredDevices
@@ -796,8 +796,8 @@ class BleProvider extends ChangeNotifier {
           Logger.info(
             'Device not found in initial scan, waiting for more devices...',
           );
-        // Retry with longer delay
-        await Future.delayed(const Duration(milliseconds: 2000));
+        // Retry with optimized delay
+        await Future.delayed(const Duration(milliseconds: 3000));
 
         targetDevice = _discoveredDevices
             .where((d) => d.id == deviceId)

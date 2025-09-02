@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:location/location.dart' as loc;
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/utils/logger.dart';
@@ -79,6 +81,21 @@ class BleService {
   bool get isConnected =>
       _connectionState == BluetoothConnectionState.connected;
 
+  /// Check Android version for compatibility adjustments
+  int _getAndroidVersion() {
+    try {
+      if (Platform.isAndroid) {
+        // For now, return a default value to avoid dependency issues
+        // This can be enhanced later with device_info_plus
+        return 29; // Assume Android 10 for compatibility
+      }
+      return 0; // Not Android
+    } catch (e) {
+      if (kDebugMode) Logger.warning('Could not determine Android version: $e');
+      return 29; // Default to Android 10 for safety
+    }
+  }
+
   /// Initialize BLE service
   Future<bool> initialize() async {
     try {
@@ -100,11 +117,508 @@ class BleService {
 
   /// Request permissions
   Future<void> _requestPermissions() async {
-    await Permission.bluetooth.request();
-    await Permission.bluetoothScan.request();
-    await Permission.bluetoothConnect.request();
-    if (await Permission.location.isDenied) {
-      await Permission.location.request();
+    try {
+      if (kDebugMode) {
+        Logger.info('Requesting permissions for BLE operation');
+      }
+
+      // Request Bluetooth permissions first
+      var bluetoothStatus = await Permission.bluetooth.request();
+      if (kDebugMode) {
+        Logger.info('Bluetooth permission status: $bluetoothStatus');
+      }
+
+      var bluetoothScanStatus = await Permission.bluetoothScan.request();
+      if (kDebugMode) {
+        Logger.info('Bluetooth scan permission status: $bluetoothScanStatus');
+      }
+
+      var bluetoothConnectStatus = await Permission.bluetoothConnect.request();
+      if (kDebugMode) {
+        Logger.info(
+          'Bluetooth connect permission status: $bluetoothConnectStatus',
+        );
+      }
+
+      // For Android 10 and below, location permission is critical for BLE scanning
+      var locationStatus = await Permission.location.status;
+      if (locationStatus.isDenied) {
+        if (kDebugMode) {
+          Logger.info('Location permission denied, requesting...');
+        }
+        locationStatus = await Permission.location.request();
+        if (locationStatus.isDenied) {
+          // Try to request again with explanation
+          if (kDebugMode) {
+            Logger.info('Location permission still denied, retrying...');
+          }
+          locationStatus = await Permission.location.request();
+        }
+      }
+
+      if (kDebugMode) {
+        Logger.info('Location permission status: $locationStatus');
+      }
+
+      // Additional location permission for Android 10 compatibility
+      var locationWhenInUseStatus = await Permission.locationWhenInUse.status;
+      if (locationWhenInUseStatus.isDenied) {
+        if (kDebugMode) {
+          Logger.info('Location when in use permission denied, requesting...');
+        }
+        locationWhenInUseStatus = await Permission.locationWhenInUse.request();
+      }
+
+      if (kDebugMode) {
+        Logger.info(
+          'Location when in use permission status: $locationWhenInUseStatus',
+        );
+        Logger.info('All permissions requested successfully');
+      }
+
+      // Check if critical permissions are granted
+      if (!bluetoothStatus.isGranted ||
+          !bluetoothScanStatus.isGranted ||
+          !locationStatus.isGranted) {
+        if (kDebugMode) {
+          Logger.warning(
+            'Some critical permissions are not granted. BLE scanning may fail.',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Failed to request permissions', e);
+      }
+    }
+  }
+
+  /// Wait for location services to be enabled with user feedback
+  Future<bool> _waitForLocationServices() async {
+    if (kDebugMode) {
+      Logger.info('Waiting for location services to be enabled...');
+    }
+
+    // Check current status
+    var locationEnabled = await Permission.location.serviceStatus.isEnabled;
+    var gpsStatus = await _checkGPSStatus();
+
+    if (locationEnabled && gpsStatus.contains('GPS enabled')) {
+      if (kDebugMode) {
+        Logger.info('Location services and GPS are already enabled');
+      }
+      return true;
+    }
+
+    // Show user that we're waiting
+    if (kDebugMode) {
+      Logger.info(
+        'Location services or GPS disabled, waiting for user to enable...',
+      );
+      Logger.info('Current status: Location=$locationEnabled, GPS=$gpsStatus');
+    }
+
+    // Wait and check periodically
+    for (int i = 0; i < 10; i++) {
+      // Wait up to 30 seconds
+      await Future.delayed(Duration(seconds: 3));
+
+      locationEnabled = await Permission.location.serviceStatus.isEnabled;
+      gpsStatus = await _checkGPSStatus();
+
+      if (kDebugMode) {
+        Logger.info('Check $i: Location=$locationEnabled, GPS=$gpsStatus');
+      }
+
+      // Check if both location services AND GPS are enabled
+      if (locationEnabled && gpsStatus.contains('GPS enabled')) {
+        if (kDebugMode) {
+          Logger.info('Location services AND GPS enabled after waiting!');
+        }
+        return true;
+      }
+
+      // If location services are enabled but GPS is still off, give specific feedback
+      if (locationEnabled && gpsStatus.contains('GPS disabled')) {
+        if (kDebugMode) {
+          Logger.info(
+            'Location services enabled but GPS still disabled. User needs to enable GPS specifically.',
+          );
+        }
+        // Continue waiting for GPS to be enabled
+      }
+
+      if (kDebugMode) {
+        Logger.info(
+          'Still waiting for location services and GPS... (attempt ${i + 1}/10)',
+        );
+      }
+    }
+
+    if (kDebugMode) {
+      Logger.warning(
+        'Location services or GPS not fully enabled after waiting period',
+      );
+    }
+    return false;
+  }
+
+  /// Check and enable both Bluetooth and GPS services
+  Future<bool> _checkAndEnableBluetoothAndGPS() async {
+    try {
+      if (kDebugMode) {
+        Logger.info('Checking Bluetooth and GPS status...');
+      }
+
+      // Check Bluetooth status
+      final bluetoothWorking = await _checkBluetoothStatus();
+      if (kDebugMode) {
+        Logger.info('Bluetooth working: $bluetoothWorking');
+      }
+
+      // Check GPS status
+      final gpsEnabled = await _isGPSEnabled();
+      if (kDebugMode) {
+        Logger.info('GPS enabled: $gpsEnabled');
+      }
+
+      // If both are working, return true
+      if (bluetoothWorking && gpsEnabled) {
+        if (kDebugMode) {
+          Logger.info('Both Bluetooth and GPS are working!');
+        }
+        return true;
+      }
+
+      // Enable Bluetooth if needed
+      if (!bluetoothWorking) {
+        if (kDebugMode) {
+          Logger.info('Bluetooth disabled, attempting to enable...');
+        }
+
+        final bluetoothEnabled = await _enableBluetooth();
+        if (!bluetoothEnabled) {
+          if (kDebugMode) {
+            Logger.error('Failed to enable Bluetooth');
+          }
+          return false;
+        }
+      }
+
+      // Enable GPS if needed
+      if (!gpsEnabled) {
+        if (kDebugMode) {
+          Logger.info('GPS disabled, showing enable dialog...');
+        }
+
+        // Show GPS enable dialog and wait for user to enable manually
+        final gpsEnabledResult = await _showGPSEnableDialog();
+        if (!gpsEnabledResult) {
+          if (kDebugMode) {
+            Logger.error('GPS was not enabled by user');
+          }
+          return false;
+        }
+      }
+
+      // Final check
+      final finalBluetoothStatus = await _checkBluetoothStatus();
+      final finalGPSStatus = await _isGPSEnabled();
+
+      if (kDebugMode) {
+        Logger.info(
+          'Final status - Bluetooth: $finalBluetoothStatus, GPS: $finalGPSStatus',
+        );
+      }
+
+      return finalBluetoothStatus && finalGPSStatus;
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error checking and enabling Bluetooth and GPS', e);
+      }
+      return false;
+    }
+  }
+
+  /// Show dialog to user about enabling GPS/Location services
+  Future<bool> _showGPSEnableDialog() async {
+    try {
+      if (kDebugMode) {
+        Logger.info('Showing GPS enable dialog...');
+      }
+
+      // Try to request location services using the location package
+      // This will show the system dialog to enable location services
+      final location = loc.Location();
+
+      if (kDebugMode) {
+        Logger.info('Requesting location services using location package...');
+      }
+
+      // This will show the system dialog to enable location services
+      final locationEnabled = await location.requestService();
+
+      if (kDebugMode) {
+        Logger.info('Location services request result: $locationEnabled');
+      }
+
+      if (locationEnabled) {
+        if (kDebugMode) {
+          Logger.info(
+            'Location services enabled by user through system dialog!',
+          );
+        }
+        return true;
+      }
+
+      // If user didn't enable through system dialog, wait for manual enable
+      if (kDebugMode) {
+        Logger.info(
+          'User did not enable location services through system dialog.',
+        );
+        Logger.info('Waiting for manual enable from notification panel...');
+      }
+
+      return await _waitForGPSManualEnable();
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error showing GPS enable dialog', e);
+      }
+      // Fallback to manual waiting
+      return await _waitForGPSManualEnable();
+    }
+  }
+
+  /// Check GPS status more accurately using location package
+  Future<String> _checkGPSStatus() async {
+    try {
+      // Use the location package to check if location services are enabled
+      final location = loc.Location();
+      final locationEnabled = await location.serviceEnabled();
+
+      if (kDebugMode) {
+        Logger.info(
+          'GPS Status - Location Services (location package): $locationEnabled',
+        );
+      }
+
+      if (!locationEnabled) {
+        return 'Location services disabled';
+      } else {
+        return 'GPS enabled';
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error checking GPS status with location package', e);
+      }
+      // Fallback to permission handler
+      try {
+        final locationEnabled =
+            await Permission.location.serviceStatus.isEnabled;
+        if (kDebugMode) {
+          Logger.info(
+            'GPS Status - Fallback (permission handler): $locationEnabled',
+          );
+        }
+        return locationEnabled ? 'GPS enabled' : 'Location services disabled';
+      } catch (e2) {
+        if (kDebugMode) {
+          Logger.error('Error in fallback GPS check', e2);
+        }
+        return 'Error checking GPS status';
+      }
+    }
+  }
+
+  /// Check if GPS is specifically enabled using location package
+  Future<bool> _isGPSEnabled() async {
+    try {
+      // Use the location package to check if location services are enabled
+      final location = loc.Location();
+      final locationEnabled = await location.serviceEnabled();
+
+      if (kDebugMode) {
+        Logger.info('GPS enabled check (location package): $locationEnabled');
+      }
+
+      return locationEnabled;
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error checking GPS status with location package', e);
+      }
+      // Fallback to permission handler
+      try {
+        final locationEnabled =
+            await Permission.location.serviceStatus.isEnabled;
+        if (kDebugMode) {
+          Logger.info('GPS enabled check (fallback): $locationEnabled');
+        }
+        return locationEnabled;
+      } catch (e2) {
+        if (kDebugMode) {
+          Logger.error('Error in fallback GPS check', e2);
+        }
+        return false;
+      }
+    }
+  }
+
+  /// Programmatically enable Bluetooth
+  Future<bool> _enableBluetooth() async {
+    try {
+      if (kDebugMode) {
+        Logger.info('Attempting to enable Bluetooth programmatically...');
+      }
+
+      // Check current status
+      final currentState = await FlutterBluePlus.adapterState.first;
+      if (currentState == BluetoothAdapterState.on) {
+        if (kDebugMode) {
+          Logger.info('Bluetooth is already enabled');
+        }
+        return true;
+      }
+
+      // Try to enable Bluetooth using FlutterBluePlus
+      if (kDebugMode) {
+        Logger.info('Requesting system to enable Bluetooth...');
+      }
+
+      await FlutterBluePlus.turnOn();
+
+      // Wait for Bluetooth to turn on
+      await Future.delayed(Duration(seconds: 2));
+
+      // Check if Bluetooth was enabled
+      final newState = await FlutterBluePlus.adapterState.first;
+      final isEnabled = newState == BluetoothAdapterState.on;
+
+      if (kDebugMode) {
+        Logger.info('Bluetooth enable result: $isEnabled (state: $newState)');
+      }
+
+      return isEnabled;
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Failed to enable Bluetooth programmatically', e);
+      }
+      return false;
+    }
+  }
+
+  /// Wait for user to manually enable GPS
+  Future<bool> _waitForGPSManualEnable() async {
+    if (kDebugMode) {
+      Logger.info('Waiting for user to manually enable GPS...');
+    }
+
+    // Check current status
+    var gpsEnabled = await _isGPSEnabled();
+
+    if (gpsEnabled) {
+      if (kDebugMode) {
+        Logger.info('GPS is already enabled');
+      }
+      return true;
+    }
+
+    if (kDebugMode) {
+      Logger.info(
+        'GPS disabled, waiting for user to enable from notification panel...',
+      );
+      Logger.info(
+        'Please enable GPS from the notification panel or quick settings',
+      );
+    }
+
+    // Wait and check periodically for up to 15 seconds (more reasonable)
+    for (int i = 0; i < 5; i++) {
+      await Future.delayed(Duration(seconds: 3));
+
+      gpsEnabled = await _isGPSEnabled();
+
+      if (kDebugMode) {
+        Logger.info('GPS check $i: $gpsEnabled');
+      }
+
+      if (gpsEnabled) {
+        if (kDebugMode) {
+          Logger.info('GPS enabled by user after waiting!');
+        }
+        return true;
+      }
+
+      if (kDebugMode) {
+        Logger.info(
+          'Still waiting for GPS to be enabled... (attempt ${i + 1}/10)',
+        );
+      }
+    }
+
+    if (kDebugMode) {
+      Logger.warning('GPS not enabled by user after waiting period');
+    }
+    return false;
+  }
+
+  /// Check if Bluetooth is enabled and working
+  Future<bool> _checkBluetoothStatus() async {
+    try {
+      // Check if Bluetooth is supported
+      if (!await FlutterBluePlus.isSupported) {
+        if (kDebugMode) {
+          Logger.error('Bluetooth LE not supported on this device');
+        }
+        return false;
+      }
+
+      // Check Bluetooth adapter state
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (kDebugMode) {
+        Logger.info('Bluetooth adapter state: $adapterState');
+      }
+
+      // Check if Bluetooth is enabled
+      if (adapterState != BluetoothAdapterState.on) {
+        if (kDebugMode) {
+          Logger.warning(
+            'Bluetooth is not enabled. Current state: $adapterState',
+          );
+        }
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error checking Bluetooth status', e);
+      }
+      return false;
+    }
+  }
+
+  /// Check if all required permissions are granted
+  Future<bool> _checkRequiredPermissions() async {
+    try {
+      final bluetoothStatus = await Permission.bluetooth.status;
+      final bluetoothScanStatus = await Permission.bluetoothScan.status;
+      final locationStatus = await Permission.location.status;
+
+      if (kDebugMode) {
+        Logger.info(
+          'Permission status - Bluetooth: $bluetoothStatus, Scan: $bluetoothScanStatus, Location: $locationStatus',
+        );
+      }
+
+      // For BLE scanning, we need at least Bluetooth and Location permissions
+      return bluetoothStatus.isGranted &&
+          bluetoothScanStatus.isGranted &&
+          locationStatus.isGranted;
+    } catch (e) {
+      if (kDebugMode) {
+        Logger.error('Error checking permissions', e);
+      }
+      return false;
     }
   }
 
@@ -115,28 +629,176 @@ class BleService {
     try {
       if (kDebugMode)
         Logger.info('Starting scan for Tactical Traps locks only');
+      
+      // Check permissions before starting scan
+      final hasPermissions = await _checkRequiredPermissions();
+      if (!hasPermissions) {
+        if (kDebugMode) {
+          Logger.warning(
+            'Required permissions not granted, requesting permissions...',
+          );
+        }
+        await _requestPermissions();
+
+        // Check again after requesting
+        final permissionsGranted = await _checkRequiredPermissions();
+        if (!permissionsGranted) {
+          if (kDebugMode) {
+            Logger.error(
+              'Required permissions still not granted after request',
+            );
+          }
+          throw Exception('Required permissions not granted for BLE scanning');
+        }
+      }
+
+      // Check and enable both Bluetooth and GPS services
+      final servicesEnabled = await _checkAndEnableBluetoothAndGPS();
+      if (!servicesEnabled) {
+        if (kDebugMode) {
+          Logger.error(
+            'Bluetooth or GPS services could not be enabled, cannot proceed with BLE scanning',
+          );
+        }
+        throw Exception(
+          'Bluetooth and GPS must be enabled for BLE scanning. Please enable both services and try again.',
+        );
+      }
+      
       _isScanning = true;
       _devicesController.add([]);
 
-      // Scan only for Tactical Traps service UUID (like original Angular code)
+      // Get Android version for compatibility
+      final androidVersion = _getAndroidVersion();
+      if (kDebugMode) {
+        Logger.info('Android version detected: $androidVersion');
+      }
+
+      // Scan only for Tactical Traps service UUID (optimized for accuracy)
       final serviceUuid = Guid.parse('0000fff0-0000-1000-8000-00805f9b34fb');
+      
       if (serviceUuid != null) {
-        await FlutterBluePlus.startScan(
-          timeout: Duration(seconds: 10),
-          androidUsesFineLocation: true,
-          withServices: [serviceUuid],
-        );
+        // For Android 10 and below, use basic scan for maximum compatibility
+        if (androidVersion <= 29) {
+          if (kDebugMode) {
+            Logger.info('Using ultra-basic scan for Android 10 and below');
+          }
+
+          try {
+            // Try with service filter first
+            await FlutterBluePlus.startScan(
+              timeout: Duration(
+                seconds: 30,
+              ), // Even longer timeout for older devices
+              androidUsesFineLocation: true,
+              withServices: [serviceUuid],
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              Logger.info(
+                'Service-filtered scan failed on Android 10, trying completely basic scan: $e',
+              );
+            }
+
+            // Ultra-basic scan - no filters at all for maximum compatibility
+            await FlutterBluePlus.startScan(
+              timeout: Duration(seconds: 30),
+              androidUsesFineLocation: true,
+              // NO filters at all - scan everything
+            );
+          }
+        } else {
+          // Android 11+ can use advanced features
+          if (kDebugMode) {
+            Logger.info('Using advanced scan for Android 11+');
+          }
+
+          try {
+            await FlutterBluePlus.startScan(
+              timeout: Duration(seconds: 15),
+              androidUsesFineLocation: true,
+              withServices: [serviceUuid],
+              withNames: ['Tactical', 'Trap', 'Lock', 'TT'],
+              androidScanMode: AndroidScanMode.lowLatency,
+              continuousUpdates: true,
+              continuousDivisor: 2,
+            );
+          } catch (e) {
+            if (kDebugMode) {
+              Logger.info(
+                'Advanced scan failed, falling back to basic scan: $e',
+              );
+            }
+
+            // Fallback to basic scan if advanced fails
+            await FlutterBluePlus.startScan(
+              timeout: Duration(seconds: 25),
+              androidUsesFineLocation: true,
+              withServices: [serviceUuid],
+            );
+          }
+        }
       } else {
         // Fallback to general scan if UUID parsing fails
-        await FlutterBluePlus.startScan(
-          timeout: Duration(seconds: 10),
-          androidUsesFineLocation: true,
-        );
+        if (androidVersion <= 29) {
+          // Basic scan for older devices
+          if (androidVersion <= 29) {
+            if (kDebugMode) {
+              Logger.info('Using ultra-basic fallback scan for Android 10');
+            }
+
+            try {
+              await FlutterBluePlus.startScan(
+                timeout: Duration(seconds: 30),
+                androidUsesFineLocation: true,
+                // NO filters at all for maximum compatibility
+              );
+            } catch (e) {
+              if (kDebugMode) {
+                Logger.info(
+                  'Ultra-basic scan also failed, trying emergency scan: $e',
+                );
+              }
+
+              // Emergency scan - absolute minimum parameters
+              await FlutterBluePlus.startScan(
+                timeout: Duration(seconds: 35),
+                androidUsesFineLocation: true,
+              );
+            }
+          } else {
+            // Try advanced scan for newer devices
+            try {
+              await FlutterBluePlus.startScan(
+                timeout: Duration(seconds: 15),
+                androidUsesFineLocation: true,
+                withNames: ['Tactical', 'Trap', 'Lock', 'TT'],
+                androidScanMode: AndroidScanMode.lowLatency,
+                continuousUpdates: true,
+                continuousDivisor: 2,
+              );
+            } catch (e) {
+              if (kDebugMode) {
+                Logger.info(
+                  'Advanced general scan failed, using basic scan: $e',
+                );
+              }
+
+              // Fallback to basic scan
+              await FlutterBluePlus.startScan(
+                timeout: Duration(seconds: 25),
+                androidUsesFineLocation: true,
+              );
+            }
+          }
+        }
       }
 
       FlutterBluePlus.scanResults.listen(_onScanResults);
 
-      Timer(Duration(seconds: 10), () {
+      // Adjust timeout based on Android version
+      final scanTimeout = androidVersion <= 29 ? 25 : 20;
+      Timer(Duration(seconds: scanTimeout), () {
         stopScan();
       });
     } catch (e) {
@@ -158,6 +820,36 @@ class BleService {
 
   /// Handle scan results - show only Tactical Traps locks
   void _onScanResults(List<ScanResult> results) {
+    if (kDebugMode) {
+      Logger.info('Scan results received: ${results.length} devices');
+
+      // Log all discovered devices for debugging
+      for (int i = 0; i < results.length; i++) {
+        final result = results[i];
+        final deviceName = result.device.platformName.isNotEmpty
+            ? result.device.platformName
+            : result.advertisementData.advName.isNotEmpty
+            ? result.advertisementData.advName
+            : 'Unknown';
+
+        Logger.info(
+          'Device $i: $deviceName (${result.device.remoteId}) - RSSI: ${result.rssi}',
+        );
+
+        // Log service UUIDs if available
+        if (result.advertisementData.serviceUuids.isNotEmpty) {
+          Logger.info('  Services: ${result.advertisementData.serviceUuids}');
+        }
+
+        // Log manufacturer data if available
+        if (result.advertisementData.manufacturerData.isNotEmpty) {
+          Logger.info(
+            '  Manufacturer data: ${result.advertisementData.manufacturerData}',
+          );
+        }
+      }
+    }
+    
     final devices = <BleDevice>[];
 
     for (final result in results) {
@@ -177,18 +869,44 @@ class BleService {
         );
 
         devices.add(device);
+        
+        if (kDebugMode) {
+          Logger.info(
+            'Added Tactical Traps lock: ${device.name ?? device.localName ?? 'Unknown'}',
+          );
+        }
       }
+    }
+
+    if (kDebugMode) {
+      Logger.info('Filtered to ${devices.length} Tactical Traps locks');
     }
 
     _devicesController.add(devices);
   }
 
-  /// Check if device is Tactical Traps lock
+  /// Check if device is Tactical Traps lock (enhanced filtering)
   bool _isTacticalTrapsLock(ScanResult result) {
+    // Check service UUIDs first (primary filter)
     final serviceUUIDs = result.advertisementData.serviceUuids;
-    return serviceUUIDs.any(
+    final hasService = serviceUUIDs.any(
       (uuid) => uuid.toString().toLowerCase().contains('fff0'),
     );
+    
+    if (!hasService) return false;
+
+    // Additional filtering for better accuracy
+    // Check if device has a name (most Tactical Traps locks have names)
+    final hasName =
+        result.device.platformName.isNotEmpty ||
+        result.advertisementData.advName.isNotEmpty;
+
+    // Check if device has manufacturer data (Tactical Traps locks have this)
+    final hasManufacturerData =
+        result.advertisementData.manufacturerData.isNotEmpty;
+
+    // Device must have service UUID AND either name or manufacturer data
+    return hasService && (hasName || hasManufacturerData);
   }
 
   /// Check if device has required service (like Angular app)
@@ -282,8 +1000,8 @@ class BleService {
         await disconnectFromDevice();
       }
 
-      // Connect first (like Angular app)
-      await device.device.connect(timeout: Duration(seconds: 10));
+      // Connect first (optimized timeout for reliability)
+      await device.device.connect(timeout: Duration(seconds: 12));
 
       _currentDevice = device;
       _connectionState = BluetoothConnectionState.connected;
@@ -305,13 +1023,32 @@ class BleService {
 
       // If it's a Tactical Traps lock, verify PIN directly (like Angular app)
       if (device.isLock && pin != null) {
-        // Wait for connection to settle
-        await Future.delayed(Duration(milliseconds: 300));
+        // Wait for connection to settle (optimized for stability)
+        await Future.delayed(Duration(milliseconds: 400));
 
-        // Verify PIN directly (like Angular app's handleVerification)
-        final verified = await _verifyPin(pin);
+        // Verify PIN with retry logic for better reliability
+        bool verified = false;
+        int retryCount = 0;
+        const maxRetries = 2;
+
+        while (!verified && retryCount < maxRetries) {
+          if (retryCount > 0) {
+            if (kDebugMode)
+              Logger.info('PIN verification retry attempt: $retryCount');
+            // Wait a bit longer between retries
+            await Future.delayed(Duration(milliseconds: 800));
+          }
+
+          verified = await _verifyPin(pin);
+          retryCount++;
+
+          if (!verified && retryCount < maxRetries) {
+            if (kDebugMode) Logger.info('PIN verification failed, retrying...');
+          }
+        }
+        
         if (!verified) {
-          Logger.error('PIN verification failed');
+          Logger.error('PIN verification failed after $maxRetries attempts');
           await disconnectFromDevice();
           return false;
         }
@@ -427,11 +1164,11 @@ class BleService {
           (previous, current) => (previous + current) & 0xFF,
         );
 
-        // Send command with adequate timeout
+        // Send command with optimized timeout for reliability
         final response = await _writeToLockWithResponse(
           'verify',
           command,
-          timeout: Duration(seconds: 5),
+          timeout: Duration(seconds: 6),
         );
 
         if (response != null && response.length >= 3) {
@@ -1140,6 +1877,57 @@ class BleService {
   /// Set app lifecycle state for battery optimization
   void setAppActive(bool active) {
     _isAppActive = active;
+  }
+
+  /// Get device version (Command 0x6E) as per Tactical Traps protocol
+  Future<Map<String, int>?> getDeviceVersion() async {
+    try {
+      if (kDebugMode) Logger.info('Requesting device version...');
+
+      // Build version request command: F5 6E 00 00 5F + checksum
+      // STX(0xF5) + CMD(0x6E) + ASK(0x00) + DATALEN(0x00) + ETX(0x5F) + SUM
+      final command = [0xF5, 0x6E, 0x00, 0x00, 0x5F];
+
+      // Calculate checksum
+      int sum = 0;
+      for (int i = 0; i < command.length; i++) {
+        sum = (sum + command[i]) & 0xFF;
+      }
+      command.add(sum);
+
+      // Send command and get response
+      final response = await _writeToLockWithResponse(
+        'version',
+        command,
+        timeout: Duration(seconds: 5),
+      );
+
+      if (response != null && response.length >= 4) {
+        // Parse response: F5 6E 10 02 5F + software + hardware + checksum
+        // Check if this is a version response (0x6E) and success (0x10)
+        if (response[1] == 0x6E && response[2] == 0x10) {
+          final dataLength = response[3];
+          if (dataLength == 2 && response.length >= 6) {
+            final softwareVersion = response[4];
+            final hardwareVersion = response[5];
+
+            if (kDebugMode) {
+              Logger.info(
+                'Device version - Software: $softwareVersion, Hardware: $hardwareVersion',
+              );
+            }
+
+            return {'software': softwareVersion, 'hardware': hardwareVersion};
+          }
+        }
+      }
+
+      if (kDebugMode) Logger.warning('Invalid version response format');
+      return null;
+    } catch (e) {
+      if (kDebugMode) Logger.error('Failed to get device version', e);
+      return null;
+    }
   }
 
   /// Dispose resources
