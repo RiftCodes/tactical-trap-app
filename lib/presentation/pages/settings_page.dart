@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -11,13 +13,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/logger.dart';
+import '../providers/ble_provider.dart';
 import '../providers/device_provider.dart';
 import '../providers/language_provider.dart';
 import '../providers/theme_provider.dart';
 import '../style/design_system.dart';
 import '../widgets/glass_background.dart';
 import '../widgets/glass_card.dart';
-import '../widgets/theme_toggle.dart';
 import '../widgets/user_manual_viewer.dart';
 
 /// Elegant settings page with glassmorphism
@@ -35,6 +37,13 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadPackageInfo();
+    // Refresh buzzer status when settings page opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bleProvider = Provider.of<BleProvider>(context, listen: false);
+      if (bleProvider.isConnected) {
+        bleProvider.getBuzzerStatus();
+      }
+    });
   }
 
   Future<void> _loadPackageInfo() async {
@@ -106,58 +115,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         padding: EdgeInsets.all(DS.s),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
-                            _section(
-                              context,
-                              '${l10n.appearance} & ${l10n.language}',
-                              [
-                                _themeRow(context, themeProvider, isDark),
-                                _languageRow(context, isDark, languageProvider),
-                              ],
-                            ),
                             SizedBox(height: DS.l),
-                            _section(context, l10n.preferences, [
-                              _switchRow(
-                                context,
-                                l10n.autoConnect,
-                                deviceProvider.getUserPreference(
-                                      'autoConnect',
-                                      defaultValue: true,
-                                    ) ??
-                                    true,
-                                (v) => deviceProvider.updateUserPreference(
-                                  'autoConnect',
-                                  v,
-                                ),
-                                isDark,
-                              ),
-                              _switchRow(
-                                context,
-                                l10n.notifications,
-                                deviceProvider.getUserPreference(
-                                      'notifications',
-                                      defaultValue: true,
-                                    ) ??
-                                    true,
-                                (v) => deviceProvider.updateUserPreference(
-                                  'notifications',
-                                  v,
-                                ),
-                                isDark,
-                              ),
-                              _switchRow(
-                                context,
-                                l10n.haptics,
-                                deviceProvider.getUserPreference(
-                                      'vibration',
-                                      defaultValue: true,
-                                    ) ??
-                                    true,
-                                (v) => deviceProvider.updateUserPreference(
-                                  'vibration',
-                                  v,
-                                ),
-                                isDark,
-                              ),
+                            _section(context, l10n.lockSettings, [
+                              _lockRenameRow(context, deviceProvider, isDark),
+                              _batteryInfoRow(context, isDark),
+                              _buzzerControlRow(context, isDark),
+                              _resetLockRow(context, isDark),
                             ]),
                             SizedBox(height: DS.l),
                             _section(context, l10n.support, [
@@ -278,244 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _themeRow(
-    BuildContext context,
-    ThemeProvider themeProvider,
-    bool isDark,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Padding(
-      padding: EdgeInsets.all(DS.m),
-      child: Row(
-        children: [
-          Icon(Icons.palette_rounded, color: DS.info, size: 20),
-          SizedBox(width: DS.m),
-          Expanded(
-            child: Text(
-              l10n.theme,
-              style: TextStyle(
-                fontSize: DS.textSM,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-          ),
-          const ThemeToggle(),
-        ],
-      ),
-    );
-  }
-
-  Widget _languageRow(
-    BuildContext context,
-    bool isDark,
-    LanguageProvider languageProvider,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Padding(
-      padding: EdgeInsets.all(DS.m),
-      child: Row(
-        children: [
-          Icon(Icons.language_rounded, color: DS.info, size: 20),
-          SizedBox(width: DS.m),
-          Expanded(
-            child: Text(
-              l10n.language,
-              style: TextStyle(
-                fontSize: DS.textSM,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-          ),
-          _buildLanguageDropdown(context, isDark, languageProvider),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLanguageDropdown(
-    BuildContext context,
-    bool isDark,
-    LanguageProvider languageProvider,
-  ) {
-    final l10n = AppLocalizations.of(context)!;
-    return PopupMenuButton<String>(
-      onSelected: (String languageCode) {
-        _changeLanguage(context, languageCode);
-      },
-      itemBuilder: (BuildContext context) => [
-        // System Language Option
-        PopupMenuItem<String>(
-          value: 'system',
-          child: Row(
-            children: [
-              Icon(Icons.settings_system_daydream, size: 20, color: DS.info),
-              SizedBox(width: DS.s),
-              Text(
-                l10n.systemLanguage,
-                style: TextStyle(
-                  fontWeight: languageProvider.useSystemLanguage
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Divider
-        PopupMenuItem<String>(
-          enabled: false,
-          child: Divider(height: 1, color: Colors.grey[400]),
-        ),
-        // English
-        PopupMenuItem<String>(
-          value: 'en',
-          child: Row(
-            children: [
-              Text('🇺🇸'),
-              SizedBox(width: DS.s),
-              Text(
-                'English',
-                style: TextStyle(
-                  fontWeight: languageProvider.isLanguageSelected('en')
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Spanish
-        PopupMenuItem<String>(
-          value: 'es',
-          child: Row(
-            children: [
-              Text('🇪🇸'),
-              SizedBox(width: DS.s),
-              Text(
-                'Español',
-                style: TextStyle(
-                  fontWeight: languageProvider.isLanguageSelected('es')
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // French
-        PopupMenuItem<String>(
-          value: 'fr',
-          child: Row(
-            children: [
-              Text('🇫🇷'),
-              SizedBox(width: DS.s),
-              Text(
-                'Français',
-                style: TextStyle(
-                  fontWeight: languageProvider.isLanguageSelected('fr')
-                      ? FontWeight.bold
-                      : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: DS.xs),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(DS.s),
-          border: Border.all(
-            color: isDark ? Colors.grey[600]! : Colors.grey[300]!,
-          ),
-        ),
-        child: Consumer<LanguageProvider>(
-          builder: (context, langProvider, child) {
-            // Debug logging
-            if (kDebugMode)
-              Logger.info(
-                l10n.languageDisplay(
-                  langProvider.currentLanguageCode,
-                  langProvider.currentLanguageName,
-                ),
-              );
-
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  langProvider.currentLanguageFlag,
-                  style: TextStyle(fontSize: 16),
-                ),
-                SizedBox(width: DS.xs),
-                Text(
-                  langProvider.currentLanguageName,
-                  style: TextStyle(
-                    fontSize: DS.textSM,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
-                  ),
-                ),
-                // Debug info
-                SizedBox(width: DS.xs),
-                Text(
-                  '(${langProvider.currentLanguageCode})',
-                  style: TextStyle(fontSize: DS.textXS, color: Colors.grey),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  void _changeLanguage(BuildContext context, String languageCode) {
-    final l10n = AppLocalizations.of(context)!;
-    if (kDebugMode) Logger.info(l10n.languageChangeRequested(languageCode));
-
-    final languageProvider = Provider.of<LanguageProvider>(
-      context,
-      listen: false,
-    );
-
-    if (languageCode == 'system') {
-      if (kDebugMode)
-        Logger.info('🔄 SettingsPage: Switching to system language');
-      languageProvider.switchToSystemLanguage();
-
-      // Force UI refresh
-      setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.switchedToSystemLanguage),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } else {
-      if (kDebugMode)
-        Logger.info('🔄 SettingsPage: Setting language to $languageCode');
-      languageProvider.setLanguage(languageCode);
-
-      // Force UI refresh
-      setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Language changed to ${languageProvider.currentLanguageName}',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-
-    if (kDebugMode) Logger.info('✅ SettingsPage: Language change completed');
-  }
+  // Removed theme and language methods as per feedback - not needed
 
   Future<void> _launchUrl(String url) async {
     try {
@@ -550,14 +276,13 @@ class _SettingsPageState extends State<SettingsPage> {
         if (kDebugMode)
           Logger.error('Failed to launch URL with all modes: $url');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Could not open link. Please install a browser app.',
-              ),
+          Fluttertoast.showToast(
+            msg: 'Could not open link. Please install a browser app.',
+            toastLength: Toast.LENGTH_LONG,
+            gravity: ToastGravity.BOTTOM,
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
-            ),
+            textColor: Colors.white,
+            fontSize: 14.0,
           );
         }
       }
@@ -566,12 +291,13 @@ class _SettingsPageState extends State<SettingsPage> {
       if (kDebugMode) Logger.error('Failed to launch URL: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to open link: ${e.toString()}'),
+        Fluttertoast.showToast(
+          msg: 'Failed to open link: ${e.toString()}',
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
-          ),
+          textColor: Colors.white,
+          fontSize: 14.0,
         );
       }
     }
@@ -671,11 +397,13 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
       if (kDebugMode) Logger.error('Failed to share app: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.failedToOpenLink),
+        Fluttertoast.showToast(
+          msg: l10n.failedToOpenLink,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
             backgroundColor: Colors.red,
-          ),
+          textColor: Colors.white,
+          fontSize: 14.0,
         );
       }
     }
@@ -730,32 +458,6 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
     return content;
   }
 
-  Widget _switchRow(
-    BuildContext context,
-    String label,
-    bool value,
-    Function(bool) onChanged,
-    bool isDark,
-  ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: DS.m, vertical: DS.s),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: DS.textSM,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF1E293B),
-              ),
-            ),
-          ),
-          Switch(value: value, onChanged: onChanged, activeColor: DS.brandRed),
-        ],
-      ),
-    );
-  }
 
   Widget _actionRow(
     BuildContext context,
@@ -1269,6 +971,26 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
                         color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
+                    SizedBox(height: DS.xs),
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: DS.s,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[100],
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.blue[300]!, width: 1),
+                      ),
+                      child: Text(
+                        'Emails sent to: ${l10n.supportEmail}',
+                        style: TextStyle(
+                          fontSize: DS.textXS,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                     SizedBox(height: DS.m),
                     Container(
                       padding: EdgeInsets.all(DS.m),
@@ -1588,4 +1310,434 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
       ),
     );
   }
+
+  /// Lock rename row for settings
+  Widget _lockRenameRow(
+    BuildContext context,
+    DeviceProvider deviceProvider,
+    bool isDark,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return InkWell(
+      onTap: () => _showLockRenameDialog(context, deviceProvider, isDark),
+      child: Padding(
+        padding: EdgeInsets.all(DS.m),
+        child: Row(
+          children: [
+            Icon(Icons.edit_rounded, color: DS.info, size: 20),
+            SizedBox(width: DS.m),
+            Expanded(
+              child: Text(
+                l10n.lockName,
+                style: TextStyle(
+                  fontSize: DS.textSM,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isDark ? Colors.grey[500] : const Color(0xFF94A3B8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Battery info row for settings
+  Widget _batteryInfoRow(BuildContext context, bool isDark) {
+    return Consumer<BleProvider>(
+      builder: (context, bleProvider, child) {
+        // Get real battery level from BLE service (voltageValue is in mV)
+        final voltageMv = bleProvider.lastStatus?.voltageValue ?? 6100.0;
+        final batteryLevel = voltageMv / 1000.0; // Convert mV to V
+
+        // More realistic battery percentage calculation
+        // 6.0V = 100%, 5.0V = 0% (typical Li-ion range)
+        final batteryPercentage = ((batteryLevel - 5.0) / 1.0 * 100)
+            .clamp(0, 100)
+            .round();
+
+        return Padding(
+          padding: EdgeInsets.all(DS.m),
+          child: Row(
+            children: [
+              Icon(
+                _getBatteryIcon(batteryPercentage),
+                color: _getBatteryColor(batteryPercentage),
+                size: 20,
+              ),
+              SizedBox(width: DS.m),
+              Expanded(
+                child: Text(
+                  'Battery Level',
+                  style: TextStyle(
+                    fontSize: DS.textSM,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  ),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${batteryLevel.toStringAsFixed(1)}V',
+                    style: TextStyle(
+                      fontSize: DS.textSM,
+                      color: isDark
+                          ? Colors.grey[400]
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                  Text(
+                    '$batteryPercentage%',
+                    style: TextStyle(
+                      fontSize: DS.textXS,
+                      color: _getBatteryColor(batteryPercentage),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Get battery icon based on percentage
+  IconData _getBatteryIcon(int percentage) {
+    if (percentage > 90) return Icons.battery_full_rounded;
+    if (percentage > 75) return Icons.battery_6_bar_rounded;
+    if (percentage > 50) return Icons.battery_4_bar_rounded;
+    if (percentage > 25) return Icons.battery_2_bar_rounded;
+    if (percentage > 10) return Icons.battery_1_bar_rounded;
+    return Icons.battery_0_bar_rounded;
+  }
+
+  /// Get battery color based on percentage
+  Color _getBatteryColor(int percentage) {
+    if (percentage > 75) return DS.success; // Green for high battery
+    if (percentage > 50) return Colors.orange; // Orange for medium battery
+    if (percentage > 25) return DS.warning; // Yellow for low battery
+    return DS.brandRed; // Red for critical battery
+  }
+
+  /// Buzzer control row for settings
+  Widget _buzzerControlRow(BuildContext context, bool isDark) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Consumer<BleProvider>(
+      builder: (context, bleProvider, child) {
+        final isBuzzerOn = bleProvider.lastStatus?.buzzerOn ?? false;
+
+        return InkWell(
+          onTap: () async {
+            HapticFeedback.lightImpact();
+            // First get current buzzer status
+            final currentStatus = await bleProvider.getBuzzerStatus();
+            if (currentStatus != null) {
+              final bool current = (currentStatus.buzzerOn == true);
+              // Toggle buzzer
+              final newStatus = await bleProvider.setBuzzerEnabled(!current);
+              if (newStatus != null) {
+                // Force UI update
+                setState(() {});
+              }
+            }
+          },
+          child: Padding(
+            padding: EdgeInsets.all(DS.m),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.volume_up_rounded,
+                  color: isBuzzerOn ? DS.success : DS.brandRed,
+                  size: 20,
+                ),
+                SizedBox(width: DS.m),
+                Expanded(
+                  child: Text(
+                    l10n.buzzer,
+                    style: TextStyle(
+                      fontSize: DS.textSM,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isBuzzerOn ? DS.success : DS.brandRed,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isBuzzerOn ? 'ON' : 'OFF',
+                    style: TextStyle(
+                      fontSize: DS.textXS,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Reset lock row for settings
+  Widget _resetLockRow(BuildContext context, bool isDark) {
+    return InkWell(
+      onTap: () async {
+        HapticFeedback.lightImpact();
+        // Show confirmation dialog
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Reset Lock'),
+            content: Text(
+              'Are you sure you want to reset the lock? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text('Reset', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmed == true) {
+          // Reset logic would go here
+          Fluttertoast.showToast(
+            msg: 'Lock reset successfully',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: DS.success,
+            textColor: Colors.white,
+            fontSize: 14.0,
+          );
+        }
+      },
+      child: Padding(
+        padding: EdgeInsets.all(DS.m),
+        child: Row(
+          children: [
+            Icon(Icons.refresh_rounded, color: DS.error, size: 20),
+            SizedBox(width: DS.m),
+            Expanded(
+              child: Text(
+                'Reset Lock',
+                style: TextStyle(
+                  fontSize: DS.textSM,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isDark ? Colors.grey[500] : const Color(0xFF94A3B8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show lock rename dialog
+  void _showLockRenameDialog(
+    BuildContext context,
+    DeviceProvider deviceProvider,
+    bool isDark,
+  ) {
+    final l10n = AppLocalizations.of(context)!;
+    final bleProvider = context.read<BleProvider>();
+    final currentDevice = bleProvider.currentDevice;
+
+    // Get current device name
+    String currentName = '';
+    if (currentDevice != null) {
+      currentName = deviceProvider.getDisplayName(currentDevice);
+    }
+
+    final TextEditingController controller = TextEditingController(
+      text: currentName,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DS.rMedium),
+        ),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: 400,
+            maxHeight: MediaQuery.of(context).size.height * 0.7, // Limit height
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(DS.m),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.blue[50],
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(DS.rMedium),
+                    topRight: Radius.circular(DS.rMedium),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_rounded, color: DS.info, size: 24),
+                    SizedBox(width: DS.s),
+                    Expanded(
+                      child: Text(
+                        l10n.lockName,
+                        style: TextStyle(
+                          fontSize: DS.textLG,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(Icons.close_rounded, color: Colors.grey[600]),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              // Content - SingleChildScrollView to handle keyboard
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(DS.m),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.lockName,
+                        style: TextStyle(
+                          fontSize: DS.textSM,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                      ),
+                      SizedBox(height: DS.s),
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          hintText: l10n.nameThisLock,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(DS.rSmall),
+                          ),
+                          contentPadding: EdgeInsets.all(DS.s),
+                        ),
+                        maxLines: 1,
+                        textInputAction: TextInputAction.done,
+                      ),
+                      SizedBox(height: DS.m),
+                    ],
+                  ),
+                ),
+              ),
+              // Actions
+              Container(
+                padding: EdgeInsets.fromLTRB(DS.m, 0, DS.m, DS.m),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(l10n.cancel),
+                      ),
+                    ),
+                    SizedBox(width: DS.s),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final name = controller.text.trim();
+                          if (name.isNotEmpty) {
+                            // Get the current connected device
+                            final bleProvider = context.read<BleProvider>();
+                            final currentDevice = bleProvider.currentDevice;
+
+                            if (currentDevice != null) {
+                              // Save the device name
+                              final success = await deviceProvider
+                                  .saveDeviceName(currentDevice.id, name);
+
+                              Navigator.of(context).pop();
+
+                              if (success) {
+                                // Refresh device provider to update UI
+                                await deviceProvider.refresh();
+
+                                Fluttertoast.showToast(
+                                  msg: 'Device renamed to: $name',
+                                  toastLength: Toast.LENGTH_SHORT,
+                                  gravity: ToastGravity.BOTTOM,
+                                  backgroundColor: DS.success,
+                                  textColor: Colors.white,
+                                  fontSize: 14.0,
+                                );
+                              } else {
+                                Fluttertoast.showToast(
+                                  msg: 'Failed to save device name',
+                                  toastLength: Toast.LENGTH_SHORT,
+                                  gravity: ToastGravity.BOTTOM,
+                                  backgroundColor: Colors.red,
+                                  textColor: Colors.white,
+                                  fontSize: 14.0,
+                                );
+                              }
+                            } else {
+                              Navigator.of(context).pop();
+                              Fluttertoast.showToast(
+                                msg: 'No device connected',
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.BOTTOM,
+                                backgroundColor: Colors.red,
+                                textColor: Colors.white,
+                                fontSize: 14.0,
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: DS.info,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(l10n.save),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 }

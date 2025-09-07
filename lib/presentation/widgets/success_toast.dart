@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import '../style/design_system.dart';
 
 /// Elegant success toast that appears at top
-class SuccessToast extends StatelessWidget {
+/// Notifications provide visual feedback for important app events like:
+/// - Successful lock/unlock operations
+/// - Connection status changes
+/// - Error conditions
+class SuccessToast extends StatefulWidget {
   final String message;
   final VoidCallback onDismiss;
 
@@ -14,6 +18,22 @@ class SuccessToast extends StatelessWidget {
   });
 
   @override
+  State<SuccessToast> createState() => _SuccessToastState();
+}
+
+class _SuccessToastState extends State<SuccessToast> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-dismiss after 2 seconds (shorter duration)
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        widget.onDismiss();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Positioned(
       top: MediaQuery.of(context).viewPadding.top + 80,
@@ -22,7 +42,10 @@ class SuccessToast extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: Container(
-          padding: EdgeInsets.all(DS.m),
+          padding: EdgeInsets.symmetric(
+            horizontal: DS.m,
+            vertical: DS.s,
+          ), // Reduced vertical padding
           decoration: BoxDecoration(
             color: DS.success,
             borderRadius: BorderRadius.circular(DS.rMedium),
@@ -35,24 +58,33 @@ class SuccessToast extends StatelessWidget {
             ],
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 18,
+              ), // Smaller icon
               SizedBox(width: DS.s),
-              Expanded(
+              Flexible(
                 child: Text(
-                  message,
-                  style: const TextStyle(
+                  widget.message,
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
+                    fontSize: 14, // Smaller font
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              SizedBox(width: DS.s),
               GestureDetector(
-                onTap: onDismiss,
+                onTap: widget.onDismiss,
                 child: Icon(
                   Icons.close_rounded,
                   color: Colors.white.withValues(alpha: 0.8),
-                  size: 18,
+                  size: 16, // Smaller close icon
                 ),
               ),
             ],

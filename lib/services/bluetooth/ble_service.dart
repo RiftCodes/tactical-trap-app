@@ -1446,12 +1446,14 @@ class BleService {
         case 0x75: // Buzzer setting & checking
           if (hasData && dataLen == 1) {
             final value = response[dataStart];
+            // According to documentation: 0 = enable buzzer, 1 = disable buzzer
+            // So buzzerOn = true when value == 0 (enabled)
             status = LockStatus(
               response: askCode,
               extraBytes: dataLen,
               isStatus: false,
               isError: askCode != askCorrect,
-              buzzerOn: value == 0,
+              buzzerOn: value == 0, // 0 = enabled, 1 = disabled
             );
           }
           break;
@@ -1490,15 +1492,16 @@ class BleService {
         return false;
       }
 
-      // Use stored randData instead of calling status command
+      // Use stored randData (like before)
       if (_randData == null) {
         Logger.error('No randData available. Please reconnect with PIN first.');
         return false;
       }
 
-      // Build lock command: F5 61 00 01 5F XX (0x36 ^ randData)
+      // Build lock command: F5 61 00 01 5F XX (0x35 ^ randData)
+      // 0x35 is toggle command - will lock if unlocked, unlock if locked
       final command = [0xF5, 0x61, 0x00, 0x01, 0x5F, 0x00];
-      final dataByte = 0x36 ^ _randData!; // Lock command uses 0x36
+      final dataByte = 0x35 ^ _randData!; // Toggle command uses 0x35
       command.add(dataByte);
 
       // Calculate checksum exactly like Angular app
@@ -1511,7 +1514,7 @@ class BleService {
       final result = await _writeToLock('lock', command);
 
       // Add small delay to let lock settle
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 1000));
 
       return result.isSuccess;
     } catch (e) {
@@ -1529,15 +1532,16 @@ class BleService {
         return false;
       }
 
-      // Use stored randData instead of calling status command
+      // Use stored randData (like before)
       if (_randData == null) {
         Logger.error('No randData available. Please reconnect with PIN first.');
         return false;
       }
 
       // Build unlock command: F5 61 00 01 5F XX (0x35 ^ randData)
+      // 0x35 is toggle command - will unlock if locked, lock if unlocked
       final command = [0xF5, 0x61, 0x00, 0x01, 0x5F, 0x00];
-      final dataByte = 0x35 ^ _randData!; // Unlock command uses 0x35
+      final dataByte = 0x35 ^ _randData!; // Toggle command uses 0x35
       command.add(dataByte);
 
       // Calculate checksum exactly like Angular app
@@ -1550,7 +1554,7 @@ class BleService {
       final result = await _writeToLock('unlock', command);
 
       // Add small delay to let unlock settle
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 1000));
 
       return result.isSuccess;
     } catch (e) {
@@ -1605,7 +1609,30 @@ class BleService {
       final bytes = await _writeToLockWithResponse('status', command);
       if (bytes == null) return null;
       final parsed = _parseResponse(bytes);
-      if (parsed != null) return parsed;
+      if (parsed != null) {
+        // Also get buzzer status for complete device info
+        final buzzerStatus = await getBuzzerStatus();
+        if (buzzerStatus != null && buzzerStatus.buzzerOn != null) {
+          // Update status with buzzer info
+          return LockStatus(
+            response: parsed.response,
+            responseMsg: parsed.responseMsg,
+            extraBytes: parsed.extraBytes,
+            isStatus: parsed.isStatus,
+            isError: parsed.isError,
+            verified: parsed.verified,
+            alarmOn: parsed.alarmOn,
+            buzzerOn: buzzerStatus.buzzerOn, // Use buzzer status
+            openCloseState: parsed.openCloseState,
+            hookState: parsed.hookState,
+            voltageValue: parsed.voltageValue,
+            lockId: parsed.lockId,
+            randData: parsed.randData,
+            error: parsed.error,
+          );
+        }
+        return parsed;
+      }
       return LockStatus(
         response: bytes.length >= 3 ? bytes[2] : askUnknown,
         extraBytes: bytes.length >= 4 ? bytes[3] : 0,

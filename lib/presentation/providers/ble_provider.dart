@@ -14,9 +14,17 @@ import '../../services/storage/storage_service.dart';
 class BleProvider extends ChangeNotifier {
   final BleService _bleService = BleService();
   final StorageService _storageService = StorageService();
+  
+  // Callback to notify DeviceProvider when device names are saved
+  Function()? _onDeviceNameSaved;
 
   // Expose BLE service for lifecycle management
   BleService get bleService => _bleService;
+  
+  /// Set callback for device name updates
+  void setDeviceNameCallback(Function() callback) {
+    _onDeviceNameSaved = callback;
+  }
 
   // State variables
   bool _isInitialized = false;
@@ -232,10 +240,52 @@ class BleProvider extends ChangeNotifier {
         // Store PIN and device for auto-reconnect
         if (finalPin != null && device.isLock) {
           await _storageService.storePinForDevice(device.id, finalPin);
-          await _storageService.saveLastConnectedDevice(device);
+          
+          // Create a copy of device with proper localName for storage
+          final deviceForStorage = BleDevice(
+            device: device.device,
+            name: device.name,
+            localName: device.localName, // Use original name as localName
+            customName: device.customName,
+            serialNumber: device.serialNumber,
+            isLock: device.isLock,
+            manufacturerData: device.manufacturerData,
+            rssi: device.rssi,
+            isExpanded: device.isExpanded,
+            discoveredAt: device.discoveredAt,
+          );
+
+          await _storageService.saveLastConnectedDevice(deviceForStorage);
           if (kDebugMode)
             Logger.info('Stored PIN and device for auto-reconnect');
         }
+
+        // Save original device name
+        if (device.localName != null && device.localName!.isNotEmpty) {
+          await _storageService.saveDeviceOriginalName(
+            device.id,
+            device.localName!,
+          );
+          if (kDebugMode)
+            Logger.info('Saved original name: ${device.localName}');
+        }
+
+        // Save custom name if available
+        if (device.customName != null && device.customName!.isNotEmpty) {
+          await _storageService.saveDeviceName(device.id, device.customName!);
+          if (kDebugMode)
+            Logger.info('Saved custom name: ${device.customName}');
+        } else {
+          // If no custom name, save original name as custom name too
+          if (device.localName != null && device.localName!.isNotEmpty) {
+            await _storageService.saveDeviceName(device.id, device.localName!);
+            if (kDebugMode)
+              Logger.info('Saved original name as custom: ${device.localName}');
+          }
+        }
+
+        // Notify DeviceProvider to refresh its data
+        _onDeviceNameSaved?.call();
 
         // Clear success message after delay
         Future.delayed(const Duration(seconds: 2), () {
@@ -315,9 +365,8 @@ class BleProvider extends ChangeNotifier {
 
       // Clear auto-reconnect data on manual disconnect
       await _storageService.clearLastConnectedDevice();
-      if (_currentDevice != null) {
-        await _storageService.removePinForDevice(_currentDevice!.id);
-      }
+      // Don't remove PIN on manual disconnect - keep it for future connections
+      // Only remove PIN when user explicitly forgets the device
 
       await _bleService.disconnectFromDevice();
 
@@ -346,12 +395,12 @@ class BleProvider extends ChangeNotifier {
       final success = await _bleService.sendLockCommand();
       if (success) {
         _errorMessage = null;
-        // Refresh status immediately after action
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Wait longer for lock to engage, then refresh status
+        await Future.delayed(const Duration(milliseconds: 1000));
         await _silentGetDeviceStatus();
         _successMessage = 'Lock engaged';
         notifyListeners();
-        Future.delayed(const Duration(seconds: 1), () {
+        Future.delayed(const Duration(seconds: 2), () {
           _successMessage = null;
           notifyListeners();
         });
@@ -383,12 +432,12 @@ class BleProvider extends ChangeNotifier {
       final success = await _bleService.sendUnlockCommand();
       if (success) {
         _errorMessage = null;
-        // Refresh status immediately after action
-        await Future.delayed(const Duration(milliseconds: 100));
+        // Wait longer for lock to release, then refresh status
+        await Future.delayed(const Duration(milliseconds: 1000));
         await _silentGetDeviceStatus();
         _successMessage = 'Lock released';
         notifyListeners();
-        Future.delayed(const Duration(seconds: 1), () {
+        Future.delayed(const Duration(seconds: 2), () {
           _successMessage = null;
           notifyListeners();
         });
@@ -425,6 +474,16 @@ class BleProvider extends ChangeNotifier {
   void clearSuccessMessage() {
     _successMessage = null;
     notifyListeners();
+  }
+
+  /// Remove stored PIN for a device
+  Future<bool> removeStoredPin(String deviceId) async {
+    try {
+      return await _storageService.removePinForDevice(deviceId);
+    } catch (e) {
+      if (kDebugMode) Logger.error('Failed to remove stored PIN: $e');
+      return false;
+    }
   }
 
   /// Initialize (factory reset) the connected lock

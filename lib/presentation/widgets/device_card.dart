@@ -15,6 +15,9 @@ class DeviceCard extends StatelessWidget {
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
   final VoidCallback onToggleExpansion;
+  final bool isPairedDevice;
+  final bool isInRange;
+  final VoidCallback? onForget;
 
   const DeviceCard({
     super.key,
@@ -26,6 +29,9 @@ class DeviceCard extends StatelessWidget {
     required this.onConnect,
     required this.onDisconnect,
     required this.onToggleExpansion,
+    this.isPairedDevice = false,
+    this.isInRange = false,
+    this.onForget,
   });
 
   @override
@@ -34,22 +40,57 @@ class DeviceCard extends StatelessWidget {
 
     return GlassCard(
       margin: EdgeInsets.only(bottom: DS.xs, left: DS.s, right: DS.s),
-      child: Column(
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Main card content
-          InkWell(
-            onTap: isConnected
-                ? onDisconnect
-                : (isConnecting ? null : onConnect),
-            borderRadius: BorderRadius.circular(DS.rMedium),
-            child: Padding(
-              padding: EdgeInsets.all(DS.xs).copyWith(bottom: DS.s),
-              child: _buildMainContent(context, isDark),
-            ),
+          Column(
+            children: [
+              // Main card content
+              InkWell(
+                onTap: isConnected
+                    ? onDisconnect
+                    : (isConnecting ? null : onConnect),
+                borderRadius: BorderRadius.circular(DS.rMedium),
+                child: Padding(
+                  padding: EdgeInsets.all(DS.xs).copyWith(bottom: DS.s),
+                  child: _buildMainContent(context, isDark),
+                ),
+              ),
+
+              // Expanded details section
+              if (device.isExpanded) _buildExpandedContent(context, isDark),
+            ],
           ),
-          
-          // Expanded details section
-          if (device.isExpanded) _buildExpandedContent(context, isDark),
+          // Available indicator for paired devices - positioned on the card
+          if (isPairedDevice && isInRange && !isConnected)
+            Positioned(
+              left: -DS.m,
+              top: -DS.m,
+              child: ClipRRect(
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(DS.rMedium),
+                  bottomRight: Radius.circular(4),
+                ),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: DS.success,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(DS.rMedium),
+                      bottomRight: Radius.circular(4),
+                    ),
+                  ),
+                  child: Text(
+                    'Available',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -57,72 +98,131 @@ class DeviceCard extends StatelessWidget {
 
   Widget _buildMainContent(BuildContext context, bool isDark) {
     final l10n = AppLocalizations.of(context)!;
-    return Row(
+    return Stack(
       children: [
-        // Status indicator with better sizing
-        _buildStatusIndicator(),
-        SizedBox(width: DS.s),
-        // Device information - properly fitted
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                displayName,
-                style: TextStyle(
-                  fontSize: DS.textSM,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : DS.brandDark,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            // Status indicator with better sizing
+            _buildStatusIndicator(),
+            SizedBox(width: DS.s),
+            // Device information - properly fitted
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: TextStyle(
+                      fontSize: DS.textSM,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : DS.brandDark,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    l10n.serialNumberShort(_getSerialNumber()),
+                    style: TextStyle(
+                      fontSize: DS.textXS,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-              SizedBox(height: 2),
-              Text(
-                l10n.serialNumberShort(_getSerialNumber()),
-                style: TextStyle(
-                  fontSize: DS.textXS,
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
+            ),
+            SizedBox(width: DS.xs),
+            // Connection action button - smaller for space
+            _buildConnectionButton(context, isDark),
+            SizedBox(width: DS.xs),
+            // Expand/collapse arrow - smaller for space
+            _buildExpandArrow(context, isDark),
+          ],
         ),
-        SizedBox(width: DS.xs),
-        // Connection action button - smaller for space
-        _buildConnectionButton(context, isDark),
-        SizedBox(width: DS.xs),
-        // Expand/collapse arrow - smaller for space
-        _buildExpandArrow(context, isDark),
+        // Available indicator for paired devices - positioned on the card
       ],
     );
   }
 
-  String _getSerialNumber() => device.name!.split(":")[1];
+  String _getSerialNumber() {
+    // For paired devices, use localName (original name) for serial number
+    // For available devices, use name (which contains original name)
+    String? nameToUse;
+
+    if (isPairedDevice) {
+      // For paired devices, localName contains the original name
+      nameToUse = device.localName;
+    } else {
+      // For available devices, name contains the original name
+      nameToUse = device.name;
+    }
+
+    if (nameToUse == null || nameToUse.isEmpty) {
+      return 'Unknown';
+    }
+
+    // Check if name contains ":" for SN: format
+    if (nameToUse.contains(':')) {
+      final parts = nameToUse.split(':');
+      if (parts.length > 1) {
+        return parts[1];
+      }
+    }
+
+    // If no ":" or format is different, return the full name
+    return nameToUse;
+  }
 
   Widget _buildStatusIndicator() {
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isConnected ? DS.success : DS.info,
-        boxShadow: [
-          BoxShadow(
-            color: (isConnected ? DS.success : DS.info).withValues(alpha: 0.3),
-            blurRadius: 6,
-            spreadRadius: 1,
+    return Stack(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isConnected ? DS.success : DS.info,
+            boxShadow: [
+              BoxShadow(
+                color: (isConnected ? DS.success : DS.info).withValues(
+                  alpha: 0.3,
+                ),
+                blurRadius: 6,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildConnectionButton(BuildContext context, bool isDark) {
+    // For paired devices, show forget button instead of connect button
+    if (isPairedDevice && !isConnected && onForget != null) {
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onForget,
+            borderRadius: BorderRadius.circular(16),
+            child: Icon(Icons.delete_outline, color: Colors.red, size: 16),
+          ),
+        ),
+      );
+    }
+
     if (isConnecting || isVerifyingPin) {
       return Container(
         width: 32,
@@ -150,6 +250,11 @@ class DeviceCard extends StatelessWidget {
           ),
         ),
       );
+    }
+
+    // For paired devices that are connected, don't show connect button
+    if (isPairedDevice && isConnected) {
+      return SizedBox(width: 32, height: 32);
     }
 
     return Container(

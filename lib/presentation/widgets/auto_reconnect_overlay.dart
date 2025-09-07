@@ -18,7 +18,7 @@ class AutoReconnectOverlay extends StatelessWidget {
     return Center(
         child: Container(
           margin: EdgeInsets.all(DS.l),
-          constraints: const BoxConstraints(maxWidth: 300),
+        constraints: const BoxConstraints(maxWidth: 300),
           child: GlassCard(
             child: Padding(
               padding: EdgeInsets.all(DS.l),

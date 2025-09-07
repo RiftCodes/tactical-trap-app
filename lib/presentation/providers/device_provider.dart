@@ -10,6 +10,7 @@ class DeviceProvider extends ChangeNotifier {
 
   // State variables
   Map<String, String> _deviceNames = {};
+  Map<String, String> _deviceOriginalNames = {};
   Map<String, dynamic>? _lastConnectedDevice;
   Map<String, dynamic> _userPreferences = {};
   Map<String, dynamic> _appSettings = {};
@@ -18,6 +19,7 @@ class DeviceProvider extends ChangeNotifier {
 
   // Getters
   Map<String, String> get deviceNames => _deviceNames;
+  Map<String, String> get deviceOriginalNames => _deviceOriginalNames;
   Map<String, dynamic>? get lastConnectedDevice => _lastConnectedDevice;
   Map<String, dynamic> get userPreferences => _userPreferences;
   Map<String, dynamic> get appSettings => _appSettings;
@@ -52,9 +54,11 @@ class DeviceProvider extends ChangeNotifier {
   Future<void> _loadDeviceNames() async {
     try {
       _deviceNames = await _storageService.getDeviceNames();
+      _deviceOriginalNames = await _storageService.getDeviceOriginalNames();
     } catch (e) {
       if (kDebugMode) Logger.error('Failed to load device names', e);
       _deviceNames = {};
+      _deviceOriginalNames = {};
     }
   }
 

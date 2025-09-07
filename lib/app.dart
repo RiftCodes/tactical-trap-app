@@ -13,6 +13,7 @@ import 'presentation/providers/device_provider.dart';
 import 'presentation/providers/language_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/style/design_system.dart';
+import 'presentation/widgets/pin_protection.dart';
 
 /// Main application widget
 class TacticalTrapsApp extends StatelessWidget {
@@ -51,7 +52,7 @@ class TacticalTrapsApp extends StatelessWidget {
             ],
             supportedLocales: AppLocalizations.supportedLocales,
 
-            home: const HomePage(),
+            home: PinProtection(child: const HomePage()),
             routes: {
               '/home': (context) => const HomePage(),
               '/settings': (context) => const SettingsPage(),

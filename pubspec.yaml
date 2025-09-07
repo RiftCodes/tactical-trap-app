@@ -72,7 +72,8 @@ dependencies:
   # Location services for GPS detection
   location: ^6.0.0
 
-
+  # Toast notifications
+  fluttertoast: ^8.2.4
 
   # UI Components
   google_fonts: ^6.1.0

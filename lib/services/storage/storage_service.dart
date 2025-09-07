@@ -13,6 +13,7 @@ class StorageService {
   StorageService._internal();
 
   static const String _deviceNamesKey = 'device_names';
+  static const String _deviceOriginalNamesKey = 'device_original_names';
   static const String _lastConnectedDeviceKey = 'last_connected_device';
   static const String _userPreferencesKey = 'user_preferences';
   static const String _appSettingsKey = 'app_settings';
@@ -36,6 +37,26 @@ class StorageService {
     }
   }
 
+  /// Save device original name
+  Future<bool> saveDeviceOriginalName(
+    String deviceId,
+    String originalName,
+  ) async {
+    try {
+      final prefs = await _prefs;
+      final originalNames = await getDeviceOriginalNames();
+      originalNames[deviceId] = originalName;
+
+      return await prefs.setString(
+        _deviceOriginalNamesKey,
+        jsonEncode(originalNames),
+      );
+    } catch (e) {
+      if (kDebugMode) Logger.info('Failed to save device original name: $e');
+      return false;
+    }
+  }
+
   /// Get device custom name
   Future<String?> getDeviceName(String deviceId) async {
     try {
@@ -43,6 +64,17 @@ class StorageService {
       return deviceNames[deviceId];
     } catch (e) {
       if (kDebugMode) Logger.info('Failed to get device name: $e');
+      return null;
+    }
+  }
+
+  /// Get device original name
+  Future<String?> getDeviceOriginalName(String deviceId) async {
+    try {
+      final originalNames = await getDeviceOriginalNames();
+      return originalNames[deviceId];
+    } catch (e) {
+      if (kDebugMode) Logger.info('Failed to get device original name: $e');
       return null;
     }
   }
@@ -61,6 +93,24 @@ class StorageService {
       return {};
     } catch (e) {
       if (kDebugMode) Logger.info('Failed to get device names: $e');
+      return {};
+    }
+  }
+
+  /// Get all device original names
+  Future<Map<String, String>> getDeviceOriginalNames() async {
+    try {
+      final prefs = await _prefs;
+      final originalNamesJson = prefs.getString(_deviceOriginalNamesKey);
+
+      if (originalNamesJson != null) {
+        final Map<String, dynamic> decoded = jsonDecode(originalNamesJson);
+        return Map<String, String>.from(decoded);
+      }
+
+      return {};
+    } catch (e) {
+      if (kDebugMode) Logger.info('Failed to get device original names: $e');
       return {};
     }
   }
