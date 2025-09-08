@@ -90,6 +90,13 @@ class _AuthOverlayState extends State<AuthOverlay>
           print('AuthOverlay: Showing authentication overlay');
           // Pause BLE operations when overlay is shown
           _pauseAppOperations(context);
+          // Automatically trigger authentication when overlay appears
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!authProvider.isAuthenticating) {
+              print('AuthOverlay: Auto-triggering authentication');
+              _handleAuthentication(context, authProvider);
+            }
+          });
           return Stack(children: [widget.child, _buildAuthOverlay(context)]);
         }
 
@@ -214,7 +221,9 @@ class _AuthOverlayState extends State<AuthOverlay>
             Icon(Icons.security_rounded, size: 20, color: Colors.white),
             SizedBox(width: DS.s),
             Text(
-              'Unlock App',
+              authProvider.isAuthenticating
+                  ? 'Authenticating...'
+                  : 'Unlock App',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
