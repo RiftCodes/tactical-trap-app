@@ -138,7 +138,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _connectToDevice(BleDevice device) async {
     final l10n = AppLocalizations.of(context)!;
-    
+
     try {
       final bleProvider = context.read<BleProvider>();
       final hasStoredPin = await bleProvider.hasStoredPin(device);
@@ -270,8 +270,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
       centerTitle: true,
       actions: [
-        // Only show settings when connected (as per image feedback)
-        if (hasConnection)
+        // Always show settings icon
         Padding(
           padding: EdgeInsets.only(right: DS.s),
           child: Container(
@@ -362,9 +361,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               // Stack for overlays and toasts with proper constraints
               SizedBox(
-                height:
-                    MediaQuery.of(context).size.height *
-                    0.3, // Reduced height for overlays
+                // height:
+                //     MediaQuery.of(context).size.height *
+                //     0.3, // Reduced height for overlays
                 child: Stack(
                   children: [
                     // Loading overlays - Show only one at a time
@@ -379,125 +378,125 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           final l10n = AppLocalizations.of(context)!;
                           final isDark =
                               Theme.of(context).brightness == Brightness.dark;
-                          
+
                           return Center(
                             child: Container(
                               margin: EdgeInsets.all(DS.l),
                               constraints: const BoxConstraints(maxWidth: 300),
                               child: GlassCard(
                                 child: SingleChildScrollView(
-                                child: Padding(
-                                  padding: EdgeInsets.all(DS.l),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Elegant lock icon with animation
-                                      Container(
-                                        width: 64,
-                                        height: 64,
-                                        decoration: BoxDecoration(
-                                          color: DS.brandRed.withValues(
-                                            alpha: 0.1,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            32,
-                                          ),
-                                          border: Border.all(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(DS.l),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Elegant lock icon with animation
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: BoxDecoration(
                                             color: DS.brandRed.withValues(
-                                              alpha: 0.3,
+                                              alpha: 0.1,
                                             ),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Icon(
-                                            Icons.lock_outline_rounded,
-                                            size: 32,
-                                            color: DS.brandRed,
-                                          ),
-                                        ),
-                                      ),
-
-                                      SizedBox(height: DS.m),
-
-                                      // Animated progress indicator
-                                      SizedBox(
-                                        width: 32,
-                                        height: 32,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 3,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                DS.brandRed,
+                                            borderRadius: BorderRadius.circular(
+                                              32,
+                                            ),
+                                            border: Border.all(
+                                              color: DS.brandRed.withValues(
+                                                alpha: 0.3,
                                               ),
-                                          backgroundColor: isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.1,
-                                                )
-                                              : Colors.black.withValues(
-                                                  alpha: 0.05,
-                                                ),
-                                        ),
-                                      ),
-
-                                      SizedBox(height: DS.m),
-
-                                      // Main title
-                                      Text(
-                                        l10n.verifyingPin,
-                                        style: TextStyle(
-                                          fontSize: DS.textLG,
-                                          fontWeight: FontWeight.w700,
-                                          color: DS.getTextPrimary(context),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-
-                                      SizedBox(height: DS.s),
-
-                                      // Status message
-                                      Text(
-                                        l10n.pleaseWait,
-                                        style: TextStyle(
-                                          fontSize: DS.textSM,
-                                          color: DS.getTextSecondary(context),
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-
-                                      SizedBox(height: DS.m),
-
-                                      // Subtle hint
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: DS.s,
-                                          vertical: DS.xs,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.05,
-                                                )
-                                              : Colors.black.withValues(
-                                                  alpha: 0.03,
-                                                ),
-                                          borderRadius: BorderRadius.circular(
-                                            DS.rSmall,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              Icons.lock_outline_rounded,
+                                              size: 32,
+                                              color: DS.brandRed,
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          'Connecting...',
+
+                                        SizedBox(height: DS.m),
+
+                                        // Animated progress indicator
+                                        SizedBox(
+                                          width: 32,
+                                          height: 32,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 3,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  DS.brandRed,
+                                                ),
+                                            backgroundColor: isDark
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.1,
+                                                  )
+                                                : Colors.black.withValues(
+                                                    alpha: 0.05,
+                                                  ),
+                                          ),
+                                        ),
+
+                                        SizedBox(height: DS.m),
+
+                                        // Main title
+                                        Text(
+                                          l10n.verifyingPin,
                                           style: TextStyle(
-                                            fontSize: DS.textXS,
+                                            fontSize: DS.textLG,
+                                            fontWeight: FontWeight.w700,
+                                            color: DS.getTextPrimary(context),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+
+                                        SizedBox(height: DS.s),
+
+                                        // Status message
+                                        Text(
+                                          l10n.pleaseWait,
+                                          style: TextStyle(
+                                            fontSize: DS.textSM,
+                                            color: DS.getTextSecondary(context),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+
+                                        SizedBox(height: DS.m),
+
+                                        // Subtle hint
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: DS.s,
+                                            vertical: DS.xs,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isDark
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.05,
+                                                  )
+                                                : Colors.black.withValues(
+                                                    alpha: 0.03,
+                                                  ),
+                                            borderRadius: BorderRadius.circular(
+                                              DS.rSmall,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Connecting...',
+                                            style: TextStyle(
+                                              fontSize: DS.textXS,
                                               color: DS.getTextSecondary(
                                                 context,
                                               ),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -776,9 +775,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       padding: EdgeInsets.all(DS.s),
       margin: EdgeInsets.symmetric(horizontal: DS.m),
       decoration: BoxDecoration(
-        color: DS.getCardBackground(context),
+        color: !bleProvider.isScanning ? Colors.blue[600] : DS.brandRed,
         borderRadius: BorderRadius.circular(DS.rSmall),
-        border: Border.all(color: DS.getBorderColor(context), width: 1),
+        border: Border.all(
+          color: !bleProvider.isScanning ? Colors.blue[700]! : DS.brandRed,
+          width: 1,
+        ),
       ),
       child: Material(
         color: Colors.transparent,
@@ -798,14 +800,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               children: [
                 Icon(
                   bleProvider.isScanning ? Icons.stop : Icons.add,
-                  color: DS.getTextPrimary(context),
+                  color: Colors.white,
                   size: 20,
                 ),
                 SizedBox(width: DS.s),
                 Text(
                   bleProvider.isScanning ? 'Stop scanning' : 'Pair new device',
                   style: TextStyle(
-                    color: DS.getTextPrimary(context),
+                    color: Colors.white,
                     fontSize: DS.textSM,
                     fontWeight: FontWeight.w500,
                   ),
@@ -851,10 +853,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color: DS.info,
                   borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     SizedBox(
                       width: 12,
                       height: 12,
@@ -864,29 +866,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                     ),
                     SizedBox(width: 4),
-          Text(
+                    Text(
                       'Scanning',
                       style: TextStyle(
                         fontSize: DS.textXS,
                         color: Colors.white,
-              fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w600,
                       ),
-          ),
+                    ),
                   ],
                 ),
               )
             else if (availableDevices.isNotEmpty)
-          Container(
+              Container(
                 padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: 2),
-            decoration: BoxDecoration(
+                decoration: BoxDecoration(
                   color: DS.success,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
                   '${availableDevices.length} New',
-              style: TextStyle(
+                  style: TextStyle(
                     fontSize: DS.textXS,
-                color: Colors.white,
+                    color: Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -959,9 +961,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isDeviceInRange(String deviceId, List<BleDevice> discoveredDevices) {
     final isInRange = discoveredDevices.any(
       (device) => device.id.toString() == deviceId,
-    );
-    print(
-      'DEBUG: Device $deviceId isInRange: $isInRange (discovered: ${discoveredDevices.length})',
     );
     return isInRange;
   }
@@ -1073,10 +1072,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final lastConnected = deviceProvider.lastConnectedDevice;
     final currentDeviceId = bleProvider.currentDevice?.id;
 
-    print('DEBUG: deviceNames = $deviceNames');
-    print('DEBUG: lastConnected = $lastConnected');
-    print('DEBUG: currentDeviceId = $currentDeviceId');
-    print('DEBUG: deviceNames count = ${deviceNames.length}');
+    // Debug logs removed for cleaner output
 
     List<Map<String, dynamic>> pairedDevices = [];
 
@@ -1122,7 +1118,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
     }
 
-    print('DEBUG: pairedDevices = $pairedDevices');
+    // Debug logs removed for cleaner output
     return pairedDevices;
   }
 
@@ -1185,7 +1181,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildEmptyState() {
     final l10n = AppLocalizations.of(context);
     if (l10n == null) return const SizedBox.shrink();
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1348,7 +1344,7 @@ class _PairedDeviceCardWrapperState extends State<_PairedDeviceCardWrapper> {
   Widget build(BuildContext context) {
     // For paired devices, use original device name for serial number
     // Try to get original name from device ID or use a fallback
-    print('DEBUG: widget.device = ${widget.device}');
+    // Debug logs removed for cleaner output
     final deviceId = widget.device['name'] ?? '';
     final originalDeviceName =
         widget.device['name'] ??

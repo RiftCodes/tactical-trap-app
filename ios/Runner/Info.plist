@@ -49,5 +49,7 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Authenticate to access Tactical Traps app securely</string>
 	</dict>
 </plist>

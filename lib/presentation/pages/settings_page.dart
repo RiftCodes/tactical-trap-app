@@ -32,6 +32,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   PackageInfo? _packageInfo;
+  bool isBuzzerOn = true;
 
   @override
   void initState() {
@@ -93,13 +94,19 @@ class _SettingsPageState extends State<SettingsPage> {
       body: Stack(
         children: [
           const GlassBackground(),
-          Consumer3<DeviceProvider, ThemeProvider, LanguageProvider>(
+          Consumer4<
+            DeviceProvider,
+            ThemeProvider,
+            LanguageProvider,
+            BleProvider
+          >(
             builder:
                 (
                   context,
                   deviceProvider,
                   themeProvider,
                   languageProvider,
+                  bleProvider,
                   child,
                 ) {
                   // Force rebuild when language changes
@@ -116,13 +123,16 @@ class _SettingsPageState extends State<SettingsPage> {
                         sliver: SliverList(
                           delegate: SliverChildListDelegate([
                             SizedBox(height: DS.l),
-                            _section(context, l10n.lockSettings, [
-                              _lockRenameRow(context, deviceProvider, isDark),
-                              _batteryInfoRow(context, isDark),
-                              _buzzerControlRow(context, isDark),
-                              _resetLockRow(context, isDark),
-                            ]),
-                            SizedBox(height: DS.l),
+                            // Only show lock settings when connected
+                            if (bleProvider.isConnected) ...[
+                              _section(context, l10n.lockSettings, [
+                                _lockRenameRow(context, deviceProvider, isDark),
+                                _batteryInfoRow(context, isDark),
+                                _buzzerControlRow(context, isDark),
+                                _resetLockRow(context, isDark),
+                              ]),
+                              SizedBox(height: DS.l),
+                            ],
                             _section(context, l10n.support, [
                               _infoRow(
                                 context,
@@ -173,14 +183,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                 Icons.share_rounded,
                                 isDark ? Colors.white : const Color(0xFF1E293B),
                                 () => _shareApp(),
-                                isDark,
-                              ),
-                              _actionRow(
-                                context,
-                                l10n.clearAllData,
-                                Icons.delete_forever_rounded,
-                                DS.brandRed,
-                                () => _confirmClear(context, deviceProvider),
                                 isDark,
                               ),
                             ]),
@@ -280,7 +282,7 @@ class _SettingsPageState extends State<SettingsPage> {
             msg: 'Could not open link. Please install a browser app.',
             toastLength: Toast.LENGTH_LONG,
             gravity: ToastGravity.BOTTOM,
-              backgroundColor: Colors.red,
+            backgroundColor: Colors.red,
             textColor: Colors.white,
             fontSize: 14.0,
           );
@@ -295,7 +297,7 @@ class _SettingsPageState extends State<SettingsPage> {
           msg: 'Failed to open link: ${e.toString()}',
           toastLength: Toast.LENGTH_LONG,
           gravity: ToastGravity.BOTTOM,
-            backgroundColor: Colors.red,
+          backgroundColor: Colors.red,
           textColor: Colors.white,
           fontSize: 14.0,
         );
@@ -324,7 +326,7 @@ class _SettingsPageState extends State<SettingsPage> {
         if (kDebugMode)
           Logger.info('In-app review not available, opening Play Store');
         await _launchUrl(
-          'https://play.google.com/store/apps/details?id=com.tacticaltraps.bluetooth.lock_0',
+          'https://play.google.com/store/apps/details?id=com.tacticaltraps.bluetooth.lock_2',
         );
       }
     } catch (e) {
@@ -401,7 +403,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
           msg: l10n.failedToOpenLink,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
-            backgroundColor: Colors.red,
+          backgroundColor: Colors.red,
           textColor: Colors.white,
           fontSize: 14.0,
         );
@@ -458,7 +460,6 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
     return content;
   }
 
-
   Widget _actionRow(
     BuildContext context,
     String label,
@@ -496,34 +497,6 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
     );
   }
 
-  void _confirmClear(BuildContext context, DeviceProvider provider) {
-    final l10n = AppLocalizations.of(context)!;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.clearAllDataConfirmation),
-        content: Text(l10n.clearAllDataWarning),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l10n.cancelButton),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await provider.clearAllData();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: DS.brandRed,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.clearButton),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showSupportOptions(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -584,7 +557,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
               // Content
               Flexible(
                 child: SingleChildScrollView(
-                  padding: EdgeInsets.all(DS.s),
+                  padding: EdgeInsets.all(DS.m),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1434,7 +1407,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
 
     return Consumer<BleProvider>(
       builder: (context, bleProvider, child) {
-        final isBuzzerOn = bleProvider.lastStatus?.buzzerOn ?? false;
+        isBuzzerOn = bleProvider.lastStatus?.buzzerOn ?? isBuzzerOn;
 
         return InkWell(
           onTap: () async {
@@ -1739,5 +1712,4 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
       ),
     );
   }
-
 }

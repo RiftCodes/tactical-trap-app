@@ -75,6 +75,9 @@ dependencies:
   # Toast notifications
   fluttertoast: ^8.2.4
 
+  # Local Authentication (Biometrics/PIN)
+  local_auth: ^2.3.0
+
   # UI Components
   google_fonts: ^6.1.0
 

@@ -3,17 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:tactical_trap_flutter/presentation/widgets/auth_overlay.dart';
 
 import 'core/constants/app_constants.dart';
 import 'l10n/app_localizations.dart';
 import 'presentation/pages/home_page.dart';
 import 'presentation/pages/settings_page.dart';
+import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/ble_provider.dart';
 import 'presentation/providers/device_provider.dart';
 import 'presentation/providers/language_provider.dart';
 import 'presentation/providers/theme_provider.dart';
 import 'presentation/style/design_system.dart';
-import 'presentation/widgets/pin_protection.dart';
 
 /// Main application widget
 class TacticalTrapsApp extends StatelessWidget {
@@ -34,6 +35,7 @@ class TacticalTrapsApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DeviceProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
       ],
       child: Consumer2<ThemeProvider, LanguageProvider>(
         builder: (context, themeProvider, languageProvider, child) {
@@ -52,7 +54,7 @@ class TacticalTrapsApp extends StatelessWidget {
             ],
             supportedLocales: AppLocalizations.supportedLocales,
 
-            home: PinProtection(child: const HomePage()),
+            home: AuthOverlay(child: const HomePage()),
             routes: {
               '/home': (context) => const HomePage(),
               '/settings': (context) => const SettingsPage(),

@@ -10,6 +10,10 @@
     <!-- Internet permission for URL launching -->
     <uses-permission android:name="android.permission.INTERNET" />
     
+    <!-- Biometric authentication permission -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    
     <!-- Feature declarations -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
@@ -17,7 +21,8 @@
     <application
         android:label="Tactical Traps"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:debuggable="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

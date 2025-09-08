@@ -34,6 +34,7 @@ class BleProvider extends ChangeNotifier {
   bool _isAutoReconnecting = false;
   String? _autoReconnectStatus;
   String? _successMessage;
+  Timer? _autoLockTimer;
   BleDevice? _currentDevice;
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
@@ -361,6 +362,10 @@ class BleProvider extends ChangeNotifier {
 
     try {
       _errorMessage = null;
+      
+      // Cancel auto-lock timer on disconnect
+      _cancelAutoLockTimer();
+      
       notifyListeners();
 
       // Clear auto-reconnect data on manual disconnect
@@ -395,6 +400,10 @@ class BleProvider extends ChangeNotifier {
       final success = await _bleService.sendLockCommand();
       if (success) {
         _errorMessage = null;
+        
+        // Cancel auto-lock timer since manually locked
+        _cancelAutoLockTimer();
+        
         // Wait longer for lock to engage, then refresh status
         await Future.delayed(const Duration(milliseconds: 1000));
         await _silentGetDeviceStatus();
@@ -436,6 +445,10 @@ class BleProvider extends ChangeNotifier {
         await Future.delayed(const Duration(milliseconds: 1000));
         await _silentGetDeviceStatus();
         _successMessage = 'Lock released';
+        
+        // Start auto-lock timer (3 seconds)
+        _startAutoLockTimer();
+        
         notifyListeners();
         Future.delayed(const Duration(seconds: 2), () {
           _successMessage = null;
@@ -912,8 +925,43 @@ class BleProvider extends ChangeNotifier {
     }
   }
 
+  /// Start auto-lock timer (5 seconds)
+  void _startAutoLockTimer() {
+    // Cancel any existing timer
+    _cancelAutoLockTimer();
+
+    if (kDebugMode) Logger.info('Starting auto-lock timer (5 seconds)');
+
+    _autoLockTimer = Timer(const Duration(seconds: 5), () async {
+      if (kDebugMode) Logger.info('Auto-lock timer triggered - locking device');
+
+      // Check if device is still connected and unlocked
+      if (isConnected && _lastStatus != null && !_lastStatus!.isLocked) {
+        await sendLockCommand();
+        _successMessage = 'Auto-locked after 5 seconds';
+        notifyListeners();
+
+        // Clear success message after delay
+        Future.delayed(const Duration(seconds: 2), () {
+          _successMessage = null;
+          notifyListeners();
+        });
+      }
+    });
+  }
+
+  /// Cancel auto-lock timer
+  void _cancelAutoLockTimer() {
+    if (_autoLockTimer != null) {
+      if (kDebugMode) Logger.info('Cancelling auto-lock timer');
+      _autoLockTimer!.cancel();
+      _autoLockTimer = null;
+    }
+  }
+
   @override
   void dispose() {
+    _cancelAutoLockTimer();
     _bleService.dispose();
     super.dispose();
   }
