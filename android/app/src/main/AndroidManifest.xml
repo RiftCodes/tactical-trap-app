@@ -21,8 +21,7 @@
     <application
         android:label="Tactical Traps"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:debuggable="false">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

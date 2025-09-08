@@ -138,7 +138,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _connectToDevice(BleDevice device) async {
     final l10n = AppLocalizations.of(context)!;
-
+    
     try {
       final bleProvider = context.read<BleProvider>();
       final hasStoredPin = await bleProvider.hasStoredPin(device);
@@ -378,7 +378,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           final l10n = AppLocalizations.of(context)!;
                           final isDark =
                               Theme.of(context).brightness == Brightness.dark;
-
+                          
                           return Center(
                             child: Container(
                               margin: EdgeInsets.all(DS.l),
@@ -1181,7 +1181,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildEmptyState() {
     final l10n = AppLocalizations.of(context);
     if (l10n == null) return const SizedBox.shrink();
-
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

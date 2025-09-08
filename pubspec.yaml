@@ -97,83 +97,57 @@ dev_dependencies:
   # App icon generation
   flutter_launcher_icons: ^0.13.1
   
-  # Splash screen generation
-  flutter_native_splash: ^2.3.7
 
 # Flutter Launcher Icons configuration
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icons/square.png"
+  image_path: "assets/icons/logo.png"
   min_sdk_android: 21
   
   # Generate different icon variants
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/square.png"
+  adaptive_icon_foreground: "assets/icons/logo.png"
   
   # Android adaptive icons with different variants
   android_adaptive_icon_background_color: "#FFFFFF"
-  android_adaptive_icon_foreground_image: "assets/icons/square.png"
+  android_adaptive_icon_foreground_image: "assets/icons/logo.png"
   
   # Generate icons for different platforms
   web:
     generate: true
-    image_path: "assets/icons/square.png"
+    image_path: "assets/icons/logo.png"
     background_color: "#FFFFFF"
     theme_color: "#FF0000"
   windows:
     generate: true
-    image_path: "assets/icons/square.png"
+    image_path: "assets/icons/logo.png"
     icon_size: 48
   macos:
     generate: true
-    image_path: "assets/icons/square.png"
+    image_path: "assets/icons/logo.png"
 
 # Additional icon configurations for variants
 flutter_launcher_icons_circle:
   android: "launcher_icon_circle"
   ios: true
-  image_path: "assets/icons/square_circular.png"
+  image_path: "assets/icons/logo.png"
   min_sdk_android: 21
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/square_circular.png"
+  adaptive_icon_foreground: "assets/icons/logo.png"
   android_adaptive_icon_background_color: "#FFFFFF"
-  android_adaptive_icon_foreground_image: "assets/icons/square_circular.png"
+  android_adaptive_icon_foreground_image: "assets/icons/logo.png"
 
 flutter_launcher_icons_transparent:
   android: "launcher_icon_transparent"
   ios: true
-  image_path: "assets/icons/square transaparent.png"
+  image_path: "assets/icons/logo.png"
   min_sdk_android: 21
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/square transaparent.png"
+  adaptive_icon_foreground: "assets/icons/logo.png"
   android_adaptive_icon_background_color: "#FFFFFF"
-  android_adaptive_icon_foreground_image: "assets/icons/square transaparent.png"
+  android_adaptive_icon_foreground_image: "assets/icons/logo.png"
 
-# Flutter Native Splash configuration
-flutter_native_splash:
-  # Very light splash screen (appears almost transparent)
-  color: "#FFFFFF"  # White
-  image: assets/icons/square.png
-  
-  # Dark mode - very dark (appears almost transparent)
-  color_dark: "#FFFFFF"  # Black
-  image_dark: assets/icons/square.png
-  
-  # Android 12+ splash screen
-  android_12:
-    image: assets/icons/square.png
-    color: "#FFFFFF"  # White
-    icon_background_color: "#FFFFFF"  # White
-    icon_background_color_dark: "#FFFFFF"  # Black
-  
-  # Platform-specific settings
-  android: true
-  ios: true
-  web: false
-  
-  # Full screen splash
-  fullscreen: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
