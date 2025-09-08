@@ -16,6 +16,7 @@ import '../providers/device_provider.dart';
 import '../style/design_system.dart';
 import '../widgets/auto_reconnect_overlay.dart';
 import '../widgets/device_card.dart';
+import '../widgets/device_scan_popup.dart';
 import '../widgets/glass_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_pin_dialog.dart';
@@ -701,10 +702,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
           SizedBox(height: DS.l),
 
-          // Available devices (show when scanning OR when devices are discovered)
-          if (bleProvider.isScanning ||
-              bleProvider.discoveredDevices.isNotEmpty)
-            _buildAvailableDevicesSection(context, bleProvider, deviceProvider),
+         
         ],
       ),
     );
@@ -790,7 +788,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             if (bleProvider.isScanning) {
               bleProvider.stopScan();
             } else {
-              bleProvider.startScan();
+              _showDeviceScanPopup(context);
             }
           },
           borderRadius: BorderRadius.circular(DS.rSmall),
@@ -1309,6 +1307,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Show fullscreen device scan popup
+  void _showDeviceScanPopup(BuildContext context) {
+    final bleProvider = Provider.of<BleProvider>(context, listen: false);
+
+    // Start scanning first
+    bleProvider.startScan();
+
+    // Show fullscreen popup
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const DeviceScanPopup(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        opaque: false,
       ),
     );
   }

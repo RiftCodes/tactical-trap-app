@@ -18,6 +18,7 @@ class DeviceCard extends StatelessWidget {
   final bool isPairedDevice;
   final bool isInRange;
   final VoidCallback? onForget;
+  final String? chipText;
 
   const DeviceCard({
     super.key,
@@ -32,6 +33,7 @@ class DeviceCard extends StatelessWidget {
     this.isPairedDevice = false,
     this.isInRange = false,
     this.onForget,
+    this.chipText,
   });
 
   @override
@@ -81,7 +83,7 @@ class DeviceCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Available',
+                    chipText ?? 'Available',
                     style: TextStyle(
                       fontSize: 8,
                       color: Colors.white,
