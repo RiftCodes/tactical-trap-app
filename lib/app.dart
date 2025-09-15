@@ -35,7 +35,7 @@ class TacticalTrapsApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DeviceProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => LanguageProvider()..initialize()),
-        ChangeNotifierProvider(create: (_) => AuthProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: Consumer2<ThemeProvider, LanguageProvider>(
         builder: (context, themeProvider, languageProvider, child) {

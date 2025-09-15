@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../services/auth/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static int _constructorCallCount = 0;
   final AuthService _authService = AuthService();
+  final String _instanceId = DateTime.now().millisecondsSinceEpoch.toString();
 
   bool _isAuthenticated = false;
   bool _isAuthenticating = false;
@@ -16,23 +18,72 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticating => _isAuthenticating;
   bool get isPinProtectionEnabled => _isPinProtectionEnabled;
 
+  /// Constructor - initialize immediately
+  AuthProvider() {
+    _constructorCallCount++;
+    print('=== AUTH PROVIDER CONSTRUCTOR CALLED #$_constructorCallCount ===');
+    print('AuthProvider: Constructor called - Instance ID: $_instanceId');
+    print('AuthProvider: About to call _initializeSync()');
+    _initializeSync();
+    print('AuthProvider: _initializeSync() called');
+    print(
+      '=== AUTH PROVIDER CONSTRUCTOR COMPLETED #$_constructorCallCount ===',
+    );
+  }
+
+  /// Synchronous initialization setup
+  void _initializeSync() {
+    print(
+      'AuthProvider: Starting sync initialization - Instance ID: $_instanceId',
+    );
+    // Start async initialization
+    print(
+      'AuthProvider: About to call initialize() - Instance ID: $_instanceId',
+    );
+    // Use Future.microtask to ensure it runs after the current frame
+    Future.microtask(() => initialize());
+    print('AuthProvider: initialize() called - Instance ID: $_instanceId');
+  }
+
   /// Initialize authentication state
   Future<void> initialize() async {
     if (_isInitialized) return; // Prevent multiple initializations
 
-    _isPinProtectionEnabled = await _authService.isPinProtectionEnabled();
+    print(
+      'AuthProvider: Starting initialization... - Instance ID: $_instanceId',
+    );
 
-    // If PIN protection is disabled, user is automatically authenticated
-    if (!_isPinProtectionEnabled) {
+    // First check if device has any security credentials
+    final hasDeviceSecurity = await _authService.hasDeviceSecurity();
+    print(
+      'AuthProvider: Device has security: $hasDeviceSecurity - Instance ID: $_instanceId',
+    );
+
+    if (!hasDeviceSecurity) {
+      print(
+        'AuthProvider: Device has no security credentials, disabling PIN protection',
+      );
+      // Device has no security, disable PIN protection and auto-authenticate
+      await _authService.setPinProtection(false);
+      _isPinProtectionEnabled = false;
       _isAuthenticated = true;
-      _isInitialized = true;
-      notifyListeners();
-      return;
+    } else {
+      print('=== DEVICE HAS SECURITY - FORCING AUTHENTICATION ===');
+      print('AuthProvider: Device has security, requiring authentication');
+      // Device has security, always require authentication
+      _isPinProtectionEnabled =
+          true; // Force PIN protection when device has security
+      _isAuthenticated = false; // Require authentication
+      print(
+        'AuthProvider: Device has security, PIN protection enabled, requiring authentication',
+      );
+      print('=== AUTHENTICATION FORCED - OVERLAY SHOULD SHOW ===');
     }
 
-    // If PIN protection is enabled, always require authentication on app start
-    _isAuthenticated = false;
     _isInitialized = true;
+    print(
+      'AuthProvider: Initialization complete - isPinProtectionEnabled: $_isPinProtectionEnabled, isAuthenticated: $_isAuthenticated - Instance ID: $_instanceId',
+    );
     notifyListeners();
   }
 
@@ -45,7 +96,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final success = await _authService.authenticate();
+      final success = await _authService.authenticate(
+        forceAuthentication: true,
+      );
       print('AuthProvider: Authentication result: $success');
       _isAuthenticated = success;
       _isLoggedOutFromBackground =
@@ -111,6 +164,11 @@ class AuthProvider extends ChangeNotifier {
   /// Get authentication method name
   Future<String> getAuthenticationMethodName() async {
     return await _authService.getAuthenticationMethodName();
+  }
+
+  /// Check if device has security credentials
+  Future<bool> hasDeviceSecurity() async {
+    return await _authService.hasDeviceSecurity();
   }
 
   /// Clear authentication state (for testing)

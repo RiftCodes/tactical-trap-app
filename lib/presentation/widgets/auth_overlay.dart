@@ -20,6 +20,10 @@ class _AuthOverlayState extends State<AuthOverlay>
   late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _pulseAnimation;
+  
+  // Add cooldown to prevent infinite retries
+  DateTime? _lastAuthAttempt;
+  static const Duration _authCooldown = Duration(seconds: 3);
 
   @override
   void initState() {
@@ -90,9 +94,9 @@ class _AuthOverlayState extends State<AuthOverlay>
           print('AuthOverlay: Showing authentication overlay');
           // Pause BLE operations when overlay is shown
           _pauseAppOperations(context);
-          // Automatically trigger authentication when overlay appears
+          // Only auto-trigger authentication if not recently attempted
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!authProvider.isAuthenticating) {
+            if (!authProvider.isAuthenticating && _canAttemptAuth()) {
               print('AuthOverlay: Auto-triggering authentication');
               _handleAuthentication(context, authProvider);
             }
@@ -242,6 +246,15 @@ class _AuthOverlayState extends State<AuthOverlay>
     AuthProvider authProvider,
   ) async {
     print('AuthOverlay: Authentication button pressed');
+    
+    // Check cooldown before attempting
+    if (!_canAttemptAuth()) {
+      print('AuthOverlay: Authentication cooldown active, skipping attempt');
+      return;
+    }
+
+    _lastAuthAttempt = DateTime.now();
+    
     try {
       print('AuthOverlay: Calling authProvider.authenticate()');
       await authProvider.authenticate();
@@ -258,6 +271,13 @@ class _AuthOverlayState extends State<AuthOverlay>
         );
       }
     }
+  }
+  
+  /// Check if enough time has passed since last authentication attempt
+  bool _canAttemptAuth() {
+    if (_lastAuthAttempt == null) return true;
+    final timeSinceLastAttempt = DateTime.now().difference(_lastAuthAttempt!);
+    return timeSinceLastAttempt >= _authCooldown;
   }
 
   /// Pause app operations when authentication overlay is shown
