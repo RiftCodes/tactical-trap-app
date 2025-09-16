@@ -44,13 +44,87 @@ class AuthService {
     }
   }
 
+  /// Check if device has any security credentials (PIN, pattern, password, biometrics)
+  Future<bool> hasDeviceSecurity() async {
+    try {
+      print('AuthService: Checking device security...');
+      
+      // Check if device supports authentication at all
+      final isDeviceSupported = await _localAuth.isDeviceSupported();
+      print('AuthService: Device supports authentication: $isDeviceSupported');
+      
+      if (!isDeviceSupported) {
+        print('AuthService: Device does not support authentication');
+        return false;
+      }
+
+      // Check if biometrics are available
+      final isBiometricAvailable = await this.isBiometricAvailable();
+      print('AuthService: Biometric available: $isBiometricAvailable');
+      
+      if (isBiometricAvailable) {
+        print('AuthService: Device has biometric security');
+        return true;
+      }
+
+      // Check if there are any enrolled biometrics
+      final availableBiometrics = await getAvailableBiometrics();
+      print('AuthService: Available biometrics: $availableBiometrics');
+      
+      if (availableBiometrics.isNotEmpty) {
+        print('AuthService: Device has enrolled biometrics');
+        return true;
+      }
+
+      // For devices without biometrics, we need to check if they have PIN/pattern/password
+      // This is tricky because we can't easily detect it without trying to authenticate
+      // On Android, if no security is set, authenticate will fail with NotAvailable
+      try {
+        print('AuthService: Testing device PIN/pattern/password availability...');
+        final result = await _localAuth.authenticate(
+          localizedReason: 'Check device security',
+          options: const AuthenticationOptions(
+            biometricOnly: false, // Allow all authentication methods
+            useErrorDialogs: false,
+            stickyAuth: false,
+          ),
+        );
+        print('AuthService: Device PIN/pattern/password test result: $result');
+        return result; // If authentication succeeded, device has security
+      } on PlatformException catch (e) {
+        print('AuthService: Device security test failed: ${e.code} - ${e.message}');
+        if (e.code == 'NotAvailable' && e.message?.contains('Security credentials not available') == true) {
+          print('AuthService: Device has no security credentials');
+          return false;
+        } else if (e.code == 'NotEnrolled') {
+          print('AuthService: No security credentials enrolled');
+          return false;
+        } else if (e.code == 'UserCancel') {
+          // User cancelled, but this means security exists
+          print('AuthService: User cancelled security check, device has security');
+          return true;
+        } else if (e.code == 'AuthenticationError') {
+          // Authentication error means security exists but failed
+          print('AuthService: Authentication error, device has security');
+          return true;
+        }
+        // Other errors might mean security exists but failed for other reasons
+        print('AuthService: Device security check failed with unknown error: ${e.code}');
+        return false;
+      }
+    } catch (e) {
+      print('AuthService: Error checking device security: $e');
+      return false;
+    }
+  }
+
   /// Authenticate user using biometrics or device PIN
-  Future<bool> authenticate() async {
+  Future<bool> authenticate({bool forceAuthentication = false}) async {
     try {
       print('AuthService: Starting authentication...');
 
-      // Check if PIN protection is enabled
-      if (!await isPinProtectionEnabled()) {
+      // Check if PIN protection is enabled (unless forced)
+      if (!forceAuthentication && !await isPinProtectionEnabled()) {
         print('AuthService: PIN protection disabled, returning true');
         return true; // No protection enabled
       }

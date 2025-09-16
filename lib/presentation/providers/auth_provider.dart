@@ -20,19 +20,30 @@ class AuthProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) return; // Prevent multiple initializations
 
-    _isPinProtectionEnabled = await _authService.isPinProtectionEnabled();
-
-    // If PIN protection is disabled, user is automatically authenticated
-    if (!_isPinProtectionEnabled) {
+    print('AuthProvider: Starting initialization...');
+    
+    // First check if device has any security credentials
+    final hasDeviceSecurity = await _authService.hasDeviceSecurity();
+    print('AuthProvider: Device has security: $hasDeviceSecurity');
+    
+    if (!hasDeviceSecurity) {
+      print('AuthProvider: Device has no security credentials, disabling PIN protection');
+      // Device has no security, disable PIN protection and auto-authenticate
+      await _authService.setPinProtection(false);
+      _isPinProtectionEnabled = false;
       _isAuthenticated = true;
-      _isInitialized = true;
-      notifyListeners();
-      return;
+    } else {
+      print('=== DEVICE HAS SECURITY - FORCING AUTHENTICATION ===');
+      print('AuthProvider: Device has security, requiring authentication');
+      // Device has security, always require authentication
+      _isPinProtectionEnabled = true; // Force PIN protection when device has security
+      _isAuthenticated = false; // Require authentication
+      print('AuthProvider: Device has security, PIN protection enabled, requiring authentication');
+      print('=== AUTHENTICATION FORCED - OVERLAY SHOULD SHOW ===');
     }
 
-    // If PIN protection is enabled, always require authentication on app start
-    _isAuthenticated = false;
     _isInitialized = true;
+    print('AuthProvider: Initialization complete - isPinProtectionEnabled: $_isPinProtectionEnabled, isAuthenticated: $_isAuthenticated');
     notifyListeners();
   }
 
@@ -45,7 +56,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final success = await _authService.authenticate();
+      final success = await _authService.authenticate(forceAuthentication: true);
       print('AuthProvider: Authentication result: $success');
       _isAuthenticated = success;
       _isLoggedOutFromBackground =
