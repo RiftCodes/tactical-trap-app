@@ -58,23 +58,29 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _initializeApp() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (mounted) {
-        final bleProvider = context.read<BleProvider>();
-        final deviceProvider = context.read<DeviceProvider>();
+      if (!mounted) return; // Check if widget is still mounted
+      
+      final bleProvider = context.read<BleProvider>();
+      final deviceProvider = context.read<DeviceProvider>();
 
-        // Set up callback to refresh device names when they're saved
-        bleProvider.setDeviceNameCallback(() {
-          deviceProvider.refresh();
-        });
+      // Set up callback to refresh device names when they're saved
+      bleProvider.setDeviceNameCallback(() {
+        deviceProvider.refresh();
+      });
 
-        await bleProvider.initialize();
-        await deviceProvider.initialize(); // Initialize DeviceProvider
-        await _checkBluetoothState();
-      }
+      await bleProvider.initialize();
+      if (!mounted) return; // Check again after async operation
+      
+      await deviceProvider.initialize(); // Initialize DeviceProvider
+      if (!mounted) return; // Check again after async operation
+      
+      await _checkBluetoothState();
     });
   }
 
   Future<void> _checkBluetoothState() async {
+    if (!mounted) return; // Check if widget is still mounted
+    
     final bleProvider = context.read<BleProvider>();
     final isBluetoothOn = await bleProvider.isBluetoothEnabled();
     if (!isBluetoothOn) {
