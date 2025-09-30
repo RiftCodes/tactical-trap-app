@@ -79,8 +79,9 @@ class BleProvider extends ChangeNotifier {
         _listenToStreams();
         if (kDebugMode) Logger.info('BLE Provider: Streams listening set up');
 
-        // Try auto-reconnect after initialization
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // Try auto-reconnect after initialization with longer delay
+        // This prevents interference with app startup
+        Future.delayed(const Duration(milliseconds: 2000), () {
           if (_isInitialized) {
             if (kDebugMode)
               Logger.info(
@@ -225,7 +226,9 @@ class BleProvider extends ChangeNotifier {
       final success = await _bleService
           .connectToDevice(device, pin: finalPin)
           .timeout(
-            const Duration(seconds: 15), // Optimized timeout for reliability
+            const Duration(
+              seconds: 15,
+            ), // Increased timeout for better reliability
             onTimeout: () {
               _errorMessage = 'Connection timeout - please try again';
               return false;

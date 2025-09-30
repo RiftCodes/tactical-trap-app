@@ -70,12 +70,25 @@ class _AuthOverlayState extends State<AuthOverlay>
       print('AuthOverlay: App went to background, resetting logout flag');
       authProvider.resetBackgroundLogoutFlag();
     } else if (state == AppLifecycleState.resumed) {
-      // App resumed from background - require authentication
-      if (authProvider.isPinProtectionEnabled) {
-        print(
-          'AuthOverlay: App resumed from background, requiring re-authentication',
-        );
-        authProvider.logout(); // This will trigger re-authentication
+      // App resumed from background - require authentication only if enough time has passed
+      if (authProvider.isPinProtectionEnabled && authProvider.isAuthenticated) {
+        // Check if enough time has passed since last authentication
+        if (authProvider.lastAuthenticationTime != null) {
+          final timeSinceAuth = DateTime.now().difference(
+            authProvider.lastAuthenticationTime!,
+          );
+          if (timeSinceAuth.inSeconds > 30) {
+            // Only require re-auth if more than 30 seconds
+            print(
+              'AuthOverlay: App resumed from background, requiring re-authentication',
+            );
+            authProvider.logout();
+          } else {
+            print(
+              'AuthOverlay: App resumed but too soon after auth, skipping re-authentication',
+            );
+          }
+        }
       }
     }
   }
@@ -84,27 +97,23 @@ class _AuthOverlayState extends State<AuthOverlay>
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        print(
-          'AuthOverlay: isPinProtectionEnabled=${authProvider.isPinProtectionEnabled}, isAuthenticated=${authProvider.isAuthenticated}, isAuthenticating=${authProvider.isAuthenticating}',
-        );
-
         // Only show overlay if PIN protection is enabled AND user is not authenticated
+        // Add debouncing to prevent rapid show/hide cycles
         if (authProvider.isPinProtectionEnabled &&
             !authProvider.isAuthenticated) {
-          print('AuthOverlay: Showing authentication overlay');
           // Pause BLE operations when overlay is shown
           _pauseAppOperations(context);
-          // Only auto-trigger authentication if not recently attempted
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!authProvider.isAuthenticating && _canAttemptAuth()) {
-              print('AuthOverlay: Auto-triggering authentication');
+          
+          // Only auto-trigger authentication if not recently attempted and not currently authenticating
+          if (!authProvider.isAuthenticating && _canAttemptAuth()) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               _handleAuthentication(context, authProvider);
-            }
-          });
+            });
+          }
+          
           return Stack(children: [widget.child, _buildAuthOverlay(context)]);
         }
 
-        print('AuthOverlay: Hiding authentication overlay');
         // Resume BLE operations when overlay is hidden
         _resumeAppOperations(context);
         return widget.child;

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:tactical_trap_flutter/presentation/widgets/auth_overlay.dart';
+import 'package:tactical_trap_flutter/presentation/widgets/app_initializer.dart';
 
 import 'core/constants/app_constants.dart';
 import 'l10n/app_localizations.dart';
@@ -32,9 +32,9 @@ class TacticalTrapsApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => BleProvider()),
-        ChangeNotifierProvider(create: (_) => DeviceProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => DeviceProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => LanguageProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: Consumer2<ThemeProvider, LanguageProvider>(
@@ -54,7 +54,7 @@ class TacticalTrapsApp extends StatelessWidget {
             ],
             supportedLocales: AppLocalizations.supportedLocales,
 
-            home: AuthOverlay(child: const HomePage()),
+            home: const AppInitializer(),
             routes: {
               '/home': (context) => const HomePage(),
               '/settings': (context) => const SettingsPage(),

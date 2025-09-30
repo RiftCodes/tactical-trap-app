@@ -1000,8 +1000,23 @@ class BleService {
         await disconnectFromDevice();
       }
 
-      // Connect first (optimized timeout for reliability)
-      await device.device.connect(timeout: Duration(seconds: 12));
+      // Connect first with better error handling
+      try {
+        await device.device.connect(timeout: Duration(seconds: 15));
+      } catch (e) {
+        if (e.toString().contains('133') ||
+            e.toString().contains('ANDROID_SPECIFIC_ERROR')) {
+          if (kDebugMode)
+            Logger.warning(
+              'Connection failed with error 133, retrying with longer timeout...',
+            );
+          // Wait a bit and retry with longer timeout
+          await Future.delayed(Duration(milliseconds: 1000));
+          await device.device.connect(timeout: Duration(seconds: 20));
+        } else {
+          rethrow;
+        }
+      }
 
       _currentDevice = device;
       _connectionState = BluetoothConnectionState.connected;

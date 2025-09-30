@@ -33,9 +33,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeApp();
-    });
+    _setupCallbacks();
   }
 
   @override
@@ -55,7 +53,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  void _initializeApp() {
+  void _setupCallbacks() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return; // Check if widget is still mounted
       
@@ -66,14 +64,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       bleProvider.setDeviceNameCallback(() {
         deviceProvider.refresh();
       });
-
-      await bleProvider.initialize();
-      if (!mounted) return; // Check again after async operation
       
-      await deviceProvider.initialize(); // Initialize DeviceProvider
-      if (!mounted) return; // Check again after async operation
-      
-      await _checkBluetoothState();
+      // Check Bluetooth state after a short delay to ensure initialization is complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _checkBluetoothState();
+      }
     });
   }
 
@@ -228,38 +224,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       elevation: 0,
       toolbarHeight: hasConnection ? 60 : 80, // Simplified heights
       leadingWidth: hasConnection ? 50 : 0,
-      leading: hasConnection
-          ? Padding(
-              padding: const EdgeInsets.only(
-                left: DS.s,
-                top: DS.s,
-                bottom: DS.s,
-              ),
-              child: CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.transparent,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: Image.asset(
-                    "assets/icons/square.png",
-                    fit: BoxFit.fill,
-                  ),
-                ),
-              ),
-            )
-          : SizedBox.shrink(),
-      title: hasConnection
-          ? Text(
-              'TACTICAL TRAPS',
-              style: TextStyle(
-                fontSize: DS.textSM,
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : DS.brandDark,
-              ),
-            )
-          : Image.asset(
+      leading: SizedBox.shrink(),
+      title: Image.asset(
               'assets/icons/horizontal.png',
               height: hasConnection ? 28 : 60,
               filterQuality: FilterQuality.high,
@@ -367,9 +333,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               // Stack for overlays and toasts with proper constraints
               SizedBox(
-                // height:
-                //     MediaQuery.of(context).size.height *
-                //     0.3, // Reduced height for overlays
+               // Fixed height for overlays
                 child: Stack(
                   children: [
                     // Loading overlays - Show only one at a time
