@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:tactical_trap_flutter/presentation/providers/device_provider.dart';
 
 import '../../core/utils/logger.dart';
 import '../../data/models/ble_device.dart';
@@ -834,9 +833,14 @@ class BleProvider extends ChangeNotifier {
       }
 
       final deviceId = lastDeviceData['id'];
+      // Get the custom name from storage, fall back to localName or name
+      final storedCustomName = await _storageService.getDeviceName(deviceId);
       final deviceName =
-          DeviceProvider().getDeviceName(lastDeviceData['name']) ??
-          lastDeviceData['name'];
+          storedCustomName ??
+          lastDeviceData['customName'] ??
+          lastDeviceData['localName'] ??
+          lastDeviceData['name'] ??
+          'Unknown Device';
       final storedPin = await _storageService.getPinForDevice(deviceId);
 
       if (storedPin == null) {
@@ -888,12 +892,31 @@ class BleProvider extends ChangeNotifier {
       _autoReconnectStatus = 'Connecting to $deviceName...';
       notifyListeners();
 
+      // Create device with custom name populated from storage
+      final deviceWithCustomName = BleDevice(
+        device: targetDevice.device,
+        name: targetDevice.name,
+        localName: targetDevice.localName,
+        customName: storedCustomName, // Use the loaded custom name
+        serialNumber: targetDevice.serialNumber,
+        isLock: targetDevice.isLock,
+        manufacturerData: targetDevice.manufacturerData,
+        rssi: targetDevice.rssi,
+        isExpanded: targetDevice.isExpanded,
+        discoveredAt: targetDevice.discoveredAt,
+      );
+
       // Try to connect with stored PIN
-      final success = await connectToDevice(targetDevice, pin: storedPin);
+      final success = await connectToDevice(
+        deviceWithCustomName,
+        pin: storedPin,
+      );
 
       if (success) {
         if (kDebugMode) Logger.info('Auto-reconnect successful');
         _autoReconnectStatus = 'Connected to $deviceName';
+        // Trigger DeviceProvider refresh to update UI
+        _onDeviceNameSaved?.call();
       } else {
         throw Exception('Connection failed');
       }

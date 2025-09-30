@@ -130,6 +130,12 @@ class _SettingsPageState extends State<SettingsPage> {
                                 _batteryInfoRow(context, isDark),
                                 _buzzerControlRow(context, isDark),
                                 _resetLockRow(context, isDark),
+                                _forgetDeviceRow(
+                                  context,
+                                  bleProvider,
+                                  deviceProvider,
+                                  isDark,
+                                ),
                               ]),
                               SizedBox(height: DS.l),
                             ],
@@ -1528,6 +1534,136 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Forget/Delete device row for settings
+  Widget _forgetDeviceRow(
+    BuildContext context,
+    BleProvider bleProvider,
+    DeviceProvider deviceProvider,
+    bool isDark,
+  ) {
+    return InkWell(
+      onTap: () =>
+          _showForgetDeviceDialog(context, bleProvider, deviceProvider, isDark),
+      child: Padding(
+        padding: EdgeInsets.all(DS.m),
+        child: Row(
+          children: [
+            Icon(Icons.delete_rounded, color: Colors.red[600], size: 20),
+            SizedBox(width: DS.m),
+            Expanded(
+              child: Text(
+                'Forget Device',
+                style: TextStyle(
+                  fontSize: DS.textSM,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: isDark ? Colors.grey[500] : const Color(0xFF94A3B8),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show forget device confirmation dialog
+  void _showForgetDeviceDialog(
+    BuildContext context,
+    BleProvider bleProvider,
+    DeviceProvider deviceProvider,
+    bool isDark,
+  ) {
+    final currentDevice = bleProvider.currentDevice;
+    if (currentDevice == null) return;
+
+    final deviceName = deviceProvider.getDisplayName(currentDevice);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_rounded, color: Colors.red[600], size: 28),
+            SizedBox(width: DS.s),
+            Text('Forget Device'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to forget "$deviceName"?',
+              style: TextStyle(fontSize: DS.textBase),
+            ),
+            SizedBox(height: DS.s),
+            Text(
+              'This will remove the device and its saved PIN. You will need to pair it again to reconnect.',
+              style: TextStyle(fontSize: DS.textSM, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+
+              // Disconnect first
+              await bleProvider.disconnectFromDevice();
+
+              // Remove device name and PIN
+              final nameRemoved = await deviceProvider.removeDeviceName(
+                currentDevice.id,
+              );
+              final pinRemoved = await bleProvider.removeStoredPin(
+                currentDevice.id,
+              );
+
+              if (nameRemoved && pinRemoved) {
+                Fluttertoast.showToast(
+                  msg: 'Device forgotten successfully',
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.BOTTOM,
+                  backgroundColor: Colors.green,
+                  textColor: Colors.white,
+                  fontSize: 14.0,
+                );
+
+                // Go back to home page
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+              } else {
+                Fluttertoast.showToast(
+                  msg: 'Failed to forget device',
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.BOTTOM,
+                  backgroundColor: Colors.red,
+                  textColor: Colors.white,
+                  fontSize: 14.0,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              foregroundColor: Colors.white,
+            ),
+            child: Text('Forget'),
+          ),
+        ],
       ),
     );
   }

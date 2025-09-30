@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _setupCallbacks() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return; // Check if widget is still mounted
-      
+
       final bleProvider = context.read<BleProvider>();
       final deviceProvider = context.read<DeviceProvider>();
 
@@ -64,7 +64,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       bleProvider.setDeviceNameCallback(() {
         deviceProvider.refresh();
       });
-      
+
       // Check Bluetooth state after a short delay to ensure initialization is complete
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
@@ -75,7 +75,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _checkBluetoothState() async {
     if (!mounted) return; // Check if widget is still mounted
-    
+
     final bleProvider = context.read<BleProvider>();
     final isBluetoothOn = await bleProvider.isBluetoothEnabled();
     if (!isBluetoothOn) {
@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _connectToDevice(BleDevice device) async {
     final l10n = AppLocalizations.of(context)!;
-    
+
     try {
       final bleProvider = context.read<BleProvider>();
       final hasStoredPin = await bleProvider.hasStoredPin(device);
@@ -226,20 +226,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       leadingWidth: hasConnection ? 50 : 0,
       leading: SizedBox.shrink(),
       title: Image.asset(
-              'assets/icons/horizontal.png',
-              height: hasConnection ? 28 : 60,
-              filterQuality: FilterQuality.high,
-              errorBuilder: (_, __, ___) => Text(
-                AppConstants.appName,
-                style: TextStyle(
-                  fontSize: hasConnection ? DS.textSM : DS.textXL,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white
-                      : DS.brandDark,
-                ),
-              ),
-            ),
+        'assets/icons/horizontal.png',
+        height: hasConnection ? 28 : 60,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, __, ___) => Text(
+          AppConstants.appName,
+          style: TextStyle(
+            fontSize: hasConnection ? DS.textSM : DS.textXL,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : DS.brandDark,
+          ),
+        ),
+      ),
       centerTitle: true,
       actions: [
         // Always show settings icon
@@ -333,7 +333,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
               // Stack for overlays and toasts with proper constraints
               SizedBox(
-               // Fixed height for overlays
+                height: 250, // Fixed height for overlays
                 child: Stack(
                   children: [
                     // Loading overlays - Show only one at a time
@@ -348,7 +348,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           final l10n = AppLocalizations.of(context)!;
                           final isDark =
                               Theme.of(context).brightness == Brightness.dark;
-                          
+
                           return Center(
                             child: Container(
                               margin: EdgeInsets.all(DS.l),
@@ -537,38 +537,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               ),
             ],
           ),
-
-          SizedBox(height: DS.s),
-
-          // Manual refresh button
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              bleProvider.getDeviceStatus();
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.refresh, size: 12, color: Colors.grey[600]),
-                  SizedBox(width: 4),
-                  Text(
-                    'Refresh Status',
-                    style: TextStyle(
-                      fontSize: DS.textXS,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+ 
 
           SizedBox(height: DS.s * 2),
 
@@ -998,9 +967,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Get proper display name using DeviceProvider
     final deviceProvider = context.read<DeviceProvider>();
 
-    // Use the same logic as available devices: localName ?? name ?? 'Unknown Device'
+    // Use the device's custom name (which is already stored in device['name'])
+    // device['name'] contains the custom name from storage
+    // device['localName'] contains the original device name
     final deviceName =
-        device['localName'] ?? device['localName'] ?? 'Unknown Device';
+        device['name'] ?? device['localName'] ?? 'Unknown Device';
 
     final properDisplayName = deviceProvider.getDisplayName(
       BleDevice(
@@ -1098,14 +1069,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     Map<String, dynamic> device,
   ) {
     final deviceId = device['id'] as String;
-    final deviceName = device['name'] as String;
+    final customName = device['name'] as String?;
+    final originalName = device['localName'] as String?;
 
     // Create a BleDevice from stored data instead of looking in discovered devices
     // This allows connecting to previously paired devices even when not scanning
     final storedDevice = BleDevice(
       device: BluetoothDevice.fromId(deviceId),
-      name: deviceName,
-      localName: deviceName,
+      name:
+          originalName ??
+          'SN:$deviceId', // Use original name for BLE device name
+      localName:
+          originalName ?? 'SN:$deviceId', // Use original name for localName
+      customName: customName, // Custom name is separate
       rssi: -50, // Default RSSI for stored devices
       manufacturerData: [],
       discoveredAt: DateTime.now(),
@@ -1151,7 +1127,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Widget _buildEmptyState() {
     final l10n = AppLocalizations.of(context);
     if (l10n == null) return const SizedBox.shrink();
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1313,12 +1289,13 @@ class _PairedDeviceCardWrapperState extends State<_PairedDeviceCardWrapper> {
   @override
   Widget build(BuildContext context) {
     // For paired devices, use original device name for serial number
-    // Try to get original name from device ID or use a fallback
-    // Debug logs removed for cleaner output
-    final deviceId = widget.device['name'] ?? '';
+    // Get the device ID correctly from the id field
+    final deviceId = widget.device['id'] ?? '';
+    // Get original name from localName, or create fallback from deviceId
     final originalDeviceName =
-        widget.device['name'] ??
+        widget.device['localName'] ??
         (deviceId.isNotEmpty ? 'SN:$deviceId' : 'Unknown Device');
+    // Get custom name from name field
     final customName = widget.device['name'];
 
     // Create a mock BleDevice for DeviceCard with proper expansion state
