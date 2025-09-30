@@ -147,6 +147,30 @@ class DeviceProvider extends ChangeNotifier {
     }
   }
 
+  /// Remove device original name
+  Future<bool> removeDeviceOriginalName(String deviceId) async {
+    try {
+      _errorMessage = null;
+      notifyListeners();
+
+      final success = await _storageService.removeDeviceOriginalName(deviceId);
+
+      if (success) {
+        _deviceOriginalNames.remove(deviceId);
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = 'Failed to remove device original name';
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Remove error: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Save last connected device
   Future<bool> saveLastConnectedDevice(BleDevice device) async {
     try {

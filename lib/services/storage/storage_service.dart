@@ -129,6 +129,23 @@ class StorageService {
     }
   }
 
+  /// Remove device original name
+  Future<bool> removeDeviceOriginalName(String deviceId) async {
+    try {
+      final prefs = await _prefs;
+      final originalNames = await getDeviceOriginalNames();
+      originalNames.remove(deviceId);
+
+      return await prefs.setString(
+        _deviceOriginalNamesKey,
+        jsonEncode(originalNames),
+      );
+    } catch (e) {
+      if (kDebugMode) Logger.info('Failed to remove device original name: $e');
+      return false;
+    }
+  }
+
   /// Save last connected device
   Future<bool> saveLastConnectedDevice(BleDevice device) async {
     try {

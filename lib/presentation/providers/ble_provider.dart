@@ -359,7 +359,7 @@ class BleProvider extends ChangeNotifier {
   }
 
   /// Disconnect from current device
-  Future<void> disconnectFromDevice() async {
+  Future<void> disconnectFromDevice({bool clearLastDevice = true}) async {
     if (!_isInitialized || _currentDevice == null) return;
 
     try {
@@ -370,9 +370,12 @@ class BleProvider extends ChangeNotifier {
       
       notifyListeners();
 
-      // Clear auto-reconnect data on manual disconnect
-      await _storageService.clearLastConnectedDevice();
-      // Don't remove PIN on manual disconnect - keep it for future connections
+      // Only clear last connected device on manual disconnect (not background)
+      // This allows auto-reconnect when app resumes from background
+      if (clearLastDevice) {
+        await _storageService.clearLastConnectedDevice();
+      }
+      // Don't remove PIN on disconnect - keep it for future connections
       // Only remove PIN when user explicitly forgets the device
 
       await _bleService.disconnectFromDevice();

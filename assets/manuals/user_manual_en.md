@@ -1,14 +1,16 @@
 # Tactical Traps Bluetooth Lock User Manual
 
 ## Table of Contents
-1. [Introduction](#introduction)
-2. [Getting Started](#getting-started)
-3. [App Features](#app-features)
-4. [Connecting to Your Lock](#connecting-to-your-lock)
-5. [Basic Operations](#basic-operations)
-6. [Advanced Features](#advanced-features)
-7. [Troubleshooting](#troubleshooting)
-8. [Safety & Maintenance](#safety--maintenance)
+1. Introduction
+2. Getting Started
+3. App Features
+4. First-Time Setup
+5. Connecting to Your Lock
+6. Basic Operations
+7. Advanced Features
+8. Troubleshooting
+9. Safety & Maintenance
+10. Support & Contact
 
 ## Introduction
 
@@ -27,12 +29,6 @@ Welcome to the Tactical Traps Bluetooth Lock Control App! This app allows you to
 - **Bluetooth**: Bluetooth 4.0 or higher
 - **Permissions**: Location and Bluetooth permissions required
 
-### First-Time Setup
-1. **Install the App**: Download from App Store or Google Play
-2. **Enable Bluetooth**: Turn on Bluetooth in your phone settings
-3. **Grant Permissions**: Allow location and Bluetooth access
-4. **Scan for Locks**: Use the scan button to find nearby locks
-
 ## App Features
 
 ### Main Interface
@@ -45,26 +41,32 @@ Welcome to the Tactical Traps Bluetooth Lock Control App! This app allows you to
 - **PIN Verification**: Secure PIN-based authentication
 - **Encrypted Communication**: All data is encrypted
 - **Auto-lock**: Automatic locking for security
-- **Access Logs**: Track lock/unlock history
+
+## First-Time Setup
+
+1. **Install the App**: Download from App Store or Google Play
+2. **Enable Bluetooth**: Turn on Bluetooth in your phone settings
+3. **Grant Permissions**: Allow location and Bluetooth access
+4. **Scan for Locks**: Use the scan button to find nearby locks
 
 ## Connecting to Your Lock
 
 ### Initial Connection
-1. **Power On**: Ensure your lock has power (battery or external supply)
-2. **Scan**: Tap the scan button in the app
-3. **Select Lock**: Choose your lock from the discovered devices
-4. **Enter PIN**: Input your lock's PIN when prompted
-5. **Verify**: Wait for connection confirmation
 
-### PIN Management
-- **Default PIN**: Usually set to factory default (check your lock documentation)
-- **PIN Change**: Can be modified through the lock's settings
-- **PIN Recovery**: Contact support if PIN is forgotten
+**Power On**
+Ensure your lock has power. The lock runs on 4 AAA batteries.
 
-### Connection Status
-- **Connected**: Green indicator shows active connection
-- **Disconnected**: Red indicator shows no connection
-- **Signal Strength**: Shows connection quality
+**Scan**
+Tap the scan button in the app to search for available locks.
+
+**Select Lock**
+Choose your lock's serial number (SN) from the discovered devices.
+
+**Enter PIN**
+Input your lock's PIN when prompted.
+
+**Verify**
+Wait for connection confirmation.
 
 ## Basic Operations
 
@@ -77,80 +79,55 @@ Welcome to the Tactical Traps Bluetooth Lock Control App! This app allows you to
 ### Status Check
 - **Current State**: Shows if lock is locked or unlocked
 - **Battery Level**: Displays remaining battery power
-- **Signal Quality**: Shows connection strength
-- **Last Activity**: Timestamp of last operation
-
-### Quick Actions
-- **One-Tap Lock**: Quick lock button for immediate security
-- **One-Tap Unlock**: Quick unlock for authorized access
-- **Status Refresh**: Update lock status information
 
 ## Advanced Features
 
 ### Lock Settings
 - **Auto-lock Timer**: Set automatic locking delay
 - **Sound Alerts**: Enable/disable lock operation sounds
-- **Vibration Feedback**: Haptic feedback for operations
-- **LED Indicators**: Control lock status lights
-
-### User Management
-- **Multiple Users**: Add family members or employees
-- **Access Levels**: Set different permission levels
-- **Time Restrictions**: Limit access to specific hours
-- **Guest Access**: Temporary access codes
-
-### Monitoring & Logs
-- **Activity History**: View all lock operations
-- **User Tracking**: See who accessed the lock and when
-- **Alerts**: Get notified of unauthorized attempts
-- **Reports**: Generate access reports
 
 ## Troubleshooting
 
-### Common Issues
-
-#### Connection Problems
-- **Lock Not Found**: Ensure lock is powered and in range
-- **Connection Failed**: Check PIN and try again
-- **Poor Signal**: Move closer to the lock
-- **Bluetooth Issues**: Restart Bluetooth on your phone
-
-#### Operation Problems
-- **Lock Won't Respond**: Check battery level and connection
-- **PIN Not Accepted**: Verify PIN is correct
-- **App Crashes**: Restart app and reconnect
-- **Slow Response**: Check signal strength
-
 ### Error Messages
-- **"Device Not Found"**: Lock is out of range or powered off
-- **"Connection Failed"**: PIN incorrect or lock busy
-- **"Bluetooth Unavailable"**: Enable Bluetooth on your phone
-- **"Permission Denied"**: Grant required app permissions
+
+If the following error messages appear, please try the steps below:
+
+**"Device Not Found"**
+Lock is out of range or powered off. Move closer to the shelf and confirm the lock is powered on. If internal batteries have died, plug in external battery backup pack and try again. Once opened, replace all 4 AAA batteries inside the lock with brand new high alkaline batteries like Duracell or Energizer.
+
+**"Connection Failed"**
+PIN is incorrect or lock is powered off. Confirm lock is powered on or external battery backup is plugged in. Verify PIN is correct and try again.
+
+**"Bluetooth Unavailable"**
+Enable Bluetooth on your phone. Go to your phone's Settings > Bluetooth and turn it on.
+
+**"Permission Denied"**
+Grant required app permissions. Go to your phone's Settings > Apps > Tactical Traps > Permissions and enable Bluetooth and Location permissions.
 
 ### Reset Procedures
-- **App Reset**: Clear app data and reconnect
-- **Lock Reset**: Factory reset lock (consult lock manual)
-- **Phone Reset**: Restart phone and try again
+
+If the app crashes or is slow to respond, please try these reset steps:
+
+**App Reset**
+Clear app data and reconnect. Go to phone Settings > Apps > Tactical Traps > Storage > Clear Data. Then reopen the app and reconnect to your lock.
+
+**Phone Reset**
+Restart your phone and open the app to try again.
 
 ## Safety & Maintenance
 
-### Security Best Practices
-- **Keep PIN Secret**: Don't share your PIN with others
-- **Regular PIN Changes**: Update PIN periodically
-- **Monitor Access**: Check activity logs regularly
-- **Secure Phone**: Use phone lock and encryption
-
 ### Lock Maintenance
-- **Battery Check**: Monitor battery level regularly
-- **Clean Contacts**: Keep lock contacts clean
-- **Weather Protection**: Protect from extreme conditions
-- **Regular Testing**: Test lock operation monthly
 
-### Emergency Procedures
-- **Lost Phone**: Contact support to disable access
-- **Forgotten PIN**: Use backup access method
-- **Lock Malfunction**: Contact technical support
-- **Power Failure**: Use backup power if available
+Monitor battery level regularly to prevent being locked out of the unit. The lock runs on 4 AAA high alkaline batteries that should be changed every 4-6 months or when you hear the low battery warning.
+
+To change the batteries, remove the thumbscrew on the battery compartment and remove cover. Remove old batteries and install new high alkaline batteries like Duracell or Energizer. Batteries are stacked and can be hard to see when the unit is mounted on the wall. Be sure to change all 4 batteries.
+
+**Do NOT use lithium batteries in the lock - doing so will cause the lock to malfunction.**
+
+If internal batteries have died, you'll need to open the unit using the external battery backup pack. Insert 4 AAA batteries in the backup pack and plug the pack into the aux port on the unit. Then use the app to unlock the unit.
+
+Additional instructions for opening a locked out unit can be found at:
+https://tacticaltraps.weebly.com/locked-out.html
 
 ## Support & Contact
 
@@ -158,19 +135,12 @@ Welcome to the Tactical Traps Bluetooth Lock Control App! This app allows you to
 - **Email**: support@tacticaltraps.com
 - **Phone**: 1-800-651-9171
 - **Website**: www3.tacticaltraps.com
-- **Hours**: Monday-Friday, 9 AM - 5 PM EST
+- **Hours**: Monday-Friday, 10 AM - 3 PM CST
 
 ### Documentation
-- **Online Manuals**: Available on our website
-- **Video Tutorials**: Step-by-step installation guides
-- **FAQ Section**: Common questions and answers
-- **Community Forum**: User discussions and tips
 
-### Warranty & Service
-- **Warranty Period**: Check your purchase documentation
-- **Service Centers**: Authorized repair locations
-- **Parts Availability**: Genuine replacement parts
-- **Upgrade Options**: Latest firmware and features
+Online manuals, video tutorials and troubleshooting available at:
+www.tacticaltraps.com/quickstartguide
 
 ---
 

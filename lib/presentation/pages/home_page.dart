@@ -46,10 +46,37 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     final bleProvider = context.read<BleProvider>();
-    final isActive = state == AppLifecycleState.resumed;
 
-    if (bleProvider.isInitialized) {
-      bleProvider.bleService.setAppActive(isActive);
+    if (!bleProvider.isInitialized) return;
+
+    // Handle app lifecycle to prevent battery drain on lock
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App is active - allow connection and try to reconnect
+        bleProvider.bleService.setAppActive(true);
+
+        // If not connected, try auto-reconnect to last device
+        if (!bleProvider.isConnected && !bleProvider.isConnecting) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (!bleProvider.isConnected) {
+              bleProvider.tryAutoReconnect();
+            }
+          });
+        }
+        break;
+
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        // App is in background - disconnect to save lock battery
+        bleProvider.bleService.setAppActive(false);
+        if (bleProvider.isConnected) {
+          // Disconnect from device to turn off lock's Bluetooth light
+          // Don't clear last device - we want to reconnect when app resumes
+          bleProvider.disconnectFromDevice(clearLastDevice: false);
+        }
+        break;
     }
   }
 
@@ -923,16 +950,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              // Remove both device name and PIN
-              final nameRemoved = await deviceProvider.removeDeviceName(
-                device['id'],
-              );
+              final deviceId = device['id'];
               final bleProvider = context.read<BleProvider>();
-              final pinRemoved = await bleProvider.removeStoredPin(
-                device['id'],
-              );
 
-              if (nameRemoved && pinRemoved) {
+              // Remove device name, original name, and PIN
+              final nameRemoved = await deviceProvider.removeDeviceName(
+                deviceId,
+              );
+              final originalNameRemoved = await deviceProvider
+                  .removeDeviceOriginalName(deviceId);
+              final pinRemoved = await bleProvider.removeStoredPin(deviceId);
+
+              // Clear lastConnectedDevice if it matches this device
+              if (deviceProvider.lastConnectedDevice?['id'] == deviceId) {
+                await deviceProvider.clearLastConnectedDevice();
+              }
+
+              // Refresh DeviceProvider to update UI
+              await deviceProvider.refresh();
+
+              if (nameRemoved && originalNameRemoved && pinRemoved) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Device forgotten'),

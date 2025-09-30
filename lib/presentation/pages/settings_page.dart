@@ -129,7 +129,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 _lockRenameRow(context, deviceProvider, isDark),
                                 _batteryInfoRow(context, isDark),
                                 _buzzerControlRow(context, isDark),
-                                _resetLockRow(context, isDark),
+                               
                                 _forgetDeviceRow(
                                   context,
                                   bleProvider,
@@ -1473,71 +1473,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
     );
   }
 
-  /// Reset lock row for settings
-  Widget _resetLockRow(BuildContext context, bool isDark) {
-    return InkWell(
-      onTap: () async {
-        HapticFeedback.lightImpact();
-        // Show confirmation dialog
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Reset Lock'),
-            content: Text(
-              'Are you sure you want to reset the lock? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text('Reset', style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-        );
-
-        if (confirmed == true) {
-          // Reset logic would go here
-          Fluttertoast.showToast(
-            msg: 'Lock reset successfully',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            backgroundColor: DS.success,
-            textColor: Colors.white,
-            fontSize: 14.0,
-          );
-        }
-      },
-      child: Padding(
-        padding: EdgeInsets.all(DS.m),
-        child: Row(
-          children: [
-            Icon(Icons.refresh_rounded, color: DS.error, size: 20),
-            SizedBox(width: DS.m),
-            Expanded(
-              child: Text(
-                'Reset Lock',
-                style: TextStyle(
-                  fontSize: DS.textSM,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
-                ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: isDark ? Colors.grey[500] : const Color(0xFF94A3B8),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+   
   /// Forget/Delete device row for settings
   Widget _forgetDeviceRow(
     BuildContext context,
@@ -1620,19 +1556,28 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
+              final deviceId = currentDevice.id;
 
-              // Disconnect first
-              await bleProvider.disconnectFromDevice();
+              // Disconnect first (and clear last device since manual forget)
+              await bleProvider.disconnectFromDevice(clearLastDevice: true);
 
-              // Remove device name and PIN
+              // Remove device name, original name, and PIN
               final nameRemoved = await deviceProvider.removeDeviceName(
-                currentDevice.id,
+                deviceId,
               );
-              final pinRemoved = await bleProvider.removeStoredPin(
-                currentDevice.id,
-              );
+              final originalNameRemoved = await deviceProvider
+                  .removeDeviceOriginalName(deviceId);
+              final pinRemoved = await bleProvider.removeStoredPin(deviceId);
 
-              if (nameRemoved && pinRemoved) {
+              // Clear lastConnectedDevice if it matches (redundant but safe)
+              if (deviceProvider.lastConnectedDevice?['id'] == deviceId) {
+                await deviceProvider.clearLastConnectedDevice();
+              }
+
+              // Refresh DeviceProvider to update UI
+              await deviceProvider.refresh();
+
+              if (nameRemoved && originalNameRemoved && pinRemoved) {
                 Fluttertoast.showToast(
                   msg: 'Device forgotten successfully',
                   toastLength: Toast.LENGTH_SHORT,

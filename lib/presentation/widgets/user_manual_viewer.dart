@@ -1,11 +1,7 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:tactical_trap_flutter/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../style/design_system.dart';
 
@@ -19,112 +15,41 @@ class UserManualViewer extends StatefulWidget {
 }
 
 class _UserManualViewerState extends State<UserManualViewer> {
-  String _manualContent = '';
-  bool _isLoading = false;
-  String? _error;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _sectionKeys = {};
 
   @override
   void initState() {
     super.initState();
-    // Don't call _loadManualContent here, wait for didChangeDependencies
+    // Create keys for all sections
+    _sectionKeys['introduction'] = GlobalKey();
+    _sectionKeys['getting-started'] = GlobalKey();
+    _sectionKeys['app-features'] = GlobalKey();
+    _sectionKeys['first-time-setup'] = GlobalKey();
+    _sectionKeys['connecting'] = GlobalKey();
+    _sectionKeys['basic-operations'] = GlobalKey();
+    _sectionKeys['advanced-features'] = GlobalKey();
+    _sectionKeys['troubleshooting'] = GlobalKey();
+    _sectionKeys['safety-maintenance'] = GlobalKey();
+    _sectionKeys['support'] = GlobalKey();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Only load content if we haven't loaded it yet
-    if (_manualContent.isEmpty && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _loadManualContent();
-        }
-      });
-    }
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadManualContent() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      // Get current locale to load appropriate language
-      String content;
-
-      try {
-        final locale = Localizations.localeOf(context).languageCode;
-        String fileName;
-
-        switch (locale) {
-          case 'es':
-            fileName = 'user_manual_es.md';
-            break;
-          case 'fr':
-            fileName = 'user_manual_fr.md';
-            break;
-          default:
-            fileName = 'user_manual_en.md';
-        }
-
-        if (kDebugMode) print('Loading manual file: assets/manuals/$fileName');
-        content = await rootBundle.loadString('assets/manuals/$fileName');
-        if (kDebugMode)
-          print(
-            'Successfully loaded manual content (${content.length} characters)',
-          );
-      } catch (e) {
-        if (kDebugMode) print('Failed to load manual file: $e');
-        // Fallback to simple manual content if file loading fails
-        content = _getFallbackManualContent();
-        if (kDebugMode)
-          print('Using fallback manual content (${content.length} characters)');
-      }
-
-      if (mounted) {
-        setState(() {
-          _manualContent = content;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = 'Failed to load manual: $e';
-          _isLoading = false;
-        });
-      }
+  void _scrollToSection(String sectionKey) {
+    final key = _sectionKeys[sectionKey];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+        alignment: 0.1,
+      );
     }
-  }
-
-  String _getFallbackManualContent() {
-    return '''# Tactical Traps Lock Manual
-
-## Getting Started
-- Ensure Bluetooth is enabled on your device
-- Place the lock within range (approximately 10 meters)
-- Open the Tactical Traps app
-
-## Basic Operations
-- **Scan**: Tap the scan button to find nearby locks
-- **Connect**: Select your lock from the device list
-- **Lock/Unlock**: Use the main control buttons
-- **PIN Setup**: Set a secure PIN for your lock
-
-## Features
-- **Alarm Control**: Toggle lock alarm system
-- **Buzzer Control**: Control lock sound notifications
-- **Reset Function**: Reset lock to factory settings
-- **Status Monitoring**: Real-time lock status updates
-
-## Troubleshooting
-- If connection fails, try moving closer to the lock
-- Ensure the lock has sufficient battery power
-- Restart the app if issues persist
-- Check Bluetooth permissions in device settings
-
-## Support
-For additional help, visit our website or contact support.''';
   }
 
   @override
@@ -145,141 +70,434 @@ For additional help, visit our website or contact support.''';
         iconTheme: IconThemeData(
           color: widget.isDark ? Colors.white : const Color(0xFF1E293B),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _showPDFManual(context),
-            icon: Icon(
-              Icons.picture_as_pdf_rounded,
-              color: widget.isDark ? Colors.white : const Color(0xFF1E293B),
+      ),
+      body: SingleChildScrollView(
+        controller: _scrollController,
+              padding: EdgeInsets.all(DS.m),
+              child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+            _buildTableOfContents(),
+            SizedBox(height: DS.xl),
+            _buildSection('introduction', 'Introduction', _buildIntroduction()),
+            _buildSection(
+              'getting-started',
+              'Getting Started',
+              _buildGettingStarted(),
             ),
-            tooltip: 'PDF Manual',
+            _buildSection('app-features', 'App Features', _buildAppFeatures()),
+            _buildSection(
+              'first-time-setup',
+              'First-Time Setup',
+              _buildFirstTimeSetup(),
+            ),
+            _buildSection(
+              'connecting',
+              'Connecting to Your Lock',
+              _buildConnecting(),
+            ),
+            _buildSection(
+              'basic-operations',
+              'Basic Operations',
+              _buildBasicOperations(),
+            ),
+            _buildSection(
+              'advanced-features',
+              'Advanced Features',
+              _buildAdvancedFeatures(),
+            ),
+            _buildSection(
+              'troubleshooting',
+              'Troubleshooting',
+              _buildTroubleshooting(),
+            ),
+            _buildSection(
+              'safety-maintenance',
+              'Safety & Maintenance',
+              _buildSafetyMaintenance(),
+            ),
+            _buildSection('support', 'Support & Contact', _buildSupport()),
+            SizedBox(height: DS.xl),
+            _buildFooter(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableOfContents() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+                  Text(
+          'Table of Contents',
+                    style: TextStyle(
+            fontSize: DS.textXL,
+            fontWeight: FontWeight.bold,
+            color: widget.isDark ? Colors.white : Colors.black87,
           ),
+        ),
+        SizedBox(height: DS.m),
+        _tocItem('1. Introduction', 'introduction'),
+        _tocItem('2. Getting Started', 'getting-started'),
+        _tocItem('3. App Features', 'app-features'),
+        _tocItem('4. First-Time Setup', 'first-time-setup'),
+        _tocItem('5. Connecting to Your Lock', 'connecting'),
+        _tocItem('6. Basic Operations', 'basic-operations'),
+        _tocItem('7. Advanced Features', 'advanced-features'),
+        _tocItem('8. Troubleshooting', 'troubleshooting'),
+        _tocItem('9. Safety & Maintenance', 'safety-maintenance'),
+        _tocItem('10. Support & Contact', 'support'),
+        Divider(
+          color: widget.isDark ? Colors.grey[700] : Colors.grey[300],
+          thickness: 1,
+          height: DS.l,
+        ),
+      ],
+    );
+  }
+
+  Widget _tocItem(String title, String sectionKey) {
+    return InkWell(
+      onTap: () => _scrollToSection(sectionKey),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: 6),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: DS.textSM,
+            color: widget.isDark ? Colors.blue[300] : Colors.blue[700],
+            fontWeight: FontWeight.w500,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String key, String title, Widget content) {
+    return Container(
+      key: _sectionKeys[key],
+      margin: EdgeInsets.only(bottom: DS.l),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: DS.textXL,
+              fontWeight: FontWeight.bold,
+              color: widget.isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          SizedBox(height: DS.m),
+          content,
         ],
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: DS.brandRed))
-          : _error != null
-          ? SingleChildScrollView(
-              padding: EdgeInsets.all(DS.m),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(height: DS.xl * 2),
-                  Icon(
-                    Icons.error_outline,
-                    size: 48,
-                    color: widget.isDark
-                        ? Colors.grey[400]
-                        : const Color(0xFF64748B),
-                  ),
-                  SizedBox(height: DS.m),
-                  Text(
-                    _error!,
-                    style: TextStyle(
-                      fontSize: DS.textBase,
-                      color: widget.isDark
-                          ? Colors.grey[400]
-                          : const Color(0xFF64748B),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: DS.m),
-                  ElevatedButton(
-                    onPressed: _loadManualContent,
-                    child: Text('Retry'),
-                  ),
-                  SizedBox(height: DS.xl * 2),
-                ],
-              ),
-            )
-          : _manualContent.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: DS.brandRed),
-                  SizedBox(height: DS.m),
-                  Text(
-                    'Loading manual...',
-                    style: TextStyle(
-                      color: widget.isDark
-                          ? Colors.grey[400]
-                          : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(DS.m),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMarkdownContent(),
-                  SizedBox(height: DS.xl),
-                ],
-              ),
-            ),
     );
   }
 
-  void _showPDFManual(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => PDFViewerScreen(isDark: widget.isDark),
-      ),
+  Widget _buildIntroduction() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _paragraph(
+          'Welcome to the Tactical Traps Bluetooth Lock Control App! This app allows you to control your Tactical Traps Bluetooth-enabled lock using your smartphone. The app provides secure, convenient access to your lock with features like PIN verification, status monitoring, and remote control.',
+        ),
+        SizedBox(height: DS.m),
+        _subheading('What\'s Included'),
+        _bulletPoint(
+          'Bluetooth Lock: High-security lock with Bluetooth connectivity',
+        ),
+        _bulletPoint('Mobile App: Cross-platform app for iOS and Android'),
+        _bulletPoint('User Manual: This comprehensive guide'),
+        _bulletPoint('Installation Kit: Mounting hardware and instructions'),
+      ],
     );
   }
 
-  Widget _buildMarkdownContent() {
-    if (_manualContent.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildGettingStarted() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('System Requirements'),
+        _bulletPoint('Smartphone: iOS 12+ or Android 8+'),
+        _bulletPoint('Bluetooth: Bluetooth 4.0 or higher'),
+        _bulletPoint(
+          'Permissions: Location and Bluetooth permissions required',
+        ),
+      ],
+    );
+  }
 
-    // Enhanced markdown parsing for headers, lists, bold text, and links
-    final lines = _manualContent.split('\n');
-    final widgets = <Widget>[];
+  Widget _buildAppFeatures() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Main Interface'),
+        _bulletPoint(
+          'Home Screen: Shows connected lock status and quick controls',
+        ),
+        _bulletPoint('Scan Button: Search for available locks in range'),
+        _bulletPoint('Lock Controls: Lock/unlock, status check, and settings'),
+        _bulletPoint('Device Management: View and manage connected locks'),
+        SizedBox(height: DS.m),
+        _subheading('Security Features'),
+        _bulletPoint('PIN Verification: Secure PIN-based authentication'),
+        _bulletPoint('Encrypted Communication: All data is encrypted'),
+        _bulletPoint('Auto-lock: Automatic locking for security'),
+      ],
+    );
+  }
 
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
+  Widget _buildFirstTimeSetup() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _numberedPoint(
+          '1. ',
+          'Install the App: Download from App Store or Google Play',
+        ),
+        _numberedPoint(
+          '2. ',
+          'Enable Bluetooth: Turn on Bluetooth in your phone settings',
+        ),
+        _numberedPoint(
+          '3. ',
+          'Grant Permissions: Allow location and Bluetooth access',
+        ),
+        _numberedPoint(
+          '4. ',
+          'Scan for Locks: Use the scan button to find nearby locks',
+        ),
+      ],
+    );
+  }
 
-      if (line.isEmpty) {
-        widgets.add(SizedBox(height: DS.s));
-        continue;
-      }
+  Widget _buildConnecting() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Initial Connection'),
+        SizedBox(height: DS.s),
+        _boldText('Power On'),
+        _paragraph(
+          'Ensure your lock has power. The lock runs on 4 AAA batteries.',
+        ),
+        SizedBox(height: DS.s),
+        _boldText('Scan'),
+        _paragraph(
+          'Tap the scan button in the app to search for available locks.',
+        ),
+        SizedBox(height: DS.s),
+        _boldText('Select Lock'),
+        _paragraph(
+          'Choose your lock\'s serial number (SN) from the discovered devices.',
+        ),
+        SizedBox(height: DS.s),
+        _boldText('Enter PIN'),
+        _paragraph('Input your lock\'s PIN when prompted.'),
+        SizedBox(height: DS.s),
+        _boldText('Verify'),
+        _paragraph('Wait for connection confirmation.'),
+      ],
+    );
+  }
 
-      if (line.startsWith('#')) {
-        // Header
-        final level = line.split(' ')[0].length;
-        final text = line.substring(level).trim();
-        final fontSize = level == 1
-            ? DS.textXL
-            : level == 2
-            ? DS.textLG
-            : DS.textBase;
-        final fontWeight = level == 1 ? FontWeight.bold : FontWeight.w600;
+  Widget _buildBasicOperations() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Locking/Unlocking'),
+        _numberedPoint(
+          '1. ',
+          'Ensure Connection: Verify lock is connected to app',
+        ),
+        _numberedPoint('2. ', 'Choose Action: Select Lock or Unlock button'),
+        _numberedPoint('3. ', 'Confirm: Wait for operation confirmation'),
+        _numberedPoint('4. ', 'Verify: Check lock status to confirm action'),
+        SizedBox(height: DS.m),
+        _subheading('Status Check'),
+        _bulletPoint('Current State: Shows if lock is locked or unlocked'),
+        _bulletPoint('Battery Level: Displays remaining battery power'),
+      ],
+    );
+  }
 
-        widgets.add(
-          Padding(
-            padding: EdgeInsets.only(
-              top: level == 1 ? DS.l : DS.m,
-              bottom: DS.s,
-            ),
+  Widget _buildAdvancedFeatures() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Lock Settings'),
+        _bulletPoint('Auto-lock Timer: Set automatic locking delay'),
+        _bulletPoint('Sound Alerts: Enable/disable lock operation sounds'),
+      ],
+    );
+  }
+
+  Widget _buildTroubleshooting() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Error Messages'),
+        _paragraph(
+          'If the following error messages appear, please try the steps below:',
+        ),
+        SizedBox(height: DS.m),
+        _errorMessage('"Device Not Found"'),
+        _paragraph(
+          'Lock is out of range or powered off. Move closer to the shelf and confirm the lock is powered on. If internal batteries have died, plug in external battery backup pack and try again. Once opened, replace all 4 AAA batteries inside the lock with brand new high alkaline batteries like Duracell or Energizer.',
+        ),
+        SizedBox(height: DS.s),
+        _errorMessage('"Connection Failed"'),
+        _paragraph(
+          'PIN is incorrect or lock is powered off. Confirm lock is powered on or external battery backup is plugged in. Verify PIN is correct and try again.',
+        ),
+        SizedBox(height: DS.s),
+        _errorMessage('"Bluetooth Unavailable"'),
+        _paragraph(
+          'Enable Bluetooth on your phone. Go to your phone\'s Settings > Bluetooth and turn it on.',
+        ),
+        SizedBox(height: DS.s),
+        _errorMessage('"Permission Denied"'),
+        _paragraph(
+          'Grant required app permissions. Go to your phone\'s Settings > Apps > Tactical Traps > Permissions and enable Bluetooth and Location permissions.',
+        ),
+        SizedBox(height: DS.m),
+        _subheading('Reset Procedures'),
+        _paragraph(
+          'If the app crashes or is slow to respond, please try these reset steps:',
+        ),
+        SizedBox(height: DS.s),
+        _boldText('App Reset'),
+        _paragraph(
+          'Clear app data and reconnect. Go to phone Settings > Apps > Tactical Traps > Storage > Clear Data. Then reopen the app and reconnect to your lock.',
+        ),
+        SizedBox(height: DS.s),
+        _boldText('Phone Reset'),
+        _paragraph('Restart your phone and open the app to try again.'),
+      ],
+    );
+  }
+
+  Widget _buildSafetyMaintenance() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Lock Maintenance'),
+        _paragraph(
+          'Monitor battery level regularly to prevent being locked out of the unit. The lock runs on 4 AAA high alkaline batteries that should be changed every 4-6 months or when you hear the low battery warning.',
+        ),
+        SizedBox(height: DS.s),
+        _paragraph(
+          'To change the batteries, remove the thumbscrew on the battery compartment and remove cover. Remove old batteries and install new high alkaline batteries like Duracell or Energizer. Batteries are stacked and can be hard to see when the unit is mounted on the wall. Be sure to change all 4 batteries.',
+        ),
+        SizedBox(height: DS.s),
+        _warningBox(
+          'Do NOT use lithium batteries in the lock - doing so will cause the lock to malfunction.',
+        ),
+        SizedBox(height: DS.s),
+        _paragraph(
+          'If internal batteries have died, you\'ll need to open the unit using the external battery backup pack. Insert 4 AAA batteries in the backup pack and plug the pack into the aux port on the unit. Then use the app to unlock the unit.',
+        ),
+        SizedBox(height: DS.s),
+        _linkBox(
+          'Additional instructions for opening a locked out unit can be found at:',
+          'https://tacticaltraps.weebly.com/locked-out.html',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSupport() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _subheading('Technical Support'),
+        _clickableInfoRow(
+          'Email',
+          'support@tacticaltraps.com',
+          'mailto:support@tacticaltraps.com',
+        ),
+        _clickableInfoRow('Phone', '1-800-651-9171', 'tel:1-800-651-9171'),
+        _clickableInfoRow(
+          'Website',
+          'www3.tacticaltraps.com',
+          'https://www3.tacticaltraps.com',
+        ),
+        _infoRow('Hours', 'Monday-Friday, 10 AM - 3 PM CST'),
+        SizedBox(height: DS.m),
+        _subheading('Documentation'),
+        _paragraph(
+          'Online manuals, video tutorials and troubleshooting available at:',
+        ),
+        _linkBox('', 'www.tacticaltraps.com/quickstartguide'),
+      ],
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Divider(color: widget.isDark ? Colors.grey[700] : Colors.grey[300]),
+        SizedBox(height: DS.m),
+        _boldText('Note'),
+        _paragraph(
+          'This manual covers the basic operation of your Tactical Traps Bluetooth Lock. For detailed technical specifications, installation instructions, or advanced features, please refer to the complete product documentation or contact our support team.',
+        ),
+        SizedBox(height: DS.m),
+        Text(
+          'Version: 1.0  |  Last Updated: 2024',
+          style: TextStyle(
+            fontSize: DS.textXS,
+            color: widget.isDark ? Colors.grey[500] : Colors.grey[600],
+          ),
+        ),
+        SizedBox(height: DS.xs),
+        Text(
+          'Tactical Traps - Your Security, Our Priority',
+          style: TextStyle(
+            fontSize: DS.textSM,
+            fontWeight: FontWeight.w600,
+            color: widget.isDark ? Colors.grey[400] : Colors.grey[700],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper widgets
+  Widget _subheading(String text) {
+    return Padding(
+      padding: EdgeInsets.only(top: DS.s, bottom: DS.s),
             child: Text(
               text,
               style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: fontWeight,
+          fontSize: DS.textLG,
+          fontWeight: FontWeight.w600,
                 color: widget.isDark ? Colors.white : Colors.black87,
               ),
+      ),
+    );
+  }
+
+  Widget _paragraph(String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: DS.xs),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: DS.textSM,
+          color: widget.isDark ? Colors.grey[300] : Colors.grey[700],
+          height: 1.5,
             ),
           ),
         );
-      } else if (line.startsWith('- ') || line.startsWith('* ')) {
-        // Bullet list item with enhanced parsing
-        final text = line.substring(2);
-        widgets.add(
-          Padding(
+  }
+
+  Widget _bulletPoint(String text) {
+    return Padding(
             padding: EdgeInsets.only(left: DS.m, bottom: DS.xs),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,260 +505,203 @@ For additional help, visit our website or contact support.''';
                 Text(
                   '• ',
                   style: TextStyle(
+              fontSize: DS.textSM,
                     color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
-                    fontSize: DS.textSM,
-                  ),
-                ),
-                Expanded(child: _parseInlineMarkdown(text)),
-              ],
             ),
           ),
-        );
-      } else if (RegExp(r'^\d+\.\s').hasMatch(line)) {
-        // Numbered list item
-        final match = RegExp(r'^\d+\.\s').firstMatch(line)!;
-        final number = line.substring(0, match.end);
-        final text = line.substring(match.end);
-        widgets.add(
-          Padding(
-            padding: EdgeInsets.only(left: DS.m, bottom: DS.xs),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: DS.textSM,
+                color: widget.isDark ? Colors.grey[300] : Colors.grey[700],
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _numberedPoint(String number, String text) {
+    return Padding(
+      padding: EdgeInsets.only(left: DS.s, bottom: DS.xs),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   number,
-                  style: TextStyle(
-                    color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
+            style: TextStyle(
                     fontSize: DS.textSM,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(width: DS.xs),
-                Expanded(child: _parseInlineMarkdown(text)),
-              ],
+              color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),
-        );
-      } else if (line.startsWith('**') && line.endsWith('**')) {
-        // Bold text
-        final text = line.substring(2, line.length - 2);
-        widgets.add(
-          Padding(
-            padding: EdgeInsets.only(bottom: DS.s),
+          Expanded(
             child: Text(
               text,
               style: TextStyle(
                 fontSize: DS.textSM,
-                fontWeight: FontWeight.bold,
-                color: widget.isDark ? Colors.white : Colors.black87,
+                color: widget.isDark ? Colors.grey[300] : Colors.grey[700],
+                height: 1.5,
               ),
             ),
           ),
-        );
-      } else if (line.trim() == '---') {
-        // Horizontal rule
-        widgets.add(
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: DS.m),
-            child: Divider(
-              color: widget.isDark ? Colors.grey[600] : Colors.grey[300],
-              thickness: 1,
-            ),
-          ),
-        );
-      } else {
-        // Regular paragraph with inline markdown parsing
-        widgets.add(
-          Padding(
-            padding: EdgeInsets.only(bottom: DS.s),
-            child: _parseInlineMarkdown(line),
-          ),
-        );
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: widgets,
+        ],
+      ),
     );
   }
 
-  Widget _parseInlineMarkdown(String text) {
-    // Parse inline markdown like **bold**, [link](#section), etc.
-    final spans = <TextSpan>[];
-    int currentIndex = 0;
+  Widget _boldText(String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: DS.xs),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: DS.textBase,
+          fontWeight: FontWeight.bold,
+          color: widget.isDark ? Colors.white : Colors.black87,
+        ),
+      ),
+    );
+  }
 
-    while (currentIndex < text.length) {
-      // Handle bold text: **text**
-      if (text.startsWith('**', currentIndex)) {
-        final endIndex = text.indexOf('**', currentIndex + 2);
-        if (endIndex != -1) {
-          final boldText = text.substring(currentIndex + 2, endIndex);
-          spans.add(
-            TextSpan(
-              text: boldText,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: widget.isDark ? Colors.white : Colors.black87,
-              ),
-            ),
-          );
-          currentIndex = endIndex + 2;
-          continue;
-        }
+  Widget _errorMessage(String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: DS.xs),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: DS.textSM,
+          fontWeight: FontWeight.bold,
+          color: widget.isDark ? Colors.white : Colors.black87,
+        ),
+      ),
+    );
       }
 
-      // Handle links: [text](#section)
-      if (text.startsWith('[', currentIndex)) {
-        final endBracketIndex = text.indexOf(']', currentIndex);
-        if (endBracketIndex != -1 &&
-            text.startsWith('(#', endBracketIndex + 1)) {
-          final linkText = text.substring(currentIndex + 1, endBracketIndex);
-          final endParenIndex = text.indexOf(')', endBracketIndex + 2);
-          if (endParenIndex != -1) {
-            spans.add(
-              TextSpan(
-                text: linkText,
+  Widget _warningBox(String text) {
+    return Container(
+      padding: EdgeInsets.all(DS.m),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: Colors.orange, width: 4)),
+        color: widget.isDark
+            ? Colors.orange[900]?.withValues(alpha: 0.1)
+            : Colors.orange[50],
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: DS.textSM,
+          fontWeight: FontWeight.w600,
+          color: widget.isDark ? Colors.orange[200] : Colors.orange[900],
+        ),
+      ),
+    );
+  }
+
+  Widget _linkBox(String label, String link) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (label.isNotEmpty) _paragraph(label),
+        InkWell(
+          onTap: () => _launchUrl(link),
+          child: Text(
+            link,
+            style: TextStyle(
+              fontSize: DS.textSM,
+              fontWeight: FontWeight.w500,
+              color: Colors.blue[600],
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _launchUrl(String url) async {
+    try {
+      String formattedUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        formattedUrl = 'https://$url';
+      }
+
+      final uri = Uri.parse(formattedUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (kDebugMode) print('Failed to launch URL: $e');
+    }
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: DS.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: DS.textSM,
+                fontWeight: FontWeight.w600,
+                color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: DS.textSM,
+                color: widget.isDark ? Colors.grey[300] : Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _clickableInfoRow(String label, String value, String url) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: DS.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: DS.textSM,
+                fontWeight: FontWeight.w600,
+                color: widget.isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: () => _launchUrl(url),
+              child: Text(
+                value,
                 style: TextStyle(
-                  color: DS.brandRed,
+                  fontSize: DS.textSM,
+                  color: Colors.blue[600],
                   decoration: TextDecoration.underline,
                 ),
               ),
-            );
-            currentIndex = endParenIndex + 1;
-            continue;
-          }
-        }
-      }
-
-      // Regular text
-      final nextBoldIndex = text.indexOf('**', currentIndex);
-      final nextLinkIndex = text.indexOf('[', currentIndex);
-
-      int nextSpecialIndex = text.length;
-      if (nextBoldIndex != -1 && nextBoldIndex < nextSpecialIndex) {
-        nextSpecialIndex = nextBoldIndex;
-      }
-      if (nextLinkIndex != -1 && nextLinkIndex < nextSpecialIndex) {
-        nextSpecialIndex = nextLinkIndex;
-      }
-
-      final regularText = text.substring(currentIndex, nextSpecialIndex);
-      if (regularText.isNotEmpty) {
-        spans.add(
-          TextSpan(
-            text: regularText,
-            style: TextStyle(
-              color: widget.isDark ? Colors.grey[300] : Colors.black87,
             ),
           ),
-        );
-      }
-
-      currentIndex = nextSpecialIndex;
-    }
-
-    return RichText(
-      text: TextSpan(
-        children: spans,
-        style: TextStyle(fontSize: DS.textSM),
+        ],
       ),
     );
   }
 }
 
-class PDFViewerScreen extends StatelessWidget {
-  final bool isDark;
-
-  const PDFViewerScreen({super.key, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-      appBar: AppBar(
-        title: Text(
-          l10n.userManual,
-          style: TextStyle(
-            color: isDark ? Colors.white : const Color(0xFF1E293B),
-          ),
-        ),
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        elevation: 0,
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF1E293B),
-        ),
-      ),
-      body: FutureBuilder<String>(
-        future: _getPDFPath(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: DS.brandRed));
-          }
-
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: isDark ? Colors.grey[400] : const Color(0xFF64748B),
-                  ),
-                  SizedBox(height: DS.m),
-                  Text(
-                    l10n.pdfLoadError,
-                    style: TextStyle(
-                      fontSize: DS.textLG,
-                      color: isDark
-                          ? Colors.grey[400]
-                          : const Color(0xFF64748B),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return PDFView(
-            filePath: snapshot.data!,
-            enableSwipe: true,
-            swipeHorizontal: false,
-            autoSpacing: true,
-            pageFling: true,
-            pageSnap: true,
-            defaultPage: 0,
-            fitPolicy: FitPolicy.BOTH,
-            preventLinkNavigation: false,
-          );
-        },
-      ),
-    );
-  }
-
-  Future<String> _getPDFPath() async {
-    try {
-      // Load PDF from assets
-      final ByteData data = await rootBundle.load(
-        'assets/manuals/Tactical Traps - Lock Manual.pdf',
-      );
-      final List<int> bytes = data.buffer.asUint8List();
-
-      // Get temporary directory
-      final Directory tempDir = await getTemporaryDirectory();
-      final String tempPath = '${tempDir.path}/tactical_traps_manual.pdf';
-
-      // Write PDF to temporary file
-      final File tempFile = File(tempPath);
-      await tempFile.writeAsBytes(bytes);
-
-      return tempPath;
-    } catch (e) {
-      throw Exception('PDF not available: $e');
-    }
-  }
-}
