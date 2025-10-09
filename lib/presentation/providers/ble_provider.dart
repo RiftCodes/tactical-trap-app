@@ -31,9 +31,17 @@ class BleProvider extends ChangeNotifier {
   bool _isConnecting = false;
   bool _isVerifyingPin = false;
   bool _isAutoReconnecting = false;
+  bool _isProcessingCommand =
+      false; // New: Prevent button flickering during commands
+  bool _isSwitchingDevice =
+      false; // New: Prevent auto-unlock during device switching
   String? _autoReconnectStatus;
   String? _successMessage;
   Timer? _autoLockTimer;
+  Timer? _processingTimeoutTimer;
+  Timer? _commandThrottleTimer;
+  DateTime? _lastCommandTime;
+  DateTime? _lastLockCommandTime;
   BleDevice? _currentDevice;
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
@@ -47,6 +55,8 @@ class BleProvider extends ChangeNotifier {
   bool get isConnecting => _isConnecting;
   bool get isVerifyingPin => _isVerifyingPin;
   bool get isAutoReconnecting => _isAutoReconnecting;
+  bool get isProcessingCommand => _isProcessingCommand;
+  bool get isSwitchingDevice => _isSwitchingDevice;
   String? get autoReconnectStatus => _autoReconnectStatus;
   String? get successMessage => _successMessage;
   BleDevice? get currentDevice => _currentDevice;
@@ -78,9 +88,9 @@ class BleProvider extends ChangeNotifier {
         _listenToStreams();
         if (kDebugMode) Logger.info('BLE Provider: Streams listening set up');
 
-        // Try auto-reconnect after initialization with longer delay
+        // Try auto-reconnect after initialization with optimized delay
         // This prevents interference with app startup
-        Future.delayed(const Duration(milliseconds: 2000), () {
+        Future.delayed(const Duration(milliseconds: 1000), () {
           if (_isInitialized) {
             if (kDebugMode)
               Logger.info(
@@ -124,21 +134,78 @@ class BleProvider extends ChangeNotifier {
       _connectionState = device != null
           ? BluetoothConnectionState.connected
           : BluetoothConnectionState.disconnected;
+      
+      // Clear processing state on disconnection
+      if (_connectionState == BluetoothConnectionState.disconnected) {
+        _isProcessingCommand = false;
+        _isSwitchingDevice = false;
+        _cancelProcessingTimeout();
+        _commandThrottleTimer?.cancel();
+        _commandThrottleTimer = null;
+        _lastCommandTime = null;
+        _lastLockCommandTime = null;
+        _errorMessage = null; // Clear any error messages
+        if (kDebugMode)
+          Logger.info('Connection lost - clearing all processing states');
+      } else if (_connectionState == BluetoothConnectionState.connected) {
+        // Reset switching device flag when connected
+        if (_isSwitchingDevice) {
+          _isSwitchingDevice = false;
+          if (kDebugMode) Logger.info('Device switching completed');
+        }
+      }
+      
       notifyListeners();
 
       // Auto-fetch status on connect to populate UI details
       if (_connectionState == BluetoothConnectionState.connected) {
-        // Delay to let connection settle, then fetch status silently
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // Reduced delay for faster status fetch
+        Future.delayed(const Duration(milliseconds: 200), () {
           _silentGetDeviceStatus();
         });
       }
     });
 
-    // Listen to status updates
+    // Listen to status updates with debouncing to prevent UI glitches
     _bleService.statusStream.listen((status) {
-      _lastStatus = status;
-      notifyListeners();
+      // Only update status if not currently processing a command or switching devices to prevent flickering
+      if (!_isProcessingCommand && !_isSwitchingDevice) {
+        // Special handling for lock commands - block status updates longer
+        if (_lastLockCommandTime != null) {
+          final timeSinceLockCommand = DateTime.now().difference(
+            _lastLockCommandTime!,
+          );
+          if (timeSinceLockCommand.inMilliseconds < 3000) {
+            if (kDebugMode)
+              Logger.info(
+                'Skipping status update - too soon after lock command',
+              );
+            return;
+          }
+        }
+
+        // Additional check: don't update if we just sent any command recently
+        if (_lastCommandTime != null) {
+          final timeSinceLastCommand = DateTime.now().difference(
+            _lastCommandTime!,
+          );
+          if (timeSinceLastCommand.inMilliseconds < 1500) {
+            if (kDebugMode)
+              Logger.info('Skipping status update - too soon after command');
+            return;
+          }
+        }
+        
+        _lastStatus = status;
+        notifyListeners();
+        if (kDebugMode)
+          Logger.info('Status updated from stream: locked=${status.isLocked}');
+      } else {
+        if (kDebugMode)
+          Logger.info(
+            'Status update blocked - command in progress or switching device',
+          );
+      }
     });
   }
 
@@ -166,8 +233,8 @@ class BleProvider extends ChangeNotifier {
       await _bleService.startScan();
       if (kDebugMode) Logger.info('BLE Provider: Scan started successfully');
 
-      // Stop scanning after optimized timeout
-      Timer(Duration(milliseconds: 12000), () {
+      // Stop scanning after optimized timeout - reduced for faster discovery
+      Timer(Duration(milliseconds: 8000), () {
         if (kDebugMode)
           Logger.info('BLE Provider: Auto-stopping scan after timeout');
         stopScan();
@@ -199,6 +266,13 @@ class BleProvider extends ChangeNotifier {
     if (_isConnecting || !_isInitialized) return false;
 
     try {
+      // Clear any existing processing states
+      _isProcessingCommand = false;
+      _cancelProcessingTimeout();
+
+      // Set switching device flag to prevent auto-unlock during connection
+      _isSwitchingDevice = true;
+      
       // Clear auto-reconnect state when manually connecting
       _isAutoReconnecting = false;
       _autoReconnectStatus = null;
@@ -207,6 +281,8 @@ class BleProvider extends ChangeNotifier {
       _batchUpdateStates(
         isConnecting: true,
         isVerifyingPin: true,
+        isSwitchingDevice: true,
+        isProcessingCommand: false,
         errorMessage: null,
         successMessage: null,
       );
@@ -221,13 +297,12 @@ class BleProvider extends ChangeNotifier {
           );
       }
 
-      // Add timeout for PIN verification to prevent hanging
+      // Add timeout for PIN verification to prevent hanging - reduced for faster response
       final success = await _bleService
           .connectToDevice(device, pin: finalPin)
           .timeout(
             const Duration(
-              seconds: 15,
-            ), // Increased timeout for better reliability
+              seconds: 8), // Reduced timeout for faster response
             onTimeout: () {
               _errorMessage = 'Connection timeout - please try again';
               return false;
@@ -302,12 +377,20 @@ class BleProvider extends ChangeNotifier {
       }
 
       // Batch final state changes to reduce UI rebuilds
-      _batchUpdateStates(isConnecting: false, isVerifyingPin: false);
+      _batchUpdateStates(
+        isConnecting: false,
+        isVerifyingPin: false,
+        isSwitchingDevice: false,
+      );
       return success;
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       // Batch error state changes
-      _batchUpdateStates(isConnecting: false, isVerifyingPin: false);
+      _batchUpdateStates(
+        isConnecting: false,
+        isVerifyingPin: false,
+        isSwitchingDevice: false,
+      );
       return false;
     }
   }
@@ -324,10 +407,68 @@ class BleProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clear processing command state (for error handling)
+  void clearProcessingCommandState() {
+    _isProcessingCommand = false;
+    _cancelProcessingTimeout();
+    notifyListeners();
+  }
+
+  /// Force clear all states (for critical error recovery)
+  void forceClearAllStates() {
+    _isProcessingCommand = false;
+    _isSwitchingDevice = false;
+    _isConnecting = false;
+    _isVerifyingPin = false;
+    _cancelProcessingTimeout();
+    _commandThrottleTimer?.cancel();
+    _commandThrottleTimer = null;
+    _lastCommandTime = null;
+    _lastLockCommandTime = null;
+    _errorMessage = null;
+    _successMessage = null;
+    if (kDebugMode) Logger.info('Force cleared all states for error recovery');
+    notifyListeners();
+  }
+
+  /// Switch to a different device with proper state management
+  Future<bool> switchToDevice(BleDevice device, {String? pin}) async {
+    if (kDebugMode) Logger.info('Switching to device: ${device.id}');
+
+    // Force clear any existing states
+    forceClearAllStates();
+
+    // Wait a moment for state cleanup
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Connect to new device
+    return await connectToDevice(device, pin: pin);
+  }
+
+  /// Start processing timeout to prevent stuck states
+  void _startProcessingTimeout() {
+    _cancelProcessingTimeout();
+    _processingTimeoutTimer = Timer(const Duration(seconds: 3), () {
+      if (kDebugMode)
+        Logger.warning('Processing timeout - clearing stuck state');
+      _isProcessingCommand = false;
+      _errorMessage = 'Command timeout - please try again';
+      notifyListeners();
+    });
+  }
+
+  /// Cancel processing timeout
+  void _cancelProcessingTimeout() {
+    _processingTimeoutTimer?.cancel();
+    _processingTimeoutTimer = null;
+  }
+
   /// Batch update multiple states to reduce UI rebuilds
   void _batchUpdateStates({
     bool? isConnecting,
     bool? isVerifyingPin,
+    bool? isProcessingCommand,
+    bool? isSwitchingDevice,
     String? errorMessage,
     String? successMessage,
   }) {
@@ -340,6 +481,17 @@ class BleProvider extends ChangeNotifier {
 
     if (isVerifyingPin != null && _isVerifyingPin != isVerifyingPin) {
       _isVerifyingPin = isVerifyingPin;
+      hasChanges = true;
+    }
+
+    if (isProcessingCommand != null &&
+        _isProcessingCommand != isProcessingCommand) {
+      _isProcessingCommand = isProcessingCommand;
+      hasChanges = true;
+    }
+
+    if (isSwitchingDevice != null && _isSwitchingDevice != isSwitchingDevice) {
+      _isSwitchingDevice = isSwitchingDevice;
       hasChanges = true;
     }
 
@@ -392,99 +544,214 @@ class BleProvider extends ChangeNotifier {
 
   /// Send lock command
   Future<bool> sendLockCommand() async {
-    if (!isConnected || _currentDevice == null) {
-      _errorMessage = 'No device connected';
+    if (!isConnected || _currentDevice == null || _isProcessingCommand) {
+      if (kDebugMode)
+        Logger.info(
+          'Lock command blocked - connected: $isConnected, processing: $_isProcessingCommand',
+        );
+      _errorMessage = 'No device connected or command in progress';
       notifyListeners();
       return false;
     }
 
+    // Throttle commands to prevent rapid-fire sending
+    if (_lastCommandTime != null) {
+      final timeSinceLastCommand = DateTime.now().difference(_lastCommandTime!);
+      if (timeSinceLastCommand.inMilliseconds < 1000) {
+        if (kDebugMode)
+          Logger.info('Command throttled - too soon after last command');
+        _errorMessage = 'Please wait before sending another command';
+        notifyListeners();
+        return false;
+      }
+    }
+    _lastCommandTime = DateTime.now();
+    _lastLockCommandTime = DateTime.now(); // Track lock command specifically
+
     try {
-      _errorMessage = null;
-      notifyListeners();
+      // Set processing state to prevent button flickering and command queuing
+      _batchUpdateStates(isProcessingCommand: true, errorMessage: null);
+      _startProcessingTimeout();
 
       final success = await _bleService.sendLockCommand();
       if (success) {
-        _errorMessage = null;
-        
         // Cancel auto-lock timer since manually locked
         _cancelAutoLockTimer();
         
-        // Wait longer for lock to engage, then refresh status
-        await Future.delayed(const Duration(milliseconds: 1000));
-        await _silentGetDeviceStatus();
-        _successMessage = 'Lock engaged';
-        notifyListeners();
+        // Immediately update UI state to show locked and block status updates
+        if (_lastStatus != null) {
+          _lastStatus = LockStatus(
+            response: _lastStatus!.response,
+            extraBytes: _lastStatus!.extraBytes,
+            isStatus: _lastStatus!.isStatus,
+            responseMsg: _lastStatus!.responseMsg,
+            openCloseState: 0x00, // Force locked state
+            voltageValue: _lastStatus!.voltageValue,
+            alarmOn: _lastStatus!.alarmOn,
+            buzzerOn: _lastStatus!.buzzerOn,
+          );
+          notifyListeners();
+          if (kDebugMode)
+            Logger.info('Lock command - UI forced to locked state');
+        }
+
+        // Keep processing state longer for lock command to prevent status jitter
+        _cancelProcessingTimeout();
+        _batchUpdateStates(
+          isProcessingCommand: true, // Keep processing to block status updates
+          successMessage: 'Lock engaged',
+        );
+
+        // Clear processing state after delay to prevent status override
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          _batchUpdateStates(isProcessingCommand: false);
+        });
+
+        // Get fresh status after a longer delay to ensure command is processed
+        Future.delayed(const Duration(milliseconds: 1000), () async {
+          await _silentGetDeviceStatus();
+        });
+
+        // Clear success message after 2 seconds
         Future.delayed(const Duration(seconds: 2), () {
           _successMessage = null;
           notifyListeners();
         });
       } else {
-        _errorMessage = 'Lock command failed';
+        _cancelProcessingTimeout();
+        _batchUpdateStates(
+          isProcessingCommand: false,
+          errorMessage: 'Lock command failed',
+        );
       }
 
-      notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = 'Command error: $e';
-      notifyListeners();
+      _cancelProcessingTimeout();
+      _batchUpdateStates(
+        isProcessingCommand: false,
+        errorMessage: 'Lock command failed: $e',
+      );
       return false;
     }
   }
 
   /// Send unlock command
   Future<bool> sendUnlockCommand() async {
-    if (!isConnected || _currentDevice == null) {
-      _errorMessage = 'No device connected';
+    if (!isConnected || _currentDevice == null || _isProcessingCommand) {
+      if (kDebugMode)
+        Logger.info(
+          'Unlock command blocked - connected: $isConnected, processing: $_isProcessingCommand',
+        );
+      _errorMessage = 'No device connected or command in progress';
       notifyListeners();
       return false;
     }
 
+    // Throttle commands to prevent rapid-fire sending
+    if (_lastCommandTime != null) {
+      final timeSinceLastCommand = DateTime.now().difference(_lastCommandTime!);
+      if (timeSinceLastCommand.inMilliseconds < 1000) {
+        if (kDebugMode)
+          Logger.info('Command throttled - too soon after last command');
+        _errorMessage = 'Please wait before sending another command';
+        notifyListeners();
+        return false;
+      }
+    }
+    _lastCommandTime = DateTime.now();
+
     try {
-      _errorMessage = null;
-      notifyListeners();
+      // Set processing state to prevent button flickering and command queuing
+      _batchUpdateStates(isProcessingCommand: true, errorMessage: null);
+      _startProcessingTimeout();
 
       final success = await _bleService.sendUnlockCommand();
       if (success) {
-        _errorMessage = null;
-        // Wait longer for lock to release, then refresh status
-        await Future.delayed(const Duration(milliseconds: 1000));
-        await _silentGetDeviceStatus();
-        _successMessage = 'Lock released';
+        // Immediately update UI state to show unlocked
+        if (_lastStatus != null) {
+          _lastStatus = LockStatus(
+            response: _lastStatus!.response,
+            extraBytes: _lastStatus!.extraBytes,
+            isStatus: _lastStatus!.isStatus,
+            responseMsg: _lastStatus!.responseMsg,
+            openCloseState: 0x01, // Force unlocked state
+            voltageValue: _lastStatus!.voltageValue,
+            alarmOn: _lastStatus!.alarmOn,
+            buzzerOn: _lastStatus!.buzzerOn,
+          );
+          notifyListeners();
+        }
+
+        // Clear processing state immediately on success
+        _cancelProcessingTimeout();
+        _batchUpdateStates(
+          isProcessingCommand: false,
+          successMessage: 'Lock released',
+        );
         
-        // Start auto-lock timer (3 seconds)
+        // Start auto-lock timer (5 seconds)
         _startAutoLockTimer();
         
-        notifyListeners();
+        // Get fresh status after a short delay
+        Future.delayed(const Duration(milliseconds: 600), () async {
+          await _silentGetDeviceStatus();
+        });
+
+        // Clear success message after 2 seconds
         Future.delayed(const Duration(seconds: 2), () {
           _successMessage = null;
           notifyListeners();
         });
       } else {
-        _errorMessage = 'Unlock command failed';
+        _cancelProcessingTimeout();
+        _batchUpdateStates(
+          isProcessingCommand: false,
+          errorMessage: 'Unlock command failed',
+        );
       }
 
-      notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = 'Command error: $e';
-      notifyListeners();
+      _cancelProcessingTimeout();
+      _batchUpdateStates(
+        isProcessingCommand: false,
+        errorMessage: 'Unlock command failed: $e',
+      );
       return false;
     }
   }
 
   /// Silent status fetch (no error messages)
   Future<void> _silentGetDeviceStatus() async {
-    if (!isConnected || _currentDevice == null) return;
+    if (!isConnected || _currentDevice == null || _isProcessingCommand) return;
+
+    // Don't fetch status during command processing to prevent UI jitter
+    if (_isProcessingCommand) {
+      if (kDebugMode)
+        Logger.info('Skipping status fetch - command in progress');
+      return;
+    }
+
+    // Throttle status requests to prevent overwhelming the device - reduced to 3 seconds
+    if (_lastCommandTime != null) {
+      final timeSinceLastCommand = DateTime.now().difference(_lastCommandTime!);
+      if (timeSinceLastCommand.inMilliseconds < 3000) {
+        return; // Skip if too soon after last command
+      }
+    }
 
     try {
       final status = await _bleService.getDeviceStatus();
       if (status != null) {
         _lastStatus = status;
         notifyListeners();
+        if (kDebugMode)
+          Logger.info('Status updated: locked=${status.isLocked}');
       }
     } catch (e) {
       // Silent failure - don't show error to user
-      Logger.error('Silent status request failed', e);
+      if (kDebugMode) Logger.error('Silent status request failed', e);
     }
   }
 
@@ -866,7 +1133,7 @@ class BleProvider extends ChangeNotifier {
       await startScan();
 
       // Wait for devices to be discovered (optimized timing)
-      await Future.delayed(const Duration(milliseconds: 2000));
+      await Future.delayed(const Duration(milliseconds: 1500));
 
       // Look for the device in discovered devices
       BleDevice? targetDevice = _discoveredDevices
@@ -879,7 +1146,7 @@ class BleProvider extends ChangeNotifier {
             'Device not found in initial scan, waiting for more devices...',
           );
         // Retry with optimized delay
-        await Future.delayed(const Duration(milliseconds: 3000));
+        await Future.delayed(const Duration(milliseconds: 2000));
 
         targetDevice = _discoveredDevices
             .where((d) => d.id == deviceId)
@@ -991,6 +1258,8 @@ class BleProvider extends ChangeNotifier {
   @override
   void dispose() {
     _cancelAutoLockTimer();
+    _cancelProcessingTimeout();
+    _commandThrottleTimer?.cancel();
     _bleService.dispose();
     super.dispose();
   }

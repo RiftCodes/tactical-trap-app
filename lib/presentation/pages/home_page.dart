@@ -526,7 +526,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     DeviceProvider deviceProvider,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLocked = bleProvider.lastStatus?.isLocked ?? true;
+    bool isLocked = true;
+    isLocked = bleProvider.lastStatus?.isLocked ?? true;
     final deviceName = deviceProvider.getDisplayName(
       bleProvider.currentDevice!,
     );
@@ -576,22 +577,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 width: double.infinity,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.blue,
+                  color: bleProvider.isProcessingCommand
+                      ? Colors
+                            .grey // Grey when processing
+                      : Colors.blue,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      bleProvider.disconnectFromDevice();
-                    },
+                    onTap: bleProvider.isProcessingCommand
+                        ? null // Disable during processing
+                        : () {
+                            HapticFeedback.lightImpact();
+                            bleProvider.disconnectFromDevice();
+                          },
                     borderRadius: BorderRadius.circular(8),
                     child: Center(
                       child: Text(
                         'DISCONNECT',
                         style: TextStyle(
-                          color: Colors.white,
+                          color:   Colors.white,
                           fontSize: DS.textSM,
                           fontWeight: FontWeight.w600,
                         ),
@@ -608,33 +614,49 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 width: double.infinity,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: isLocked
-                      ? Colors.red
-                      : Colors.green, // Red for unlock, green for lock
+                  color: bleProvider.isProcessingCommand
+                      ? Colors
+                            .grey // Grey when processing
+                      : (isLocked
+                            ? Colors.red
+                            : Colors.green), // Red for unlock, green for lock
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      // Haptic feedback provides tactile confirmation of user action
-                      HapticFeedback.lightImpact();
-                      if (isLocked) {
-                        bleProvider.sendUnlockCommand();
-                      } else {
-                        bleProvider.sendLockCommand();
-                      }
-                    },
+                    onTap: bleProvider.isProcessingCommand
+                        ? null // Disable during processing
+                        : () {
+                            // Haptic feedback provides tactile confirmation of user action
+                            HapticFeedback.lightImpact();
+                            if (isLocked) {
+                              bleProvider.sendUnlockCommand();
+                            } else {
+                              bleProvider.sendLockCommand();
+                            }
+                          },
                     borderRadius: BorderRadius.circular(8),
                     child: Center(
-                      child: Text(
-                        isLocked ? 'UNLOCK' : 'LOCK',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: DS.textSM,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: bleProvider.isProcessingCommand
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              isLocked ? 'UNLOCK' : 'LOCK',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: DS.textSM,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ),

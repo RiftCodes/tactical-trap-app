@@ -68,6 +68,8 @@ class BleService {
   // Simple reconnection
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 3;
+  bool _isReconnecting = false;
+  DateTime? _lastDiscoverServicesTime;
 
   // Streams
   Stream<List<BleDevice>> get devicesStream => _devicesController.stream;
@@ -193,75 +195,6 @@ class BleService {
     }
   }
 
-  /// Wait for location services to be enabled with user feedback
-  Future<bool> _waitForLocationServices() async {
-    if (kDebugMode) {
-      Logger.info('Waiting for location services to be enabled...');
-    }
-
-    // Check current status
-    var locationEnabled = await Permission.location.serviceStatus.isEnabled;
-    var gpsStatus = await _checkGPSStatus();
-
-    if (locationEnabled && gpsStatus.contains('GPS enabled')) {
-      if (kDebugMode) {
-        Logger.info('Location services and GPS are already enabled');
-      }
-      return true;
-    }
-
-    // Show user that we're waiting
-    if (kDebugMode) {
-      Logger.info(
-        'Location services or GPS disabled, waiting for user to enable...',
-      );
-      Logger.info('Current status: Location=$locationEnabled, GPS=$gpsStatus');
-    }
-
-    // Wait and check periodically
-    for (int i = 0; i < 10; i++) {
-      // Wait up to 30 seconds
-      await Future.delayed(Duration(seconds: 3));
-
-      locationEnabled = await Permission.location.serviceStatus.isEnabled;
-      gpsStatus = await _checkGPSStatus();
-
-      if (kDebugMode) {
-        Logger.info('Check $i: Location=$locationEnabled, GPS=$gpsStatus');
-      }
-
-      // Check if both location services AND GPS are enabled
-      if (locationEnabled && gpsStatus.contains('GPS enabled')) {
-        if (kDebugMode) {
-          Logger.info('Location services AND GPS enabled after waiting!');
-        }
-        return true;
-      }
-
-      // If location services are enabled but GPS is still off, give specific feedback
-      if (locationEnabled && gpsStatus.contains('GPS disabled')) {
-        if (kDebugMode) {
-          Logger.info(
-            'Location services enabled but GPS still disabled. User needs to enable GPS specifically.',
-          );
-        }
-        // Continue waiting for GPS to be enabled
-      }
-
-      if (kDebugMode) {
-        Logger.info(
-          'Still waiting for location services and GPS... (attempt ${i + 1}/10)',
-        );
-      }
-    }
-
-    if (kDebugMode) {
-      Logger.warning(
-        'Location services or GPS not fully enabled after waiting period',
-      );
-    }
-    return false;
-  }
 
   /// Check and enable both Bluetooth and GPS services
   Future<bool> _checkAndEnableBluetoothAndGPS() async {
@@ -390,45 +323,6 @@ class BleService {
   }
 
   /// Check GPS status more accurately using location package
-  Future<String> _checkGPSStatus() async {
-    try {
-      // Use the location package to check if location services are enabled
-      final location = loc.Location();
-      final locationEnabled = await location.serviceEnabled();
-
-      if (kDebugMode) {
-        Logger.info(
-          'GPS Status - Location Services (location package): $locationEnabled',
-        );
-      }
-
-      if (!locationEnabled) {
-        return 'Location services disabled';
-      } else {
-        return 'GPS enabled';
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        Logger.error('Error checking GPS status with location package', e);
-      }
-      // Fallback to permission handler
-      try {
-        final locationEnabled =
-            await Permission.location.serviceStatus.isEnabled;
-        if (kDebugMode) {
-          Logger.info(
-            'GPS Status - Fallback (permission handler): $locationEnabled',
-          );
-        }
-        return locationEnabled ? 'GPS enabled' : 'Location services disabled';
-      } catch (e2) {
-        if (kDebugMode) {
-          Logger.error('Error in fallback GPS check', e2);
-        }
-        return 'Error checking GPS status';
-      }
-    }
-  }
 
   /// Check if GPS is specifically enabled using location package
   Future<bool> _isGPSEnabled() async {
@@ -1002,7 +896,7 @@ class BleService {
 
       // Connect first with better error handling
       try {
-        await device.device.connect(timeout: Duration(seconds: 15));
+        await device.device.connect(timeout: Duration(seconds: 10));
       } catch (e) {
         if (e.toString().contains('133') ||
             e.toString().contains('ANDROID_SPECIFIC_ERROR')) {
@@ -1012,8 +906,9 @@ class BleService {
             );
           // Wait a bit and retry with longer timeout
           await Future.delayed(Duration(milliseconds: 1000));
-          await device.device.connect(timeout: Duration(seconds: 20));
+          await device.device.connect(timeout: Duration(seconds: 15));
         } else {
+          _handleConnectionFailure(e.toString());
           rethrow;
         }
       }
@@ -1021,6 +916,14 @@ class BleService {
       _currentDevice = device;
       _connectionState = BluetoothConnectionState.connected;
       _connectionController.add(_currentDevice);
+      
+      // Monitor connection state changes
+      device.device.connectionState.listen((state) {
+        if (kDebugMode) Logger.info('Connection state changed: $state');
+        if (state == BluetoothConnectionState.disconnected) {
+          _handleUnexpectedDisconnection();
+        }
+      });
 
       // Start notifications FIRST (before PIN verification)
       await _startNotificationListener(device);
@@ -1038,8 +941,8 @@ class BleService {
 
       // If it's a Tactical Traps lock, verify PIN directly (like Angular app)
       if (device.isLock && pin != null) {
-        // Wait for connection to settle (optimized for stability)
-        await Future.delayed(Duration(milliseconds: 400));
+        // Wait for connection to settle (optimized for speed)
+        await Future.delayed(Duration(milliseconds: 200));
 
         // Verify PIN with retry logic for better reliability
         bool verified = false;
@@ -1050,8 +953,8 @@ class BleService {
           if (retryCount > 0) {
             if (kDebugMode)
               Logger.info('PIN verification retry attempt: $retryCount');
-            // Wait a bit longer between retries
-            await Future.delayed(Duration(milliseconds: 800));
+            // Reduced wait time between retries for faster response
+            await Future.delayed(Duration(milliseconds: 400));
           }
 
           verified = await _verifyPin(pin);
@@ -1281,6 +1184,10 @@ class BleService {
     try {
       _stopReconnectTimer();
       _stopStatusPolling();
+      
+      // Stop all reconnection attempts
+      _reconnectAttempts = _maxReconnectAttempts; // Prevent reconnection
+      _isReconnecting = false;
 
       // Send sleep command if it's a lock
       if (_currentDevice!.isLock) {
@@ -1294,6 +1201,12 @@ class BleService {
       _connectionController.add(null);
     } catch (e) {
       Logger.error('Failed to disconnect', e);
+      // Clear state even if disconnect failed
+      _currentDevice = null;
+      _connectionState = BluetoothConnectionState.disconnected;
+      _reconnectAttempts = 0;
+      _isReconnecting = false;
+      _connectionController.add(null);
     }
   }
 
@@ -1528,8 +1441,8 @@ class BleService {
 
       final result = await _writeToLock('lock', command);
 
-      // Add small delay to let lock settle
-      await Future.delayed(Duration(milliseconds: 1000));
+      // Reduced delay to let lock settle
+      await Future.delayed(Duration(milliseconds: 500));
 
       return result.isSuccess;
     } catch (e) {
@@ -1568,8 +1481,8 @@ class BleService {
 
       final result = await _writeToLock('unlock', command);
 
-      // Add small delay to let unlock settle
-      await Future.delayed(Duration(milliseconds: 1000));
+      // Reduced delay to let unlock settle
+      await Future.delayed(Duration(milliseconds: 500));
 
       return result.isSuccess;
     } catch (e) {
@@ -1616,6 +1529,19 @@ class BleService {
 
   /// Get device status
   Future<LockStatus?> getDeviceStatus() async {
+    // Throttle status requests to prevent overwhelming the device - reduced to 3 seconds
+    if (_lastDiscoverServicesTime != null) {
+      final timeSinceLastRequest = DateTime.now().difference(
+        _lastDiscoverServicesTime!,
+      );
+      if (timeSinceLastRequest.inMilliseconds < 3000) {
+        if (kDebugMode)
+          Logger.info('Status request throttled - too soon after last request');
+        return null;
+      }
+    }
+    _lastDiscoverServicesTime = DateTime.now();
+
     try {
       final command = [0xF5, 0x60, 0x00, 0x00, 0x5F, 0x00];
       command[sum] = 0;
@@ -1804,6 +1730,98 @@ class BleService {
     _reconnectTimer = null;
   }
 
+  /// Handle unexpected disconnection (GATT_ERROR 133, etc.)
+  void _handleUnexpectedDisconnection() {
+    if (kDebugMode) Logger.info('Handling unexpected disconnection');
+
+    // Update connection state
+    _connectionState = BluetoothConnectionState.disconnected;
+    _currentDevice = null;
+    _statusCharacteristic = null;
+
+    // Clear any pending operations
+    _pendingResponseCompleter?.complete(null);
+    _pendingResponseCompleter = null;
+
+    // Stop status polling
+    _stopStatusPolling();
+
+    // Notify listeners
+    _connectionController.add(null);
+
+    // Only attempt reconnection if we're not already in a reconnection loop
+    if (_reconnectAttempts < _maxReconnectAttempts && !_isReconnecting) {
+      _reconnectAttempts++;
+      _isReconnecting = true;
+      if (kDebugMode)
+        Logger.info(
+          'Attempting automatic reconnection (attempt $_reconnectAttempts/$_maxReconnectAttempts)',
+        );
+
+      // Delay before reconnection attempt
+      Future.delayed(Duration(seconds: 3), () {
+        _attemptReconnection();
+      });
+    } else {
+      if (kDebugMode)
+        Logger.warning(
+          'Max reconnection attempts reached or already reconnecting',
+        );
+    }
+  }
+
+  /// Handle connection failure gracefully
+  void _handleConnectionFailure(String error) {
+    if (kDebugMode) Logger.error('Connection failed: $error');
+
+    // Update connection state
+    _connectionState = BluetoothConnectionState.disconnected;
+    _currentDevice = null;
+    _statusCharacteristic = null;
+
+    // Clear any pending operations
+    _pendingResponseCompleter?.complete(null);
+    _pendingResponseCompleter = null;
+
+    // Stop status polling
+    _stopStatusPolling();
+
+    // Notify listeners
+    _connectionController.add(null);
+
+    // Reset reconnection attempts and flag
+    _reconnectAttempts = 0;
+    _isReconnecting = false;
+  }
+
+  /// Attempt reconnection to last device
+  Future<void> _attemptReconnection() async {
+    if (_currentDevice == null) {
+      _isReconnecting = false;
+      return;
+    }
+
+    try {
+      if (kDebugMode)
+        Logger.info('Attempting to reconnect to ${_currentDevice!.id}');
+
+      // Try to reconnect
+      await connectToDevice(_currentDevice!);
+
+      if (_connectionState == BluetoothConnectionState.connected) {
+        if (kDebugMode) Logger.info('Reconnection successful');
+        _reconnectAttempts = 0; // Reset counter on success
+        _isReconnecting = false;
+      } else {
+        if (kDebugMode) Logger.warning('Reconnection failed');
+        _isReconnecting = false;
+      }
+    } catch (e) {
+      if (kDebugMode) Logger.error('Reconnection attempt failed', e);
+      _isReconnecting = false;
+    }
+  }
+
   /// Handle adapter state changes
   void _onAdapterStateChanged(BluetoothAdapterState state) {
     if (state == BluetoothAdapterState.off) {
@@ -1850,13 +1868,32 @@ class BleService {
       // Store the completer so the status listener can complete it
       _pendingResponseCompleter = responseCompleter;
 
-      // Send command
-      await commandChar.write(command);
+      // Send command with proper error handling
+      try {
+        await commandChar.write(command);
+      } catch (e) {
+        Logger.error('Failed to write command: $e');
+        // Check if this is a GATT_ERROR (133) or connection issue
+        if (e.toString().contains('133') ||
+            e.toString().contains('GATT_ERROR') ||
+            e.toString().contains('device is disconnected') ||
+            e.toString().contains('device is not connected')) {
+          Logger.warning(
+            'Device disconnected during command - attempting reconnection',
+          );
+          _handleUnexpectedDisconnection();
+        }
+        return null;
+      }
 
       try {
         final response = await responseCompleter.future.timeout(
-          timeout ?? Duration(seconds: 8),
+          timeout ?? Duration(seconds: 3),
           onTimeout: () {
+            if (kDebugMode)
+              Logger.warning(
+                'Command timeout after ${timeout?.inSeconds ?? 3} seconds',
+              );
             return <int>[];
           },
         );
@@ -1879,7 +1916,7 @@ class BleService {
   /// Start smart status polling - battery optimized
   void _startStatusPolling() {
     _stopStatusPolling(); // Clear any existing timer
-    _statusTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+    _statusTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_connectionState == BluetoothConnectionState.connected &&
           _currentDevice != null &&
           _isAppActive) {
@@ -1941,7 +1978,7 @@ class BleService {
       final response = await _writeToLockWithResponse(
         'version',
         command,
-        timeout: Duration(seconds: 5),
+        timeout: Duration(seconds: 3),
       );
 
       if (response != null && response.length >= 4) {

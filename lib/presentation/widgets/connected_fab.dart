@@ -16,6 +16,7 @@ class ConnectedBottomSheet extends StatelessWidget {
     return Consumer<BleProvider>(
       builder: (context, bleProvider, child) {
         final isLocked = bleProvider.lastStatus?.isLocked ?? true;
+        final isProcessingCommand = bleProvider.isProcessingCommand;
 
         return Container(
           decoration: BoxDecoration(
@@ -52,21 +53,30 @@ class ConnectedBottomSheet extends StatelessWidget {
                     Expanded(
                       child: _buildControlButton(
                         context: context,
-                        icon: !isLocked
-                            ? Icons.lock_rounded
-                            : Icons.lock_open_rounded,
-                        label: !isLocked
-                            ? l10n.lock.toUpperCase()
-                            : l10n.unlock.toUpperCase(),
-                        color: !isLocked ? DS.brandRed : DS.success,
-                        onTap: () {
-                          HapticFeedback.vibrate();
-                          if (isLocked) {
-                            bleProvider.sendLockCommand();
-                          } else {
-                            bleProvider.sendUnlockCommand();
-                          }
-                        },
+                        icon: isProcessingCommand
+                            ? null // Will show loading spinner
+                            : (!isLocked
+                                  ? Icons.lock_rounded
+                                  : Icons.lock_open_rounded),
+                        label: isProcessingCommand
+                            ? 'PROCESSING...'
+                            : (!isLocked
+                                  ? l10n.lock.toUpperCase()
+                                  : l10n.unlock.toUpperCase()),
+                        color: isProcessingCommand
+                            ? DS.brandDark
+                            : (!isLocked ? DS.brandRed : DS.success),
+                        isLoading: isProcessingCommand,
+                        onTap: isProcessingCommand
+                            ? null // Completely disable during processing
+                            : () {
+                                HapticFeedback.vibrate();
+                                if (isLocked) {
+                                  bleProvider.sendUnlockCommand();
+                                } else {
+                                  bleProvider.sendLockCommand();
+                                }
+                              },
                       ),
                     ),
                     SizedBox(width: DS.s),
@@ -95,10 +105,11 @@ class ConnectedBottomSheet extends StatelessWidget {
 
   Widget _buildControlButton({
     required BuildContext context,
-    required IconData icon,
+    required IconData? icon,
     required String label,
     required Color color,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    bool isLoading = false,
   }) {
     return Container(
       height: 56,
@@ -122,7 +133,17 @@ class ConnectedBottomSheet extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 20),
+                if (isLoading)
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                else if (icon != null)
+                  Icon(icon, color: Colors.white, size: 20),
                 SizedBox(width: DS.xs),
                 Flexible(
                   child: FittedBox(
