@@ -71,8 +71,8 @@ class TacticalTrapsApp extends StatelessWidget {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: ColorScheme.light(
-        primary: DS.brandRed,
-        secondary: DS.brandDark,
+        primary: DS.brandPrimary,
+        secondary: DS.brandSecondary,
         surface: DS.lightCardBackground,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
@@ -131,7 +131,7 @@ class TacticalTrapsApp extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DS.rMedium),
-          borderSide: BorderSide(color: DS.brandRed),
+          borderSide: BorderSide(color: DS.brandPrimary),
         ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.8),
@@ -145,9 +145,9 @@ class TacticalTrapsApp extends StatelessWidget {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: DS.brandRed,
+        seedColor: DS.brandPrimary,
         brightness: Brightness.dark,
-        primary: DS.brandRed,
+        primary: DS.brandPrimary,
         secondary: DS.brandAccent,
         error: DS.error,
         surface: DS.brandDark,
@@ -186,7 +186,7 @@ class TacticalTrapsApp extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DS.rMedium),
-          borderSide: BorderSide(color: DS.brandRed, width: 2),
+          borderSide: BorderSide(color: DS.brandPrimary, width: 2),
         ),
         contentPadding: EdgeInsets.all(DS.m),
         filled: true,

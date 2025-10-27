@@ -30,10 +30,10 @@ class AutoReconnectOverlay extends StatelessWidget {
                     width: 64,
                     height: 64,
                     decoration: BoxDecoration(
-                      color: DS.brandRed.withValues(alpha: 0.1),
+                    color: DS.brandPrimary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: DS.brandRed.withValues(alpha: 0.3),
+                      color: DS.brandPrimary.withValues(alpha: 0.3),
                         width: 2,
                       ),
                     ),
@@ -41,7 +41,7 @@ class AutoReconnectOverlay extends StatelessWidget {
                       child: Icon(
                         Icons.bluetooth_searching_rounded,
                         size: 32,
-                        color: DS.brandRed,
+                      color: DS.brandPrimary,
                       ),
                     ),
                   ),
@@ -54,7 +54,7 @@ class AutoReconnectOverlay extends StatelessWidget {
                     height: 32,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(DS.brandRed),
+                    valueColor: AlwaysStoppedAnimation<Color>(DS.brandPrimary),
                       backgroundColor: isDark
                           ? Colors.white.withValues(alpha: 0.1)
                           : Colors.black.withValues(alpha: 0.05),

@@ -34,7 +34,7 @@ class StatusChips extends StatelessWidget {
         _chip(
           icon: status.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
           label: status.isLocked ? l10n.locked : l10n.unlocked,
-          color: status.isLocked ? DS.brandRed : DS.success,
+          color: status.isLocked ? DS.brandPrimary : DS.success,
         ),
       );
     }

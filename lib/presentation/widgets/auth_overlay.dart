@@ -154,7 +154,7 @@ class _AuthOverlayState extends State<AuthOverlay>
                 width: DS.xl * 2,
                 height: DS.xl * 2,
                 decoration: BoxDecoration(
-                  color: DS.brandRed,
+                  color: DS.brandPrimary,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -218,11 +218,11 @@ class _AuthOverlayState extends State<AuthOverlay>
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: DS.xl, vertical: DS.m),
         decoration: BoxDecoration(
-          color: DS.brandRed,
+          color: DS.brandPrimary,
           borderRadius: BorderRadius.circular(DS.rMedium),
           boxShadow: [
             BoxShadow(
-              color: DS.brandRed.withOpacity(0.3),
+              color: DS.brandPrimary.withOpacity(0.3),
               blurRadius: 8,
               offset: Offset(0, 4),
             ),
@@ -275,7 +275,7 @@ class _AuthOverlayState extends State<AuthOverlay>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Authentication failed. Please try again.'),
-            backgroundColor: DS.brandRed,
+            backgroundColor: DS.brandPrimary,
           ),
         );
       }

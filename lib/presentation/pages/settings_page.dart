@@ -1404,7 +1404,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
     if (percentage > 75) return DS.success; // Green for high battery
     if (percentage > 50) return Colors.orange; // Orange for medium battery
     if (percentage > 25) return DS.warning; // Yellow for low battery
-    return DS.brandRed; // Red for critical battery
+    return DS.brandPrimary; // Red for critical battery
   }
 
   /// Buzzer control row for settings
@@ -1436,7 +1436,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
               children: [
                 Icon(
                   Icons.volume_up_rounded,
-                  color: isBuzzerOn ? DS.success : DS.brandRed,
+                  color: isBuzzerOn ? DS.success : DS.brandPrimary,
                   size: 20,
                 ),
                 SizedBox(width: DS.m),
@@ -1453,7 +1453,7 @@ ${packageInfo != null ? '${l10n.version}: ${packageInfo.version}' : ''}
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: DS.s, vertical: 2),
                   decoration: BoxDecoration(
-                    color: isBuzzerOn ? DS.success : DS.brandRed,
+                    color: isBuzzerOn ? DS.success : DS.brandPrimary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(

@@ -348,7 +348,7 @@ class _ConnectedDetailsState extends State<ConnectedDetails> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(l10n.failedToSaveName),
-              backgroundColor: DS.brandRed,
+              backgroundColor: DS.brandPrimary,
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
             ),

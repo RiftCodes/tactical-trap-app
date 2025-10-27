@@ -1,373 +1,0 @@
-
-
-Bluetooth Lock Communication Protocol
-
-
-
-v1.2x1906221640
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Kerong Industry (HK) Co., Ltd.
-R&D department
-
-
-22nd June, 2019  Saturday
-                 Content
-Version	1
-Abstract	2
-1. Detailed description of Bluetooth lock protocol	3
-1.2 Hardware protocol	3
-1.2 Software protocol	3
-1.2.1 Protocol data packet	3
-2. Command protocol	3
-3. Response protocol	4
-3.1 Response value	4
-4. Introduction of Bluetooth command	4
-        4.1 Pairing password verification......................................................................................................................................4
-a) Protocol	4
-b) Command function	5
-c) DATA format	5
-d) Example	5
-            e) DATA analysis.......................................................................................................................................................5
-4.2 Status checking	5
-a) Protocol	5
-b) Command function	5
-c) DATA format	5
-d) Example	5
-e) DATA analysis	5
-4.3 Unlock	6
-a) Protocol	6
-b) Command function	6
-c) DATA format	6
-d)Example	6
-e) DATA analysis	6
-4.4 Time setting	6
-a) Protocol	6
-b) Command function	6
-c) DATA format	6
-d) Example	7
-e) DATA analysis	7
-4.5 Time reading	7
-a) Protocol	7
-b) Command function	7
-c) DATA format	7
-d) Example	7
-e) DATA analysis	7
-4.6 System initialization 	7
-a) Protocl	7
-b) Command function	8
-c) DATA format	8
-d) Example	8
-4.7 Get current version No.  	8
-a) Protocl	8
-b) Command function	8
-c) DATA format	8
-            d) Example................................................................................................................................................................8
-            e) DATA analysis......................................................................................................................................................8
-4.8 System exit 	8
-a) Protocol	8
-b) Command function	8
-c) DATA format	8
-            d) Example................................................................................................................................................................9
-4.9 Alarm setting & checking	9
-a) Protocol	9
-b) Command function	9
-c) DATA format	9
-d) Example	9
-e) DATA analysis	9
-4.10 Buzzer setting & checking	9
-a) Protocol	9
-b) Command function	9
-c) DATA format	9
-d) Example	9
-e) DATA analysis	9
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Document version
-TimeVersion No. AuthorRevision27th Feb, 2019  WednesdayV1.0Wang YonglinEstablishment of document4th March, 2019 TuesdayV1.1Wang YonglinEncryption of unlocking command parameters22nd June, 2019 Saturday V1.2Wang Yonglin1. Add "pairing password verification" command
-2. Add "alarm setting & checking" command
-3. Add "buzzer setting & checking" command
-4. Add "system initialization" command
-
-Abstract
-The manual is an introduction to the Bluetooth lock communication protocol.
-Section I: Detailed introduction of Bluetooth lock software communication protocol.
-section II: Instructions for Bluetooth lock hardware interface.
-     
-
-
-1. Detailed description of Bluetooth lock protocol
- 1.1 Hardware protocol
-Support serial communication
-
-ItemDescriptionBaud rate19200Data bit8 bitsCheck bitNoneStop bit1 bit
-1.2 Software protocol
-Protocol data packet:
-Maximum length of protocol packet is 32;
-Minimum length of protocol packet is 6;
-Packet format is Big-endian;
-Protocol packet format: the format of command protocol and response protocol is the same. General format is below: 
-
-No. ItemDescription1STX(1byte)Data head / frame header, fixed value: 0xF52CMD(1byte)Command, please refer to the protocol command table3ASK(1byte)Response value, please refer to the response table4DATALEN(1byte)Data length5ETX(1byte)Data footer / frame footer, fixed value: 0x5F6SUM(1byte)Check byte and low byte of whole command packet, e.g., if sum of all data is 0x125D, then sum=0x5D...
-6+DATALENDATA(DATALEN bytes)DATA, if the value of DATALEN is zero, the data is null. The format is different for different commands. Please refer to the Introduction of Commands.
-2. Command protocol table
-No. CommandProtocolDescription                                   Bluetooth communication commandPairing password verification1Pairing password verification0x0FIf the verification succeeds,then can communicate
-with Bluetooth lock.If pairing password authentication is successful, then can operate follow commands1Status checking0x60Lock status, lock hook status, power voltage, lock
-ID2Unlock0x61Unlocking command3Time setting0x62Set lock time4Time reading 0x63Get lock time5System initialization0x65Clear system data, return to factory setting(If successful, Bluetooth connection will be disconnected automatically)6Get current version No. 0x6ESoftware version No. and hardware version No.7System exit0x6FDisconnect with Bluetooth, enter hibernation8Alarm setting & checking0x74Set & check alarm status9Buzzer setting & checking0x75Set & check buzzerRemark3. Response protocol
-3.1 Response value
-
-ValueDescription0x10Correct operation0x11Wrong operation0x12Timeout0x13Unknown command0x16Fail checksum0x26Pairing password is not verified0x27Failed pairing password verification      0x00ASK default value when send command
-4. Introduction of Bluetooth commands (mobile phone APP>> Bluetooth lock)
-
-This section explains details about commands sent from mobile phones APP to Bluetooth locks, each command has its own unique data format. Therefore, a detailed description about DATA will be given in this section.
-   
-4.1 Pairing password verification
-a) Protocol
-    Command: 0x0F
-b) Command function
-Before communicate with Bluetooth lock, need to verify the pairing password, or Bluetooth lock will disconnect automatically 30s later.
-c) DATA format
-char  LinkPwd[4];          //Bluetooth pairs connecting password(number ASCII value)
-d) Example
-Mobile APP sends data: F5 0F 00 04 5F 3B 39 31 35 35
-Mobile APP receive data: F5 0F 10 00 5F 73	
-e) DATA analysis
-1. 39 31 35 35 means the input pairing password, it is "9155".
-2. Normally, lock ID is different, the pairing password will also be different.
-3. Pairing password of every lock is a fixed ACSII value with four digits.
-4. If pairing password verification is failed, then cannot operate other functions of Bluetooth lock.
-5. Every time connect with Bluetooth lock, need to verify the pairing password with 30s, or Bluetooth lock will disconnect automatically.
-6. First time mobile APP verifies pairing password successfully, then can cache that pairing password. Next time connecting with Bluetooth lock, mobile APP can search the pairing password, and send verification command. 
-4.2 Status checking
-a) Protocol
-    Command: 0x60
-b) Command function
-    Get lock status(unlocked & locked), lock tongue status, power voltage, lock ID, unlocking mode, locking mode.
-c) DATA format 
-struct 						
-            {
-               u8 OpenCloseLockState;
-               u8 HookState;
-               u16 VotageValue;
-               u32           LockId;                 //Lock ID No.
-               u8 RandData;
-            }LockStatesDatas;
-d) Example
-Mobile APP sends data: F5 60 00 00 5F B4
-Mobile APP receives data: F5 60 10 09 5F DB 00 00 11 EE 00 00 00 02 0D
-e) DATA analysis
-1. 00 indicates that the lock is in the locked status (i.e., lock tongue stretches out);
-2. 00 indicates that the lock hook is not locked (i.e., lock hook is not into lock tongue); 
-3. 11 EE means lock voltage, 0x11EE=4590, so lock voltage is 4590mV;
-4. 00 00 00 02 means lock ID No. ,0x00000002=2, so lock ID No. is 2.
-5. 0D means random code offered by lock system, it is for parameter encryption of unlocking command. The random code will update every time waking up lock system.
-4.3 Unlock
-a) Protocol
-    Command: 0x61
-b) Command function
-    For unlocking.
-c) DATA format 
- u8  OpenCloseLock;  //0x35: means unlock or lock   0x36: means lock after unlocking for 5s; other value is wrong, no operation
-d) Example
-If in unlocked status, will operate locking command; if in locked status, will operate unlocking command: 
-Mobile APP sends data: F5 61 00 01 5F EE 38
-Mobile APP receives data: F5 61 10 01 5F FE 38
-Lock after unlocking for 5s: 
-Mobile APP sends data: F5 61 00 01 5F F1 3B
-Mobile APP receives data: F5 61 10 01 5F 01 3B
-
-e) DATA analysis
- 1. 38, 3B is encrypted unlocking parameter, use RandData got from above status getting command to operate encryption (0x0D), value after decryption is 0x35, 0x36, the encryption and decryption functions are as follows(Key =RandData): 
-u8 Encrypt(u8 PlainData,u8 Key)  //data encryption
-{
-  return (PlainData^Key);
-}
-u8 Dncrypt(u8 CipherData,u8 Key)  //data decryption
-{
-  return (CipherData^Key);
-}
-4.4 Time setting
-a) Protocol
-    Command: 0x62
-b) Command function
-    Set lock time (BCD code)
-c) DATA format 
- ////////////////////////////Time data structure//////////////////////////////////////
- typedef struct tagDateTime
-{     u8 wYear;
-	u8 wMonth;
-	u8 wDay;
-	u8 wHour;
-	u8 wMinute;
-	u8 wSec;
-}TDateTime, * PDateTime;
-d) Example
-Mobile APP sends data: F5 62 00 06 5F 2B 18 08 16 11 28 00
-Mobile APP receives data: F5 62 10 00 5F C6 
-e) DATA analysis
-    18 08 16 11 28 00 means lock time is set as  11:28:00, 16th Aug, 2018.
-4.5 Time reading
-a) Protocol
-    Command: 0x63
-b) Command function
-    Read the lock current time (BCD code)
-c) DATA format
- ////////////////////////////Time data structure//////////////////////////////////////
- typedef struct tagDateTime
-{     u8 wYear;
-	u8 wMonth;
-	u8 wDay;
-	u8 wHour;
-	u8 wMinute;
-	u8 wSec;
-}TDateTime, * PDateTime;
-d) Example
-Mobile APP sends data: F5 63 00 00 5F B7
-Mobile APP receives data: F5 63 10 06 5F 3C 18 08 16 11 28 00 
-e) DATA analysis
-     18 08 16 11 28 00 means lock current time is 11:28:00, 16th Aug, 2018
-4.6 System initialization
-a) Protocol
-    Command: 0x65
-b) Command function
-    Clear all user data & information, system returns to factory set.
-c) DATA format
-  None
-d) Example
-Command: F5 65 00 00 5F B9 
-Response: F5 65 10 00 5F C9 
-     
-4.7 Get current version No. 
-a) Protocol
-    Command; 0x6E
-b) Command function
-    Get current software version No. and hardware version No. 
-c) DATA format
-///////////////////Version/////////////////////  
-            struct 						
-            {
-               u8 softversion;
-               u8 hardversion;
-            }version;
-d) Example
-Mobile APP sends data: F5 6E 00 00 5F C2
-Mobile APP receives data: F5 6E 10 02 5F DA 03 03 
-
-e) DATA analysis
-1. 03 means current software version No. is 0.3
-2. 03 means current hardware version No. is 0.3
-
-4.8 System exit
-a) Protocol
-    Command: 0x6F
-b) Command function
-  Lock exits the connection mode and enter dormant status.
-c) DATA format
-None
-d) Example
-Mobile APP sends data: F5 6F 00 00 5F C3
-Mobile APP receives data: F5 6F 10 00 5F D3 
-4.9 Alarm setting & checking
-a) Protocol
-    Command: 0x74
-b) Command function
-Set and check lock alarm status, when DATALEN=0x00, represents for checking;  when DATALEN=0x01, represents for setting.
-c) DATA format
-        u8 AlarmParameter; //Alarm status parameters: 0 means enable alarm,  1 means disable alarm.
-d) Example
-Checking: 
-Command: F5 74 00 00 5F C8
-Response: F5 74 10 01 5F DA 01
-Setting: 
-Command: F5 74 00 01 5F CA 01
-Response: F5 74 10 00 5F D8
-e) DATA analysis
-  01 means current alarm status is " disable alarm" 
-
-
-4.10 Buzzer setting & checking
-a) Protocol
-    Command: 0x75
-b) Command function
-Set and check buzzer status, when DATALEN=0x00 represents for checking; when DATALEN=0x01 represents for setting.
-c) DATA format
-        u8 BeepParameter; //Buzzer status parameters: 0 means enable buzzer  1 means disable buzzer
-d) Example
-Checking:
-Command:  F5 75 00 00 5F C9
-Response: F5 75 10 01 5F DB 01
-Setting:
-Command: F5 75 00 01 5F CB 01
-Response: F5 75 10 00 5F D9
-e) DATA analysis
-01 means current buzzer status is "disable buzzer"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Technology Change Life
-KERONG INDUSTRY (HK) CO., LIMITED
-ADD: 2nd Floor, Tonghe Industry Park, Fuping North Rd Pingdi Street, Longgang District, Shenzhen, Guangdong, China
-
-            Tel: 0755-28396063	Fax: +86-755-83117533
-
-Website: www.kerong.hk http://szkerong.en.alibaba.com/
- Email:kr30@kerong.hk
-
-
-
-
-
-
-
-			
-
-
-
-
-
-
-
-
-
-
-
-

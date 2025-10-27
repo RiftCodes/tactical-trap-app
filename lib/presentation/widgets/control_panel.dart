@@ -66,7 +66,7 @@ class ControlPanel extends StatelessWidget {
                   child: _buildControlButton(
                     icon: Icons.volume_up_rounded,
                     label: l10n.buzzer,
-                    color: DS.brandRed,
+                    color: DS.brandPrimary,
                     onTap: onToggleBuzzer,
                   ),
                 ), 

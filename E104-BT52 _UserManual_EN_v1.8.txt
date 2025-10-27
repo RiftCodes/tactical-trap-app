@@ -1,1138 +1,0 @@
-
-
-
-
-
-
-
-E104-BT52 User Manual
-
-DA14531 BLE5.0 Low Power SMD BLE to Serial Module
-
- Chengdu Ebyte Electronic Technology Co.,Ltd	E104-BT52 User Manual
-
-CONTENTS
-
-1. Overview	1
-1.1 Introduction	1
-1.2 Feature	1
-1.3 Applications	1
-2 Specification and Parameter	2
-2.1 Limit parameter	2
-2.2 Operating parameter	2
-3 Size and Pin Definition	3
-4 Basic operation	5
-4.1 Recommended circuit diagram	5
-5 Function Description	5
-5.1 Role description	5
-5.1.1 Master	6
-5.1.2 Slave	6
-5.1.3 Observer	6
-5.2 Power supply mode	7
-5.2.1 Low power consumption mode	7
-5.2.2 Wake-up mode	7
-5.3 Data transmission mode	7
-5.3.1 Data transparent transmission	7
-5.3.2 Format transmission	7
-5.4 MAC address bonding	8
-5.5 Advertising	8
-5.5.1 Common advertising info	8
-5.6 Configuration	8
-5.7 Data indication	9
-5.8 UUID description	9
-5.9 Status or event printing	9
-6 AT command	10
-6.1 Command description	10
-6.2 Error code	10
-6.3 Status printing	10
-6.4 Command sets	10
-6.4.1 AT test command	10
-6.4.2 +++ enter AT command mode	11
-6.4.3 AT+EXIT exit AT command mode	11
-6.4.4 AT+RESET reset command	11
-6.4.5 AT+RESTORE restore to factory setting	11
-6.4.6 AT+BAUD baud rate	11
-6.4.7 AT+PARI uart parity bit	12
-6.4.8 AT+DATABIT uart data bit	12
-6.4.9 AT+ROLE bluetooth role	13
-6.4.10 AT+DEVMANUF devise manufacturer	13
-6.4.11 AT+ADV enable advertising	13
-6.4.12 AT+ADVDAT advertising data	14
-6.4.13 AT+ADVINTV advertising interval	14
-6.4.14 AT+IBCNUUID iBeacon UUID command	15
-6.4.15 AT+MAJOR iBeacon Major command	15
-6.4.16 AT+MINOR iBeacon Minor command	15
-6.4.17 AT+IPWR revise ibeacn tx_power	16
-6.4.18 AT+NAME advertising device name	16
-6.4.19 AT+ CONINTV connection interval configuration	16
-6.4.20 AT+DISCON disconnect command	17
-6.4.21 AT+MAC local MAC address	17
-6.4.22 AT+CONINFO connection device info	17
-6.4.23 AT+BONDMAC add bond MAC address	18
-6.4.24 AT+BONDDEL delete bond MAC address	18
-6.4.25 AT+SCAN scan	18
-6.4.26 AT+SCANINTV scan interval	19
-6.4.27 AT+SCANWND scan window	19
-6.4.28 AT+TRANMD master transmission mode	19
-6.4.29 AT+UUIDSVR128 set service 128bit UUID	20
-6.4.30 AT+UUIDSVR Bluetooth service UUID	20
-6.4.31 AT+UUIDSLAVE SLAVE CHANNEL characteristic UUID	20
-6.4.32 AT+UUIDMAST MAST CHANNEL characteristic UUID command	21
-6.4.33 AT+AUTH Air configuration authentication password	21
-6.4.34 AT+UPAUTH modify air configuration authentication password	21
-6.4.35 AT+ONSLEEP sleep when power on	21
-6.4.36 AT+SLEEP enter sleep	22
-6.4.37 AT+LOGMSG operating status output	22
-6.4.38 AT+PWR tx power	22
-6.4.39 AT+MTU Set Bluetooth single packet length	23
-7 Quick start	23
-7.1 Configuration mode guidance	23
-7.1.1 Serial port configuration	23
-7.1.2 Configuration over air	24
-7.2 Data transmission	25
-7.2.1 Data transparent transmission	26
-7.2.2 Format transmission	27
-8 FAQ	28
-8.1 Communication distance is too short	28
-8.2 Module is easy to damage	28
-8.3 BER(Bit Error Rate) is high	28
-9 Welding instruction	29
-9.1 Reflow soldering temperature	29
-9.2 Reflow soldering curve	29
-10 Package	30
-11 Related Model	30
-Revision history	31
-About us	31
-
- Chengdu Ebyte Electronic Technology Co.,Ltd	E104-BT52 User Manual
-1. Overview
-
-1.1 Introduction
-
-
-   E104-BT52 is a serial to BLE Bluetooth master-slave integrated module based on BLE 5.0. It is small in size and low in power consumption, working at 2.4GHz.
-    E104-BT52 is developed by Chengdu Ebyte Electronic Technology Co., Ltd. based on the dialog DA14531 chip. The module uses general AT commands to set parameters, and the operation is simple and fast. The module only supports Bluetooth master, slave and observer modes. The module functionally supports low-power advertising, data transparent transmission, and air configuration. Modules can be widely used in smart wear, home automation, home security, personal health care, smart home appliances, accessories and remote controls, automobiles, lighting, industrial Internet, smart data collection, smart control and other fields. The maximum baud rate is 460800bps for data transmission.
-
-1.2 Feature
-
-* BLE 5.0 protocol;
-* Adjustable Bluetooth package length;
-* Two working modes: configuration and transparent transmission;
-* Automatic advertising and automatic connection after startup;
-* IBeacon and ordinary advertising switching;
-* Supports serial port wake-up;
-* Good for MAC binding connection, the maximum binding number is 3 devices;
-* Serial port transparent and format transmission;
-* Multiple serial port modes and baud rates;
-* Custom 16-bit UUID and 128-bit UUID available;
-* Comes with PCB onboard antenna, no external antenna is required;
-* Supports Bluetooth parameter air configuration;
-* The maximum communication distance is 90m (@2.5dBm, 1Mbps);
-* Ultra-low power sleep, simultaneous advertising;
-* Multiple masters and multiple slaves, and the maximum connection data is 2 slaves;
-* Supports transmit power modification. The maximum transmit power is 2.5dBm;
-* With sniffing function;
-* The maximum MTU is 247bytes;
-
-
-1.3 Applications
-
-* Wireless meter reading and wireless sensing;
-* Smart home;
-
-* Industrial remote control and telemetry;
-* Intelligent buildings, intelligent buildings;
-* Automatic data collection;
-* Health sensor;
-* Smart wearable devices;
-* Intelligent robot;
-* Wireless sensing;
-* Electronic label;
-* Intelligent control;
-2 Specification and Parameter
-
-2.1 Limit parameter
-
-
-Main parameterPerformance
-RemarkMinMaxPower supply(V)03.6Over 3.6V damages moduleBlocking power(dBm)
--
-10Chance of is slim when modules are used in short
-distanceOperating temperature(?)-40+85Industrial grade
-
-2.2 Operating parameter
-
-
-
-
-Main parameterPerformance
-RemarkMinTypMaxOperating voltage(V)2.13.33.6=3.3V ensures performanceCommunication level(V)-3.3-5V will damage modulesOperating temperature(?)-40-+85Industrial designOperating frequency(MHz)2402-2480For ISM band
-   Power consumptionTx current(mA)-4.0-Default parameterRx current(mA)----Sleep current(µA)-1-Default parameterTX power(dBm)-19.502.5-Receiving sensitivity(dBm)-94Air data rate 1MbpsSleep advertising current(default)9.44Unit uA, default advertising gap 1SWake-up advertising current (default)403Unit:uA, default advertising gap 1sSleep without advertising current (default)2Unit:uA, default connection gap 500ms
-
-Main parameterDescriptionRemark
-Distance
-90mIn open and clear air, weight 2.0 meter; @2.5dBm; Air data rate:
-1MbpsBLE protocolBLE5.0Communication interfaceUART-PackageSMD-Size14.5*10mm-AntennaPCB50O
-
-3 Size and Pin Definition
-
-
-
-
-NO.ItemDirectionFunctionRemark1GNDInputGround2VL---Low voltage power
-supply/3VCCInputVCCShort-circuiting to pin 4 "VH+"4VH+InputVH+Short-circuiting to pin 3"VCC"5GNDInputGround6GNDInputGround
-
-7RSTInputReset pinReset in low level(take effective in 500ms)8DIO1InputSWDIOSWDIO,JTAG interface9NC--NC/10CLKInputSWCLKSWCLK,JTAG interface11NC--NC/12GNDInputGroundGround13WKPInputWake up pinWake up:falling edge;Sleep:rising edge14TXDOutputUARTUART output15RXDInputUARTUART Input16LINKOutputLink statusLinked:high level
-Not linked:low level17DATAOutputDataData indication pin Note:
-Receive Bluetooth data:
-When the DATA pin has Bluetooth data in the air to send out through the TXD pin of BT52, the pin will be pulled high. After a frame of data is sent, the pin will be pulled low again.
-Send Bluetooth data:
-After the DATA pin receives the data on the RXD pin of BT52, the buffer BUFF size is 2K. As long as there is data in the BUFF that has not been sent out via Bluetooth, the DATA will be pulled high. It will be pulled low again until the data transmission in the BUFF is completed. The user can use the above description to do data framing.18GNDInputGroundGround
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-4 Basic operation
-
-4.1 Recommended circuit diagram
-
-
-
-
-5 Function Description
-
-5.1 Role description
-
-The module supports three roles: master, slave, and observer.
-The host supports connecting to other Bluetooth products of our company. When the module is used as a master, up to 2 slaves can be connected. Support transparent advertising and format transmission. auto connect.
-The module slave can connect with other models of our company's Bluetooth products to support transparent
-
-
-transmission.
-The observer is only used to print the advertising information of the ble devices around the module and cannot be connected.
-5.1.1 Master
-
-1. AT+ROLE=1 select master mode
-
-2. Command AT+SCAN=1, start master scanning function
-
-3. Support multi-master and multi-slave connection. Up to 2 slaves can be connected.
-
-4. Print status information when the host connection status changes. See status printing.
-
-5.1.1.1 Master connection method
-
-Condition filtering
-The device can be configured to filter by binding MAC address and service UUID.
-UUID filtering is based on the content filtering configured by AT+UUIDSVR, and the filtering conditions cannot be turned off. If MAC address filtering is not enabled, the MAC will match and the service UUID will automatically connect to the slave.
-If users need MAC address filtering, add MAC addresses to the device through AT+BONDMAC. After the master scans the slave, if it is the same as the binding list MAC address and service UUID, the master automatically connects to the slave device.
-Auto connection
-After the conditions are met, the slave is automatically connected.
-5.1.2 Slave
-1. AT+ROLE=0 select slave mode
-2. AT+ADV=1 to configure normal advertising mode
-3. The advertising switch is configured to be on, and it will automatically enter the advertising state after power-on, otherwise the advertising device will not be found.
-4. After receiving the host connection request, establish a Bluetooth connection to stop Bluetooth advertising and enter the data transmission mode.
-5. For advertising data configuration, see 5.5 Advertising.
-5.1.3 Observer
-1. Command AT+ROLE=2 to select the observation mode (valid after restart)
-2. After receiving the advertising, print out all the contents of the advertising package through the serial port.
-3. The observer device cannot be connected to any device. Check format below
-LENMACRSSIAdvdata1 byte6 byte1 byteNo more than 31 byteNote: LEN is the sum of MAC, RSSI, and advertising data length.
-1. The scan window and scan gap are consistent with the scan parameters.
-2. The AT command is valid during the period.
-
-
-5.2 Power supply mode
-
-There are low power consumption mode and wake-up mode.
-5.2.1 Low power consumption mode
-     The so-called low power consumption mode means that the BLE function continues to run after the module enters this mode, and peripherals other than the wake-up pin of the module are turned off. If you need lower power consumption, you can turn off advertising and scan through AT commands, disconnect all connections, and set a longer advertising gap, scan gap, and connection gap.
-Enter low power consumption:
-1. AT command "AT+SLEEP" immediately enters low power consumption mode;
-2. AT command "AT+ONSLEEP=1" power on immediately enters low power consumption;
-3. Enter low power consumption through the rising edge of pin WKP;
-     After the module enters the low power consumption mode, it outputs "STA: sleep" through the serial port (LOGMSG does not turn off the output).
-Note: In the low-power mode, the serial port output is valid and cannot be input
-5.2.2 Wake-up mode
-The so-called wake-up mode means that the peripherals required by the module are in a normal working state in this mode. After the module wakes up, it outputs the status "STA: wakeup".
-Wake-up method:
-1. Wake up immediately through the falling edge of WKP pin;
-2. The serial port RX pin wakes up. The serial port rx falling edge, and the low level remains at 50us and above, wake up immediately.
-
-5.3 Data transmission mode
-
-There are data transparent transmission and format transmission.
-5.3.1 Data transparent transmission
-    The so-called data transparent transmission means that the data received by the serial port is sent to the other device through BLE without any processing, and the data received by BLE is sent through the serial port without any processing.
-"AT+TRANMD" command setting.
-5.3.2 Format transmission
-     The so-called format transmission refers to: the data sent to the module through the serial port and the data through the serial port of the module must conform to the defined format for transmission.
-The serial port sends "AT+TRANMD=0" to the device to switch the device to format transmission. The data format is as
-Slave No.Valid data1byteMax:243bytes0~1
- Slave number: 0~1 is the target device number. This number comes from the "STA:connect,1<mac>" printed by the device after the successful connection between the slave and the master.
-If the connection specified by the slave number does not exist, the module directly discards the packet data.
-
-
-5.4 MAC address bonding
-
-The module supports MAC address binding. If the MAC address binding function is enabled. The device only connects to devices with added MAC addresses.
-
-5.5 Advertising
-
-5.5.1 Common advertising info.
-
-The advertising information includes advertising and scan respone. Advertising is a broadcast report sent actively, and scan respone is a broadcast report that is responded to after receiving a host scan request.
-
-Advertising
-
-
-Fixed fieldLenManufacturing fieldManufa data020106N0xFFconfigurable,maximum 26 byteFor example:020106< Len >FF< Manufa data >
-Only Manufa data is configurable by users.
-
-
-Scan response
-
-
-LenfixedUUIDLenfixedDevice name0x030x03FFF0N0x09configurable,
-maximum 22 byteFor example :0303FFF0<len>09< Device name >
-Note: Users do not need configurate it.
-iBeacon info.
-1. Instructions to configure UUID, Major, Minor respectively
-2. Command AT+ADV=2 to configure to work in iBeacon broadcast mode and broadcast immediately
-3. Bluetooth connection is not supported in iBeacon broadcast mode Advertising
-iBeacon PrefixUUIDMajorMinorTx-Power9B16B2B2B1BFor example:0201061AFF4C000215FDAFDA50693A4E24FB1AFCFC6EB076478252775848F00
-
-5.6 Configuration
-
-There are two configuration methods: serial port configuration and air configuration. The two configuration methods are basically the same. Before the air configuration, the authentication password of AT+AUTH=123456 must be passed. After the authentication is passed, the module is allowed to use the air configuration. The air configuration authentication cycle is this connection, and re-authentication is required if the device is disconnected and reconnected.
-
-
-The module is not connected by default in configuration mode, if the module is connected, you can enter the configuration mode by sending "+++".
-
-5.7 Data indication
-
-     When the module outputs data through the serial port, the module sets the DATA pin to low level, indicating that data is being sent. AT command response does not change the DATA pin state.
-
-
-
-5.8 UUID description
-
-
-
-
-Service UUIDFFF0(configurable)characteristic valueUUIDpropertydescriptionSLAVE CHANNELFFF1(configurable)read / notifyThe slave sends the data, and the master
-receives the data channel.MAST CHANNELFFF2( configurable)read / writeThe master sends data and the slave receives
-data channelsCONFIG CHANNELFFF3(not
-configurable)read / write / notifyAir configuration channel5.9 Status or event printing
-
-Command AT+LOGMSG to enable the serial port printing function of status information. Status information includes: connected, disconnected, awake, and sleep. The format is as follows:
-
-
-
-6 AT command
-
-Note: Before sending operation instructions, first ensure that the module is in wake-up mode, otherwise it will not be able to receive configuration instructions.
-
-6.1 Command description
-
-All AT commands do not need to add carriage return (\r), line feed (\n) All AT commands are not case sensitive
-The return result of AT command ends with \r\n (except for returning HEX) Command error response format +ERR=[NUM]. (NUM is ACSII)
-
-6.2 Error code
-
-
-NUMDescriptionError reasonSolution1Command not existAT command string contains errorCheck AT specified data string
-2
-Parameter length error1? AT command length sum error;
-2?Data length is beyond the correct range
-Check parameter3Invalid parameter1?Parameter exceed value rangeCheck	the	parameter	value
-according to the command
-
-6.3 Status printing
-
-
-StatusPrinting info.Connect successfullyslave\r\nSTA:connect,1,<MAC\r\nmaster\r\nSTA:connect,1,<MAC\r\nDisconnectslave\r\nSTA:disconnect\r\nmaster\r\nSTA:disconnect,1\r\nSystem wake up\r\nSTA:wakeup\r\nSleep mode\r\nSTA:sleep\r\n
-6.4 Command sets
-
-6.4.1 AT test command
-
-
-CommandResponse
-
-AT+OKNote: none
-6.4.2 +++ enter AT command mode
-
-
-CommandResponse+++enter_at_modeNotes:When disconnected, the module is in AT mode by default and there is no response when sending this command; you need to
-use this command to enter AT mode when module is connected.
-
-6.4.3 AT+EXIT exit AT command mode
-
-
-CommandResponseAT+EXIT+OKNotes: None
-
-
-
-
-
-6.4.4 AT+RESET reset command
-
-
-CommandResponseAT+RESET+OKNote:take effect immediately
-6.4.5 AT+RESTORE restore to factory setting
-
-
-CommandResponseAT+RESTOREOKNote:
-1. After resetting, it will restart automatically;
-2. During the process of restoring factory settings, any form of reset is prohibited, and the power off before the operation is completed is prohibited;
-6.4.6 AT+BAUD baud rate
-
-
-CommandResponseInquiryAT+BAUD?+OK=[para]
-
-
-Set
-AT+BAUD=[para]+OK:success
-+ERR=[NUM]:error
-
-
-
-
-
-
-
-
-
-
-
-ParameterNoteTake effect immediately
-For example,AT+BAUD=10. Baud rate is 115200
-HEX: 41,54,2B,42,41,55,44,3D,31,30
-6.4.7 AT+PARI uart parity bit
-
-
-CommandResponseInquiryAT+PARI?+OK=[para]
-Set
-AT+PARI=[para]+OK:success
-+ERR=[NUM]:error
-
-ParameterNoteRestart to take effect, save when power offFor example,AT+PARI=0
-
-6.4.8 AT+DATABIT uart data bit
-
-
-CommandResponseInquiryAT+DATABIT?+OK=[para]
-
-
-Set
-AT+PARI=[para]+OK:success
-+ERR=[NUM]:error
-
-
-Parameterpara(ASCII)Description05 data bit16 data bit27 data bit38 data bitNoteRestart to take effect, save when power offFor example,AT+PARI=0
-
-6.4.9 AT+ROLE bluetooth role
-
-
-CommandResponseInquiryAT+ROLE?+OK=[para]
-Set
-AT+ROLE =[para]+OK:success
-+ERR=[NUM]:error
-
-
-ParameterPara(ASCII)Description0Slave(default)1Master2Observer3Salve and master as oneNoteRestart to take effect, save when power off
-6.4.10 AT+DEVMANUF devise manufacturer
-
-
-CommandResponseInquiryAT+DEVMANUF?+OK=[para]
-Set
-AT+DEVMANUF =[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara( string): MANUF name Default:CDEBYTE;
-Note1. Restart to take effect, save when power off
-2. Maximum string length is 32bytes
-
-6.4.11 AT+ADV enable advertising
-
-
-
-
-InquiryAT+ADV?+OK=[para]
-Set
-AT+ADV=[para]+OK:success
-+ERR=[NUM]:error
-
-
-Parameterpara(ASCII)	Description
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off;
-2. The slave or master-slave integrated supports broadcasting.
-6.4.12 AT+ADVDAT advertising data
-
-
-CommandResponseInquiryAT+ADVDAT?+OK=[para]
-SetAT+ADVDAT=[para]+OK:success+ERR=[NUM]:error
-Parameterpara(HEX):
-1?For ASCII?HEX
-2?Length is less than 26 bytes.
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time). Save when power off;
-2. The slave or master-slave integration supports broadcasting, and other roles can still be configured;
-For example,Command:41 54 2b 41 44 56 44 41 54 3d 31 32 33 34 35 36 37 38 39 30;
-Adv data:31 32 33 34 35 36 37 38 39 30
-6.4.13 AT+ADVINTV advertising interval
-
-
-CommandResponseInquiryAT+ADVINTV?+OK=[para]
-Set
-AT+ADVINTV=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(ASCII):20~10240
-default:1000(1S)
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off
-2. The slave or master-slave integrated supports broadcasting, other roles can still be configured;For example,AT+ADVINTV=1000
-
-6.4.14 AT+IBCNUUID iBeacon UUID command
-
-
-CommandResponseInquiryAT+IBCNUUID?+OK=[para1]
-Set
-AT+IBCNUUID=[para]+OK:success
-+ERR=[NUM]:errorParameterpara(HEX):16 bit UUID
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off
-2. The slave or master-slave integrated supports broadcasting, other roles can still be configured;
-For example,Set iBeacon UUID as "FDA50693A4E24FB1AFCFC6EB07647825"
-41 54 2B 49 42 43 4E 55 55 49 44 3DFDA50693A4E24FB1AFCFC6EB07647825
-6.4.15 AT+MAJOR iBeacon Major command
-
-
-CommandResponseInquiryAT+MAJOR?+OK=[para]
-Set
-AT+MAJOR=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(HEX): 0X0001-0XFFFF
-default:
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off;
-2. Only the slave device supports broadcasting, other roles can still be configured;
-
-6.4.16 AT+MINOR iBeacon Minor command
-
-
-CommandResponseInquiryAT+Minor?+OK=[para]
-Set
-AT+Minor=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(ACSII): 0X0001-0XFFFF
-default:
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off;
-2. Only the slave device supports broadcasting, other roles can still be configured;
-
-
-
-CommandResponseInquiryAT+IPWR?+OK=[para]
-Set
-AT+ IPWR =[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(HEX): 0-0XFF
-default:0
-Note1. Take effect immediately (if the broadcast is not turned on, or it is connected, it will take effect next time), save when power off;
-2. Only the slave device supports broadcasting, other roles can still be configured;
-6.4.18 AT+NAME advertising device name
-
-
-CommandResponseInquiryAT+NAME?+OK=[para]SetAT+NAME=[para]+OK:success
-+ERR=[NUM]:errorSet
-(Do not save)
-AT+NAME1=[para]
-Parameterpara(HEX): advertising device name, advertising name is not more than 22 bytes
-default:E104-BT52-V1.0
-Note1. Take effect immediately, save when power off;
-2. Only supported by the slave, other roles can still be configured;
-6.4.19 AT+ CONINTV connection interval configuration
-
-
-CommandResponseInquiryAT+CONINTV?+OK=[ para]
-Set
-AT+CONINTV =[para]+OK:success
-+ERR=[NUM]:error
-Parameter[para](ASCII) : connection interval,value range,10~2500;
-Default:20msNoteTake effect immediately, save when power off.
-Note1. The connection timeout must be greater than the connection gap;
-2. The device with incorrect parameters will not receive and save.
-3. It is not recommended to modify the host connection gap.
-For example,AT+CONINTV=20
-Connection interval 20ms
-
-
-
-CommandResponseSet
-(only master)
-AT+DISCON=[para]+OK:success
-+ERR=[NUM]:error
-Disconnect all
-AT+DISCON+OK:success
-+ERR=[NUM]:error
-
-Parameter
-Note1?Take effect immediately
-2?if it is not connected, the modules will return index device no connect
-6.4.21 AT+MAC local MAC address
-
-
-CommandResponseInquiryAT+MAC?+OK=[para]
-Parameterpara(HEX):MAC address
-For example:F0E1D2C3B4A5NoteTake effect immediately, save when power off.
-For example,command:AT+MAC?
-Return:2B 4F 4B 3D FE 30 EE 50 35 DA
-Explain:local MAC address is FE 30 EE 50 35 DA
-
-6.4.22 AT+CONINFO connection device info.
-
-
-CommandResponse
-Inquiry
-AT+CONINFO?+OK=[para]:success
-+ERR=[NUM]: error
-Parameterpara(ASCII): connected device role + connected device MAC address + handle for sending data to connected device
-NoteEffective immediately. The handle that sends data to the connected device is only valid when our device is the
-master.
-For example,command:AT+CONNIFO?
-Return:
-
-
-
-CommandResponseInquiryAT+BONDMAC?+OK=[sum][ [mac] [mac]...]
-Set
-AT+BONDMAC=[mac]+OK:success
-+ERR=[NUM]:error
-Parametersum(HEX): sum of current bond MAC address;
-mac(HEX):6bytes mac address;NoteTake effect immediately, save when power off.
-
-
-For example,Inquiry:AT+BONDMAC?
-Return:  B 4F 4B 3D 03 CC 34 27 1A 0C D4 3D AC 82 16 0F 58 D2 D4 C3 07 0E C4Set:41 54 2B 42 4F 4E 44 4D 41 43 3D CC 34 27 1A 0C D4
-Return:+OK
-6.4.24 AT+BONDDEL delete bond MAC address
-
-
-CommandResponse
-Set
-AT+BONDDEL=[mac]+OK
-+ERR=[NUM]Parametermac:6 bytes mac address
-Note1? Take effect immediately, save when power off
-2? Delete specific mac address
-6.4.25 AT+SCAN scan
-
-
-CommandResponseInquiryAT+SCAN?+OK=[para]
-Set
-AT+SCAN=[para]+OK:success
-+ERR=[NUM]:error
-
-
-Parameter
-
-Note1? Take effect immediately, save when power off
-
-2. If the current number of master connections has reached the maximum, then no longer start scanning;
-3. Scan enable and disable take effect in roles other than the slave.
-
-
-
-CommandResponseInquiryAT+SCANINTV?+OK=[para]
-Set
-AT+SCANINTV=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(ASCII):20~6000
-default:100
-Note1. Take effect immediately, save when power off
-2. The scanning interval is not less than the scanning window
-3. The slave does not support it, but it can still be set
-For example,AT+SCANINTV=120
-Scan interval:120*0.625 = 75ms
-6.4.27 AT+SCANWND scan window
-
-
-CommandResponseInquiryAT+SCANWND?+OK=[para]
-Set
-AT+SCANWND=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(ASCII): 20~65535
-default:80;
-Note1. Take effect immediately, save when power off
-2. The scanning interval is not less than the scanning window
-3. The slave does not support it, but it can still be set
-For example,AT+SCANWND=20
-Scan window:20*0.625 = 12.5ms
-6.4.28 AT+TRANMD master transmission mode
-
-
-CommandResponseInquiryAT+TRANMD?+OK=[para]
-Set
-AT+ TRANMD =[ para]+OK:success
-+ERR=[NUM]:error
-
-Parameter
-para(ASCII)	description
-0	Not transparent transmission(default)
-1	Transparent transmissionNote1? Take effect immediately, save when power off
-
-
-
-CommandResponseInquiryAT+UUIDSVR128?+OK=[para]
-Set
-AT+ UUIDSVR128=[para]+OK:success
-+ERR=[NUM]:errorParameterpara(HEX):16 bit uuid.
-
-
-Note1? Take effect immediately, save when power off
-2? The second and third byte are16 bit uuid, range from 1~65535;
-3? The 128 bits UUID, except for the second and third bytes, is also used for the basic UUID of the slave channel, the master channel, and the configuration channel. (For
-the description of uuid, refer to "BLUETOOTH SPECIFICATION Version 5.0 |
-Vol 3, Part B 2.5.1 UUID»).
-
-For example,Set 128bit UUID:
-"11 22 33 44 55 66 77 88 99 00 aa bb cc dd ee ff"(HEX) AT command is(HEX):
-61 74 2b 75 75 69 64 73 76 72 31 32 38 3d 11 22 33 44 55 66 77 88 99 00 aa bb cc dd ee ff
-6.4.30 AT+UUIDSVR Bluetooth service UUID
-
-
-CommandResponseInquiryAT+UUIDSVR?+OK=[para]
-Set
-AT+UUIDSVR=[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(HEX):0-FFFF
-default:FFF0
-Note1?Take effect immediately, save when power off
-2?For the master, the service UUID is a necessary condition for connection filtering, so when setting the master service UUID, it must be consistent with the slave, otherwise the connection cannot be established.
-6.4.31 AT+UUIDSLAVE SLAVE CHANNEL characteristic UUID
-
-
-CommandResponseInquiryAT+UUIDSLAVE?+OK=[para]
-SetAT+UUIDSLAVE=
-[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(HEX): 0-FFFF
-Default:FFF1
-Note1. Take effect immediately, save when power off
-2. Slave channel. Used to send data from the slave and receive data from the master.
-
-6.4.32 AT+UUIDMAST MAST CHANNEL characteristic UUID command
-
-
-CommandResponseInquiryAT+UUIDMAST2?+OK=[para]
-SetAT+UUID CHARA2=
-[para]+OK:success
-+ERR=[NUM]:error
-Parameterpara(HEX): 0-FFFF;
-Default:FFF2
-Note1? Take effect immediately, save when power off
-2? Master channel. The master sends data and the slave receives data.
-6.4.33 AT+AUTH Air configuration authentication password
-
-
-CommandResponse
-SetAT+AUTH =[para]+OK:success
-+ERR=[NUM]:errorParameterpara(HEX): 6 byte password
-Note1? Only for air configuration authentication password
-2?  Default password:123456For
-example,AT+AUTH=123456
-6.4.34 AT+UPAUTH modify air configuration authentication password
-
-
-CommandResponseInquiryAT+UPAUTH?+OK=[para]
-Set
-AT+UPAUTH =[para]+OK:success
-+ERR=[NUM]:errorParameterpara(HEX): 6 byte passwordNoteTake effect immediately, save when power off
-6.4.35 AT+ONSLEEP sleep when power on
-
-
-CommandResponseInquiryAT+ONSLEEP?+OK=[para]
-Set
-AT+ONSLEEP =[para]+OK:success
-+ERR=[NUM]:error
-
-
-
-
-ParameterNoteTake effect immediately, save when power off
-6.4.36 AT+SLEEP enter sleep
-
-
-CommandResponseSetAT+SLEEP+OKParameterNoneNoteTake effect immediately
-6.4.37 AT+LOGMSG operating status output
-
-
-
-CommandResponseInquiryAT+LOGMSG?+OK=[para]
-Set
-AT+LOGMSG =[para]+OK:success
-+ERR=[NUM]:error
-
-
-ParameterNoteTake effect immediately, save when power off
-
-6.4.38 AT+PWR tx power
-
-
-CommandResponseInquiryAT+ PWR?+OK=[para]
-Set
-AT+ PWR =[para]+OK:success
-+ERR=[NUM]:error
-
-
-Parameterpara(ASCII)Description02.5 dBm11.5 dBm20 dBm(default)3-2 dBm4-5 dBm
-
-5-7 dBm6-13.5 dBm7-19.5 dBmNoteTake effect immediately, save when power off
-
-6.4.39 AT+MTU Set Bluetooth single packet length
-
-
-CommandResponseInquiryAT+ MTU?+OK=[para]
-Set
-AT+MTU =[para]+OK:success
-+ERR=[NUM], errorParameterPara  MTU  value, Min is 23,max is 247.NoteTake effect immediately, save when power off
-
-
-
-7 Quick start
-
-Software for debugging and parameter setting:
-> PC serial tool - AccessPort.exe;
-> Phone ble debugging APP	- nRF connect
-
-7.1 Configuration mode guidance
-
-7.1.1 Serial port configuration
-
-> Confirm whether the module is currently in configuration mode (if not connected, the module can be configured, if it is connected, you need to send "+++" through the serial port
-> Set AccessPort. string related configuration (default configuration: 115200, 8, 1, none, no flow empty), as shown below AccessPort. parameter configuration diagram;
-
-
-
-
-> Configure it according to AT command.
-
-7.1.2 Configuration over air
-
-> Only for module that works as a slave.
-> Open app "nRF connect", start scanning,find "E104-BT52" and connect to it.
-nRF connect scanning list
-> Open uuid-fff0 service,Enable configuration channel: notify;
-
-
-
-nRF connect?Enable configuration channel: notify
-> Send authenticate command(at+auth=12345),module returns "0x2befeb0d0a" means success;
-
-
-
-
-
-
-
-
-
-
-
-
-Over air configuration authentication
-> Configure module according to 6.4 command table.
-
-7.2 Data transmission
-
-> For data transmission related instructions, see 5.3 Data Transmission Mode. Test Conditions:
-> Configure one module as the master and one as the slave as described in the quick use guide for AT command list configuration mode;
-> Software: AccessPort.
-
-> Other parameters are the default configuration.
-
-7.2.1 Data transparent transmission
-
-1. Power on the module. Enable logmsg printing for master and slave (at+logmsg=1);
-2. Set the module to transparent transmission mode (AT+TRANMD=1).
-3. After the host is successfully connected, it will print "sta: connecte 0 616263646564"; the slave will print sta: connecte 0 616263646566". The LINK pin is high. As shown below, the host is automatically connected and printed: The slave is powered on The automatic connection printing is shown in the figure. The value before the MAC address in the host print information is the slave handle in the host, and the first byte of the format transmission comes from this.
-
-
-
-
-
-
-
-
-
-The master auto connects and prints once powered on
-
-The slave auto connects and prints once powered on
-1. The master sends data "0123456789" to the slave,the slave receives "0123456789", as shown below;
-2. The slave sends data "abcdefghijk" to the master,the master receives "abcdefghijk", as shown below;
-
-
-
-
-The master sends transparent data
-
-7.2.2 Format transmission
-
-1. Same as Step 1 of 7.2.1 Data Transparent Transmission;
-2. Set to format transmission (default format transmission, set command "AT+TRANMD=0")
-3. Same as Step 3 of 7.2.1 Data Transparent Transmission;
-4. The effective data sent by the master to the slave is "123456789" (ASCII). The format transmission data is packed "00 30 31 32 33 34 35 36 37 38 39" (HEX). At this time, the data received by the slave is "123456789" ("30
-31 32 33 34 35 36 37 38 39"). Such
-as
-
-5	The slave sends the data "11 22 33 44 55 66 77 88 99" (hex) to the master, and the data received by the master
-is "11 22 33 44 55 66 77 88 99" (HEX), as long as the format transmission is turned on. The first byte is sending IDX. Both the host and the slave can use different transmission modes but the input needs to meet the transmission rules.
-
-
-8 FAQ
-
-8.1 Communication distance is too short
-
-* The communication distance will be affected when obstacle exists;
-* Data lose rate will be affected by temperature, humidity and co-channel interference;
-* The ground will absorb and reflect wireless radio wave, so the performance will be poor when testing near ground;
-* Sea water has great ability in absorbing wireless radio wave, so performance will be poor when testing near the sea;
-* The signal will be affected when the antenna is near metal object or put in a metal case;
-* Power register was set incorrectly, air data rate is set as too high (the higher the air data rate, the shorter the distance);
-* The power supply low voltage under room temperature is lower than recommended value, the lower the voltage, the lower the transmitting power;
-* Due to antenna quality or poor matching between antenna and module.
-
-8.2 Module is easy to damage
-
-* Please check the power supply source, ensure it is between the recommended supply voltage, voltage higher than the maximum will damage the module.
-* Please check the stability of power source, the voltage cannot fluctuate too much;
-* Please make sure antistatic measure are taken when installing and using, high frequency devices have electrostatic susceptibility;
-* Please ensure the humidity is within limited range, some parts are sensitive to humidity;
-* Please avoid using modules under too high or too low temperature.
-
-8.3 BER(Bit Error Rate) is high
-
-* There are co-channel signal interference nearby, please be away from interference sources or modify frequency and channel to avoid interference;
-* Poor power supply may cause messy code. Make sure that the power supply is reliable;
-* The extension line and feeder quality are poor or too long, so the bit error rate is high.
-
-
-9 Welding instruction
-
-9.1 Reflow soldering temperature
-
-Profile FeatureSn-Pb AssemblyPb-Free AssemblySolder PasteSn63/Pb37Sn96.5/Ag3/Cu0.5Preheat Temperature min (Tsmin)100?150?Preheat temperature max (Tsmax)150?200?Preheat Time (Tsmin to Tsmax)(ts)60-120 sec60-120 secAverage ramp-up rate(Tsmax to Tp)3?/second max3?/second maxLiquidous Temperature (TL)183?217?Time(tL)Maintained Above(TL)60-90 sec30-90 secPeak temperature(Tp)220-235?230-250?Aveage ramp-down rate(Tp to Tsmax)6?/second max6?/second maxTime 25? to peak temperature6 minutes  max8 minutes  max9.2 Reflow soldering curve
-
-
-
-
-
-
-
-
-
-11 Related Model
-
-
-
-Model No.
-Chip
-Frequency HzTX
-power dBmCommuni cation
-interface
-Protocol BLE
-Size mm
-Antenna
-Feature
-E72-2G4M05S1B
-CC2640
-2.4G
-5
-I/O
-4.2
-17.5*28.
-7
-PCB/IPXHardware	 resources, requires	secondary
-development
-E73-2G4M04S1A
-nRF52810
-2.4G
-4
-I/O
-4.2/5.0
-17.5*28.
-7
-PCB/IPXHardware	 resources, requires	secondary
-development
-E73-2G4M04S1B
-nRF52832
-2.4G
-4
-I/O
-4.2/5.0
-17.5*28.
-7
-PCB/IPXHardware	 resources, requires	secondary
-development
-E73-2G4M08S1C
-nRF52840
-2.4G
-8
-I/O
-4.2/5.0
-13*18
-PCB/IPXHardware	resources,
-requires	secondary development
-E73-2G4M04S1D
-nRF51822
-2.4G
-4
-I/O
-4.2
-17.5*28.
-7
-PCB/IPXHardware	 resources, requires	secondary
-development
-E104-BT01
-CC2541
-2.4G
-0
-I/O
-4.0
-14*22
-PCBHardware	resources,
-requires	secondary development
-
-
-
-E104-BT02
-
-DA14580
-
-2.4G
-
-0
-
-TTL
-
-4.2
-
-14*22
-
-PCBThe lowest power, High	speed
-continuous
-transmission, Sniff
-E72-2G4M04S2B
-CC2640
-2.4G
-2
-TTL
-4.2
-14*23
-PCB/IPXBuilt-in ARM dual core
-Multiple role mode
-E104-2G4U04A
-CC2540
-2.4G
-0
-USB
-4.0
-18*59
-PCBDongle
-Protocol Analyzer
-E104-BT5010A
-nRF52810
-2.4G
-0
-UART
-5.0
-11.5 * 16
-ceramic antennaLow	power,
-transparent transmission
-
-
-
-Revision history
-
-
-VersionDateDescriptionIssued by1.0Frist version1.12020-07-24Format modificationRen1.22020-08-20Add commandRen1.32020-09-25Add commandRen1.52021-04-21Ren1.62021-05-06Ren
-
-About us
-
-Technical support: support@cdebyte.com
-Documents and RF Setting download link::www.ebyte.com
-Thank you for using Ebyte products! Please contact us with any questions or suggestions: info@cdebyte.com
-
-Official hotline:028-61399028 Web: www.ebyte.com
-Address:	B5 Mould Park, 199# Xiqu Ave, High-tech District, Sichuan, China
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

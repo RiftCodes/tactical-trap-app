@@ -135,7 +135,7 @@ class _PinProtectionState extends State<PinProtection>
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: DS.brandRed,
+                  color: DS.brandPrimary,
                   borderRadius: BorderRadius.circular(40),
                 ),
                 child: Icon(Icons.lock, color: Colors.white, size: 40),
@@ -179,10 +179,10 @@ class _PinProtectionState extends State<PinProtection>
                     width: 16,
                     height: 16,
                     decoration: BoxDecoration(
-                      color: isFilled ? DS.brandRed : Colors.transparent,
+                      color: isFilled ? DS.brandPrimary : Colors.transparent,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isFilled ? DS.brandRed : Colors.grey[400]!,
+                        color: isFilled ? DS.brandPrimary : Colors.grey[400]!,
                         width: 2,
                       ),
                     ),
@@ -203,7 +203,7 @@ class _PinProtectionState extends State<PinProtection>
                   width: double.infinity,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: DS.brandRed,
+                    color: DS.brandPrimary,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Material(

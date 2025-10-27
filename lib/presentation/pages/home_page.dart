@@ -19,6 +19,7 @@ import '../widgets/device_card.dart';
 import '../widgets/glass_background.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/glass_pin_dialog.dart';
+import '../widgets/textured_background.dart';
 
 /// Main home page for the Tactical Traps BLE Lock App
 class HomePage extends StatefulWidget {
@@ -319,7 +320,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (bleProvider.isAutoReconnecting || bleProvider.isVerifyingPin) {
       return Stack(
         children: [
-          const GlassBackground(),
+          GlassBackground(useTexture: true, textureType: TextureType.lines),
           Center(child: _buildFullscreenLoader(context, bleProvider)),
         ],
       );
@@ -327,7 +328,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     return Stack(
       children: [
-        const GlassBackground(),
+        GlassBackground(useTexture: true, textureType: TextureType.lines),
         SingleChildScrollView(
           child: Column(
             children: [
@@ -392,14 +393,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                           width: 64,
                                           height: 64,
                                           decoration: BoxDecoration(
-                                            color: DS.brandRed.withValues(
+                                            color: DS.brandPrimary.withValues(
                                               alpha: 0.1,
                                             ),
                                             borderRadius: BorderRadius.circular(
                                               32,
                                             ),
                                             border: Border.all(
-                                              color: DS.brandRed.withValues(
+                                              color: DS.brandPrimary.withValues(
                                                 alpha: 0.3,
                                               ),
                                               width: 2,
@@ -409,7 +410,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                             child: Icon(
                                               Icons.lock_outline_rounded,
                                               size: 32,
-                                              color: DS.brandRed,
+                                              color: DS.brandPrimary,
                                             ),
                                           ),
                                         ),
@@ -424,7 +425,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                             strokeWidth: 3,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                                  DS.brandRed,
+                                                  DS.brandPrimary,
                                                 ),
                                             backgroundColor: isDark
                                                 ? Colors.white.withValues(
@@ -763,10 +764,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       padding: EdgeInsets.all(DS.s),
       margin: EdgeInsets.symmetric(horizontal: DS.m),
       decoration: BoxDecoration(
-        color: !bleProvider.isScanning ? Colors.blue[600] : DS.brandRed,
+        color: !bleProvider.isScanning ? Colors.blue[600] : DS.brandPrimary,
         borderRadius: BorderRadius.circular(DS.rSmall),
         border: Border.all(
-          color: !bleProvider.isScanning ? Colors.blue[700]! : DS.brandRed,
+          color: !bleProvider.isScanning ? Colors.blue[700]! : DS.brandPrimary,
           width: 1,
         ),
       ),
@@ -1232,10 +1233,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: DS.brandRed.withValues(alpha: 0.1),
+                    color: DS.brandPrimary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(32),
                     border: Border.all(
-                      color: DS.brandRed.withValues(alpha: 0.3),
+                      color: DS.brandPrimary.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -1244,7 +1245,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     child: Icon(
                       Icons.lock_outline,
                       size: 30,
-                      color: DS.brandRed,
+                      color: DS.brandPrimary,
                     ),
                   ),
                 ),
@@ -1256,7 +1257,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   height: 32,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(DS.brandRed),
+                    valueColor: AlwaysStoppedAnimation<Color>(DS.brandPrimary),
                   ),
                 ),
                 SizedBox(height: DS.m),

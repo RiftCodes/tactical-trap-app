@@ -261,11 +261,11 @@ class DeviceCard extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: isConnected ? DS.brandRed : DS.info,
+        color: isConnected ? DS.brandPrimary : DS.info,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: (isConnected ? DS.brandRed : DS.info).withValues(
+            color: (isConnected ? DS.brandPrimary : DS.info).withValues(
               alpha: 0.25,
             ),
             blurRadius: 6,

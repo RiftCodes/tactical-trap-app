@@ -116,11 +116,11 @@ class _AppInitializerState extends State<AppInitializer> {
                   width: DS.xl * 3,
                   height: DS.xl * 3,
                   decoration: BoxDecoration(
-                    color: DS.brandRed,
+                    color: DS.brandPrimary,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: DS.brandRed.withOpacity(0.3),
+                        color: DS.brandPrimary.withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -153,7 +153,7 @@ class _AppInitializerState extends State<AppInitializer> {
                   height: 32,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(DS.brandRed),
+                    valueColor: AlwaysStoppedAnimation<Color>(DS.brandPrimary),
                   ),
                 ),
 
@@ -225,7 +225,7 @@ class _AppInitializerState extends State<AppInitializer> {
                       _initializeApp();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: DS.brandRed,
+                      backgroundColor: DS.brandPrimary,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                         horizontal: DS.xl,

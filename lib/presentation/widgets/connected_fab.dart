@@ -65,7 +65,7 @@ class ConnectedBottomSheet extends StatelessWidget {
                                   : l10n.unlock.toUpperCase()),
                         color: isProcessingCommand
                             ? DS.brandDark
-                            : (!isLocked ? DS.brandRed : DS.success),
+                            : (!isLocked ? DS.brandPrimary : DS.success),
                         isLoading: isProcessingCommand,
                         onTap: isProcessingCommand
                             ? null // Completely disable during processing

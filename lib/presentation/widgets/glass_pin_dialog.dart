@@ -128,7 +128,11 @@ class _GlassPinDialogState extends State<GlassPinDialog>
             children: [
               SizedBox(width: 28),
               const Spacer(),
-              Icon(Icons.lock_outline_rounded, color: DS.brandRed, size: 24),
+              Icon(
+                Icons.lock_outline_rounded,
+                color: DS.brandPrimary,
+                size: 24,
+              ),
               const Spacer(),
               Container(
                 width: 24,
@@ -169,7 +173,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
             style: TextStyle(
               fontSize: DS.textSM,
               fontWeight: FontWeight.w600,
-              color: DS.brandRed,
+              color: DS.brandPrimary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -192,19 +196,19 @@ class _GlassPinDialogState extends State<GlassPinDialog>
             height: 32,
             decoration: BoxDecoration(
               color: hasDigit
-                  ? DS.brandRed.withValues(alpha: 0.1)
+                  ? DS.brandPrimary.withValues(alpha: 0.1)
                   : (isDark
                         ? Colors.white.withValues(alpha: 0.05)
                         : DS.lightBorder),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: hasDigit ? DS.brandRed : DS.getBorderColor(context),
+                color: hasDigit ? DS.brandPrimary : DS.getBorderColor(context),
                 width: 1,
               ),
             ),
             child: Center(
               child: hasDigit
-                  ? Icon(Icons.circle, color: DS.brandRed, size: 12)
+                  ? Icon(Icons.circle, color: DS.brandPrimary, size: 12)
                   : null,
             ),
           );
@@ -263,7 +267,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
     final isOK = key == l10n.ok;
 
     final buttonColor = isOK && _pin.length == 4
-        ? DS.brandRed
+        ? DS.brandPrimary
         : (isDark ? Colors.white.withValues(alpha: 0.1) : DS.lightBorder);
 
     final contentColor = isOK && _pin.length == 4
@@ -284,7 +288,7 @@ class _GlassPinDialogState extends State<GlassPinDialog>
               borderRadius: BorderRadius.circular(DS.rMedium),
               border: Border.all(
                 color: isOK && _pin.length == 4
-                    ? DS.brandRed
+                    ? DS.brandPrimary
                     : DS.getBorderColor(context),
                 width: 1,
               ),
