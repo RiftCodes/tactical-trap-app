@@ -25,7 +25,7 @@ class TacticalTrapsApp extends StatelessWidget {
     // iOS-aligned system UI overlays and haptics style
     SystemChrome.setSystemUIOverlayStyle(
       SystemUiOverlayStyle(
-        statusBarBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
         statusBarIconBrightness: Brightness.light,
       ),
     );
@@ -43,7 +43,7 @@ class TacticalTrapsApp extends StatelessWidget {
             title: AppConstants.appName,
             debugShowCheckedModeBanner: false,
             theme: _buildLightTheme(),
-            darkTheme: _buildDarkTheme(),
+            darkTheme: _buildLightTheme(),
             themeMode: themeProvider.themeMode,
             locale: languageProvider.currentLocale,
             localizationsDelegates: const [

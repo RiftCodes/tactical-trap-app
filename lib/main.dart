@@ -7,7 +7,7 @@ void main() {
   // Filter out BLE debug logs
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
       statusBarIconBrightness: Brightness.light,
     ),
   );

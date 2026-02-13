@@ -124,68 +124,124 @@ class BleService {
         Logger.info('Requesting permissions for BLE operation');
       }
 
-      // Request Bluetooth permissions first
-      var bluetoothStatus = await Permission.bluetooth.request();
-      if (kDebugMode) {
-        Logger.info('Bluetooth permission status: $bluetoothStatus');
-      }
+      // iOS handles Bluetooth permissions automatically via Core Bluetooth
+      // Only Location permission is needed for BLE scanning on iOS
+      if (Platform.isIOS) {
+        // On iOS, use location package to request permission (shows native iOS dialog)
+        final location = loc.Location();
 
-      var bluetoothScanStatus = await Permission.bluetoothScan.request();
-      if (kDebugMode) {
-        Logger.info('Bluetooth scan permission status: $bluetoothScanStatus');
-      }
-
-      var bluetoothConnectStatus = await Permission.bluetoothConnect.request();
-      if (kDebugMode) {
-        Logger.info(
-          'Bluetooth connect permission status: $bluetoothConnectStatus',
-        );
-      }
-
-      // For Android 10 and below, location permission is critical for BLE scanning
-      var locationStatus = await Permission.location.status;
-      if (locationStatus.isDenied) {
-        if (kDebugMode) {
-          Logger.info('Location permission denied, requesting...');
-        }
-        locationStatus = await Permission.location.request();
-        if (locationStatus.isDenied) {
-          // Try to request again with explanation
+        // Check if location services are enabled
+        bool serviceEnabled = await location.serviceEnabled();
+        if (!serviceEnabled) {
           if (kDebugMode) {
-            Logger.info('Location permission still denied, retrying...');
+            Logger.info(
+              'Location services are disabled, requesting to enable...',
+            );
+          }
+          serviceEnabled = await location.requestService();
+        }
+
+        // Request permission using location package (triggers native iOS dialog)
+        loc.PermissionStatus permissionStatus = await location.hasPermission();
+
+        if (kDebugMode) {
+          Logger.info('Location permission status: $permissionStatus');
+        }
+
+        if (permissionStatus == loc.PermissionStatus.denied) {
+          if (kDebugMode) {
+            Logger.info('Location permission denied, requesting...');
+          }
+          permissionStatus = await location.requestPermission();
+
+          if (kDebugMode) {
+            Logger.info(
+              'Location permission status after request: $permissionStatus',
+            );
+          }
+        }
+
+        // Check if permission is granted
+        if (permissionStatus == loc.PermissionStatus.denied ||
+            permissionStatus == loc.PermissionStatus.deniedForever) {
+          if (kDebugMode) {
+            Logger.warning(
+              'Location permission not granted. BLE scanning requires location permission on iOS.',
+            );
+          }
+          // If denied forever, open settings
+          if (permissionStatus == loc.PermissionStatus.deniedForever) {
+            await openAppSettings();
+          }
+        }
+      } else {
+        // Android: Request Bluetooth permissions first
+        var bluetoothStatus = await Permission.bluetooth.request();
+        if (kDebugMode) {
+          Logger.info('Bluetooth permission status: $bluetoothStatus');
+        }
+
+        var bluetoothScanStatus = await Permission.bluetoothScan.request();
+        if (kDebugMode) {
+          Logger.info('Bluetooth scan permission status: $bluetoothScanStatus');
+        }
+
+        var bluetoothConnectStatus = await Permission.bluetoothConnect
+            .request();
+        if (kDebugMode) {
+          Logger.info(
+            'Bluetooth connect permission status: $bluetoothConnectStatus',
+          );
+        }
+
+        // For Android 10 and below, location permission is critical for BLE scanning
+        var locationStatus = await Permission.location.status;
+        if (locationStatus.isDenied) {
+          if (kDebugMode) {
+            Logger.info('Location permission denied, requesting...');
           }
           locationStatus = await Permission.location.request();
+          if (locationStatus.isDenied) {
+            // Try to request again with explanation
+            if (kDebugMode) {
+              Logger.info('Location permission still denied, retrying...');
+            }
+            locationStatus = await Permission.location.request();
+          }
         }
-      }
 
-      if (kDebugMode) {
-        Logger.info('Location permission status: $locationStatus');
-      }
-
-      // Additional location permission for Android 10 compatibility
-      var locationWhenInUseStatus = await Permission.locationWhenInUse.status;
-      if (locationWhenInUseStatus.isDenied) {
         if (kDebugMode) {
-          Logger.info('Location when in use permission denied, requesting...');
+          Logger.info('Location permission status: $locationStatus');
         }
-        locationWhenInUseStatus = await Permission.locationWhenInUse.request();
-      }
 
-      if (kDebugMode) {
-        Logger.info(
-          'Location when in use permission status: $locationWhenInUseStatus',
-        );
-        Logger.info('All permissions requested successfully');
-      }
+        // Additional location permission for Android 10 compatibility
+        var locationWhenInUseStatus = await Permission.locationWhenInUse.status;
+        if (locationWhenInUseStatus.isDenied) {
+          if (kDebugMode) {
+            Logger.info(
+              'Location when in use permission denied, requesting...',
+            );
+          }
+          locationWhenInUseStatus = await Permission.locationWhenInUse
+              .request();
+        }
 
-      // Check if critical permissions are granted
-      if (!bluetoothStatus.isGranted ||
-          !bluetoothScanStatus.isGranted ||
-          !locationStatus.isGranted) {
         if (kDebugMode) {
-          Logger.warning(
-            'Some critical permissions are not granted. BLE scanning may fail.',
+          Logger.info(
+            'Location when in use permission status: $locationWhenInUseStatus',
           );
+          Logger.info('All permissions requested successfully');
+        }
+
+        // Check if critical permissions are granted
+        if (!bluetoothStatus.isGranted ||
+            !bluetoothScanStatus.isGranted ||
+            !locationStatus.isGranted) {
+          if (kDebugMode) {
+            Logger.warning(
+              'Some critical permissions are not granted. BLE scanning may fail.',
+            );
+          }
         }
       }
     } catch (e) {
@@ -494,20 +550,34 @@ class BleService {
   /// Check if all required permissions are granted
   Future<bool> _checkRequiredPermissions() async {
     try {
-      final bluetoothStatus = await Permission.bluetooth.status;
-      final bluetoothScanStatus = await Permission.bluetoothScan.status;
-      final locationStatus = await Permission.location.status;
+      if (Platform.isIOS) {
+        // On iOS, check Location permission using location package
+        final location = loc.Location();
+        final permissionStatus = await location.hasPermission();
 
-      if (kDebugMode) {
-        Logger.info(
-          'Permission status - Bluetooth: $bluetoothStatus, Scan: $bluetoothScanStatus, Location: $locationStatus',
-        );
+        if (kDebugMode) {
+          Logger.info('Permission status (iOS) - Location: $permissionStatus');
+        }
+
+        return permissionStatus == loc.PermissionStatus.granted ||
+            permissionStatus == loc.PermissionStatus.grantedLimited;
+      } else {
+        // Android: Check Bluetooth and Location permissions
+        final bluetoothStatus = await Permission.bluetooth.status;
+        final bluetoothScanStatus = await Permission.bluetoothScan.status;
+        final locationStatus = await Permission.location.status;
+
+        if (kDebugMode) {
+          Logger.info(
+            'Permission status (Android) - Bluetooth: $bluetoothStatus, Scan: $bluetoothScanStatus, Location: $locationStatus',
+          );
+        }
+
+        // For BLE scanning, we need at least Bluetooth and Location permissions
+        return bluetoothStatus.isGranted &&
+            bluetoothScanStatus.isGranted &&
+            locationStatus.isGranted;
       }
-
-      // For BLE scanning, we need at least Bluetooth and Location permissions
-      return bluetoothStatus.isGranted &&
-          bluetoothScanStatus.isGranted &&
-          locationStatus.isGranted;
     } catch (e) {
       if (kDebugMode) {
         Logger.error('Error checking permissions', e);
@@ -532,6 +602,8 @@ class BleService {
             'Required permissions not granted, requesting permissions...',
           );
         }
+        
+        // Request permissions - this will try to show the dialog
         await _requestPermissions();
 
         // Check again after requesting
@@ -542,7 +614,50 @@ class BleService {
               'Required permissions still not granted after request',
             );
           }
-          throw Exception('Required permissions not granted for BLE scanning');
+          
+          // Check if permanently denied on iOS and open Settings
+          if (Platform.isIOS) {
+            final location = loc.Location();
+            final locationStatus = await location.hasPermission();
+
+            if (locationStatus == loc.PermissionStatus.deniedForever) {
+              if (kDebugMode) {
+                Logger.warning(
+                  'Location permission is permanently denied. Please enable it in Settings -> Privacy & Security -> Location Services -> Tactical Trap Flutter',
+                );
+              }
+              // Give user option to open Settings
+              await openAppSettings();
+              throw Exception(
+                'Location permission is required for BLE scanning. Please enable "While Using the App" in Settings and try again.',
+              );
+            } else if (locationStatus == loc.PermissionStatus.denied) {
+              // If still denied (not permanently), try requesting one more time
+              if (kDebugMode) {
+                Logger.info('Permission still denied, trying one more time...');
+              }
+              final retryStatus = await location.requestPermission();
+              if (retryStatus == loc.PermissionStatus.granted ||
+                  retryStatus == loc.PermissionStatus.grantedLimited) {
+                // Permission granted on retry, continue with scan
+                if (kDebugMode) {
+                  Logger.info('Permission granted on retry!');
+                }
+              } else {
+                throw Exception(
+                  'Location permission denied. Please enable it to scan for Bluetooth devices.',
+                );
+              }
+            } else {
+              throw Exception(
+                'Required permissions not granted for BLE scanning',
+              );
+            }
+          } else {
+            throw Exception(
+              'Required permissions not granted for BLE scanning',
+            );
+          }
         }
       }
 

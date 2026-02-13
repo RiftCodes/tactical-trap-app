@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
@@ -24,10 +26,28 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>This app needs Bluetooth access to connect to and control Tactical Traps locks</string>
+		<key>NSBluetoothPeripheralUsageDescription</key>
+		<string>This app needs Bluetooth access to connect to and control Tactical Traps locks</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Authenticate to access Tactical Traps app securely</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Location access is required for Bluetooth Low Energy scanning to discover nearby Tactical Traps locks</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Location access is required for Bluetooth Low Energy scanning to discover nearby Tactical Traps locks</string>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>bluetooth-central</string>
+		</array>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
+		<key>UIStatusBarHidden</key>
+		<true/>
 		<key>UISupportedInterfaceOrientations</key>
 		<array>
 			<string>UIInterfaceOrientationPortrait</string>
@@ -41,15 +61,7 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
-		<key>CADisableMinimumFrameDurationOnPhone</key>
-		<true/>
-		<key>UIApplicationSupportsIndirectInputEvents</key>
-		<true/>
-		<key>UIStatusBarHidden</key>
-		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
-		<key>NSFaceIDUsageDescription</key>
-		<string>Authenticate to access Tactical Traps app securely</string>
 	</dict>
 </plist>
